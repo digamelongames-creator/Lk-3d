@@ -64,6 +64,7 @@ class Hero extends RefCounted:
 	var flip := false
 	var inv := 0.0
 	var roll_t := 0.0
+	var aturdido := 0.0          # segundos sin poder moverse ni atacar
 	var roll_cd := 0.0
 	var roll_dx := 0.0
 	var roll_dy := 0.0

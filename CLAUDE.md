@@ -24,6 +24,8 @@ Responde en español.
 ## Ejecutar y probar
 - Godot 4.7.2, renderizador Forward+.
 - Importar: `godot --headless --path . --editor --quit`.
-- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd` y `tests/test_modelos.gd` (deben decir «todo bien»).
+- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` y `tests/test_demonios.gd` (deben decir «todo bien»).
 - Captura: `xvfb-run -a godot --path . -- --bot --shot=/tmp/x.png,200` (sin GPU: `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`).
-- Opciones: `--clase=knight|dk|archer|mage|dl --piso=N --semilla=… --inclinacion=45 --giro=0 --bot`.
+- Opciones: `--clase=knight|dk|archer|mage|dl --piso=N --semilla=… --heroe=… --junto=<monstruo> --zoom=… --giro=… --inclinacion=… --perspectiva --bot`.
+- El juego arranca en pantalla completa; F11 cambia a ventana.
+- Repositorio: github.com/digamelongames-creator/Lk-3d (rama `main`). Cada entrega se sube ahí y además se pasa el zip.

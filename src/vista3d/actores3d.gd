@@ -9,7 +9,11 @@ extends Node3D
 ## Con un modelo de Mixamo: BoneAttachment3D en mixamorig_RightHand y la misma función _vestir().
 
 var sim: Sim
-var heroe_id := "heroe"   # modelo del héroe (Modelo3D.FICHAS); si no existe, cápsula
+var heroe_id := "esqueleto"   # modelo del héroe (Modelo3D.FICHAS); si no existe, cápsula
+## los enemigos sin modelo propio (caballeros, renegados…) usan este, provisional
+const MODELO_HUMANOS := "prueba2"
+## los esqueletos enemigos, más oscuros y rojizos que el héroe
+const TINTE_ENEMIGO := Color(.72, .42, .36)
 var heroe: Node3D
 var _modelo_heroe: Modelo3D
 var _hp_antes := -1.0
@@ -117,13 +121,21 @@ func _actualizar_enemigos(dt: float) -> void:
 			d.muerto = d.get("muerto", 0.0) + dt
 			continue
 		var vel := Vector2(n.position.x - antes.x, n.position.z - antes.z).length() / maxf(dt, .001)
-		if e.act == "wind" and d.get("act", "") != "wind":
+		var herido: bool = e.mon_hurt > 0 or (e.mon == "" and e.flash > 0)
+		if e.act == "jump":
+			if m.actual != "jump":
+				m.reproducir("jump", 1.0, .08, true)
+		elif e.act == "strike" and d.get("act", "") == "jump":
+			m.reproducir("attack", 2.0, .05, true)   # puñetazos tras el salto
+		elif e.act == "strike" and d.get("act", "") != "strike" and d.get("act", "") != "wind":
+			m.reproducir("attack", 2.0, .05, true)
+		elif e.act == "wind" and d.get("act", "") != "wind":
 			# el golpe de la animación cae al final de la preparación (hit_at de la fábrica)
 			var t_golpe: float = m.duracion("attack") * float(m.ficha.get("golpe", .6))
 			m.reproducir("attack", t_golpe / maxf(.12, e.wind_t), .08, true)
 		elif e.act == "wind" or e.act == "strike":
 			pass
-		elif e.mon_hurt > 0 and d.get("hurt", 0.0) <= 0:
+		elif herido and not d.get("herido", false):
 			m.reproducir("hurt", 1.4, .05, true)
 		elif m.actual == "hurt" and not m.terminada():
 			pass
@@ -136,7 +148,7 @@ func _actualizar_enemigos(dt: float) -> void:
 		else:
 			m.reproducir("idle")
 		d.act = e.act
-		d.hurt = e.mon_hurt
+		d.herido = herido
 	# los que ya no están (o llevan rato muertos): se hunden y se quitan
 	for k in _enemigos.keys():
 		var d: Dictionary = _enemigos[k]
@@ -246,6 +258,9 @@ func _nuevo_heroe() -> Node3D:
 	_modelo_heroe = Modelo3D.crear(heroe_id)
 	if _modelo_heroe != null:
 		n.add_child(_modelo_heroe)
+		# el arma que traiga el modelo de la fábrica se esconde: la pone el equipo (_vestir)
+		for a in _modelo_heroe.find_children("arma_*", "MeshInstance3D", true, false):
+			a.visible = false
 		_mano_der = _modelo_heroe.enganche("RightHand")
 		_mano_izq = _modelo_heroe.enganche("LeftHand")
 		_cabeza = _modelo_heroe.enganche("HeadTop_End")
@@ -273,7 +288,8 @@ func _nuevo_heroe() -> Node3D:
 	return n
 
 func _nuevo_enemigo(e: Ent.Enemy) -> Dictionary:
-	var m := Modelo3D.crear(e.mon) if e.mon != "" else null
+	var id: String = e.mon if e.mon != "" else MODELO_HUMANOS
+	var m := Modelo3D.crear(id, TINTE_ENEMIGO if id == heroe_id else Color.WHITE)
 	if m != null:
 		var raiz := Node3D.new()
 		raiz.add_child(m)

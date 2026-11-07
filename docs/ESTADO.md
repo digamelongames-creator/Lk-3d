@@ -1,6 +1,9 @@
 # Estado · 7 nov 2026
 
 ## Hecho
+- El héroe usa el modelo del esqueleto, con la espada del equipo en la mano. Los esqueletos enemigos salen más oscuros y rojizos. Los enemigos humanos (caballeros, renegados) usan Prueba2 de forma provisional.
+- Demonios en la simulación (`monsters.json`, piso 1 de prueba, `from`/`to` = 1). Hay 4 minidemonios juntos, un middle, un capitán y un demonio de fuego, cada uno en su sala. El capitán salta (`monster_skills` → `salto`): al caer daña, aturde al héroe 2 s (`Hero.aturdido`) y da dos puñetazos. Brasas y humo en 3D según la ficha. Prueba: `tests/test_demonios.gd`.
+- El juego arranca en pantalla completa (`window/size/mode=3`) y F11 cambia a ventana. Opción de prueba: `--junto=<monstruo>`.
 - Muros con cara: un núcleo por casilla y una cara de sillería en cada lado que da al suelo (zócalo, sillares a matajunta y cornisa). Hay 8 variantes: lisa ×2, columna (cada 3 casillas), arco ciego, nicho, reja, rota y con hiedra. Además, columna en las esquinas que entran y que salen. Los muros miden 3 m. Lo que va colgado de la pared deja la cara lisa detrás.
 - Monstruos de SPRITE_FACTORY en 3D animado: `tools/blender/monstruos_glb.py` lee las fichas de la fábrica (animaciones, tramos, armas) y deja `assets/monstruos/*.glb`. `Modelo3D` los anima según la simulación (andar, correr, preparar golpe con el golpe al final de la preparación, herido y morir). El esqueleto y la Bufona ya salen en partida. Los demonios se ven en la sala de prueba, pero aún no están en la simulación.
 - Héroe: si existe `assets/monstruos/heroe.glb`, se usa con la espada de la fábrica en el hueso de la mano (`Modelo3D.enganche`). Mientras tanto, cápsula. Para probar: `--heroe=esqueleto`.
@@ -16,8 +19,8 @@
 - `test_botin` y `test_clases` dan «todo bien».
 
 ## Falta
-- Modelo del héroe (Mixamo) en `SPRITE_FACTORY/input/characters/heroe/base.fbx` y su ficha `config/characters/heroe.json`.
-- Los demonios (mini, middle, capitán, de fuego) en la simulación, con sus datos de `datos.json`.
+- Pasar los demonios a sus pisos de verdad (2–4) cuando acabe la prueba.
+- Modelos propios para los humanos: riggear en Mixamo los de `input/raw` (elf, violeta, cuernitos, medusa, vaquita).
 - Piezas de muro según las vecinas (rotas, con hiedra, de esquina) y el arco en las puertas del juego, porque las puertas siguen siendo cajas de Actores3D.
 - Más luz por pared: hoy el generador solo pone antorchas en las paredes del norte.
 - Modelos del héroe y los monstruos (los .fbx de SPRITE_FACTORY y Mixamo) con AnimationTree. Los enganches pasan a ser BoneAttachment3D.

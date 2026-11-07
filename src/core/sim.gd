@@ -1409,6 +1409,9 @@ func _update_hero(dt: float, inp: Inp) -> void:
 	if p.dead:
 		p.death_t += dt
 		return
+	if p.aturdido > 0:   # aturdido (salto del capitán demonio): ni se mueve ni ataca
+		p.aturdido -= dt
+		inp = Inp.new()
 	if p.caida_t > 0:
 		_caida_heroe(dt)
 		return
@@ -3227,7 +3230,8 @@ const MON_LV := {
 }
 const BOSS_F := [1.0, 1.0, 2.0, 4.0]
 ## radio del cuerpo dibujado de cada monstruo: los golpes cuentan desde su borde y el héroe no se mete dentro
-const MON_CUERPO := {"penitente": 10.0, "soulEater": 13.0, "overseer": 15.0, "angel": 13.0, "bufona": 7.0}   # velocidad y dificultad del jefe por etapa
+const MON_CUERPO := {"penitente": 10.0, "soulEater": 13.0, "overseer": 15.0, "angel": 13.0, "bufona": 7.0,
+	"middleDemon": 9.0, "demonCaptain": 11.0, "firedemon": 9.0}   # velocidad y dificultad del jefe por etapa
 const BOSS_DMG_STUN := 1.6
 const SE_BLOOD := ["#1c0303", "#2a0606", "#240505", "#330908", "#160202"]
 var mon_haz: Array = []       # lava y ondas: {kind, x, y, r, t, life, own, dmg, tick | x2, y2, w, hit}
@@ -3299,6 +3303,7 @@ func _mon_populate(w: int) -> void:
 					put += 1
 					break
 	var MS: Dictionary = GameData.get_table("monsters")
+	var usadas := {}   # salas que ya tienen monstruo
 	for id in MS:
 		var M: Dictionary = MS[id]
 		if M.group == "horda":
@@ -3326,10 +3331,18 @@ func _mon_populate(w: int) -> void:
 			mon_spawn(id, o.x, o.y)
 			continue
 		var rooms := _rooms_free()
+		# cada monstruo en una sala distinta (mientras queden salas sin usar)
+		var libres := rooms.filter(func(k): return not usadas.has(k))
+		if not libres.is_empty():
+			rooms = libres
 		if rooms.is_empty():
 			continue
-		var r: Dictionary = L.rooms[rooms[int(rnd() * rooms.size())]]
+		var rk: int = rooms[int(rnd() * rooms.size())]
+		usadas[rk] = true
+		var r: Dictionary = L.rooms[rk]
 		var n := 2 + (1 if rnd() < .4 else 0) if M.group == "grupo" else 1
+		if M.has("groupN"):
+			n = int(M.groupN)
 		for i in n:
 			var c = _rand_cell_in(r)
 			if c != null and dist[c.cy * DungeonGen.GW + c.cx] > 10:
@@ -3498,6 +3511,8 @@ func _cd(e: Ent.Enemy, k: String) -> float:
 
 func _mon_pick(e: Ent.Enemy, d: float) -> String:
 	match e.mon:
+		"demonCaptain":
+			if d > 45 and d < 240 and e.clear and not (_cd(e, "salto") > 0): return "salto"
 		"penitente":
 			if d < 70 and not (_cd(e, "spin") > 0): return "spin"
 			if d > 90 and d < 190 and e.clear and not (_cd(e, "pull") > 0): return "pull"
@@ -3667,6 +3682,50 @@ func _mon_skill(e: Ent.Enemy, sk: String, dt: float) -> bool:
 				m_sparks(e.x, e.y, 20, ["#d0e8ff", "#6aa8ff"], 80, 30)
 				e.act = ""
 				s.cds.orbs = 9.0
+				return true
+			return false
+		"salto":   # el capitán salta sobre el héroe: al caer daña y aturde 2 s, y luego da dos puñetazos
+			e.moving = false
+			const SUBE := .9
+			const R_CAIDA := 48.0
+			if first:
+				s.sx = e.x; s.sy = e.y
+				s.tx = p.x; s.ty = p.y
+				e.face = atan2(p.y - e.y, p.x - e.x)
+				s.salM = add_mark(e, {"kind": "zone", "x": p.x, "y": p.y, "r": R_CAIDA, "T": SUBE, "col": Color8(255, 90, 20)})
+				s.cayo = false
+				s.punos = 0
+			if s.skT < SUBE:
+				var k: float = s.skT / SUBE
+				e.act = "jump"
+				e.x = lerpf(s.sx, s.tx, k)
+				e.y = lerpf(s.sy, s.ty, k)
+				e.bz = sin(PI * k) * 70.0
+				return false
+			if not s.cayo:
+				s.cayo = true
+				e.bz = 0.0
+				unstick(e, 8)
+				fx.shake(9)
+				m_sparks(e.x, e.y, 40, mon_def(e).get("boom", ["#ffb030", "#ff5a10"]), 150, 4)
+				if JS.hypot(p.x - e.x, p.y - e.y) < R_CAIDA and not p.dead and not (p.roll_t > 0):
+					m_hurt(e, 1.3, e.x, e.y)
+					p.aturdido = 2.0
+					fx.text(p.x, p.y - 40, "Aturdido", "#ffb030", 11, false, 1.2)
+			# dos puñetazos mientras dura el aturdimiento
+			var tg: float = s.skT - SUBE
+			for k in 2:
+				var t0 := .25 + k * .5
+				if s.punos == k and tg >= t0:
+					s.punos = k + 1
+					e.face = atan2(p.y - e.y, p.x - e.x)
+					e.act = "strike"
+					e.act_t = .3
+					if JS.hypot(p.x - e.x, p.y - e.y) < e.reach + 14 and not p.dead:
+						m_hurt(e, .8, p.x, p.y)
+			if tg >= 1.4:
+				e.act = ""
+				s.cds.salto = 7.0
 				return true
 			return false
 		"slam":   # golpe al suelo con tres ondas

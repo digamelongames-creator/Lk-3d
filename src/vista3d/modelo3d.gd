@@ -9,11 +9,10 @@ extends Node3D
 const FICHAS := {
 	"esqueleto": {"glb": "esqueleto", "alto": 1.8, "golpe": .5},
 	"bufona": {"glb": "jester", "alto": 1.75, "golpe": .8, "luz": Color8(190, 90, 255)},
-	# los demonios todavía no existen en la simulación: se ven en la sala de prueba
-	"miniDemon": {"glb": "minidemon", "alto": 1.15, "golpe": .8, "luz": Color8(255, 120, 30)},
-	"middleDemon": {"glb": "middledemon", "alto": 2.3, "golpe": .8, "luz": Color8(255, 110, 30)},
-	"demonCaptain": {"glb": "leveldemon", "alto": 2.7, "golpe": .8, "luz": Color8(255, 90, 20)},
-	"firedemon": {"glb": "firedemon", "alto": 2.1, "golpe": .45, "luz": Color8(255, 90, 20)},
+	"miniDemon": {"glb": "minidemon", "alto": 1.15, "golpe": .8, "luz": Color8(255, 120, 30), "parts": ["brasas"]},
+	"middleDemon": {"glb": "middledemon", "alto": 2.3, "golpe": .8, "luz": Color8(255, 110, 30), "parts": ["brasas"]},
+	"demonCaptain": {"glb": "leveldemon", "alto": 2.7, "golpe": .8, "luz": Color8(255, 90, 20), "parts": ["brasas", "humo"]},
+	"firedemon": {"glb": "firedemon", "alto": 2.1, "golpe": .45, "luz": Color8(255, 90, 20), "parts": ["brasas", "humo"]},
 	"prueba2": {"glb": "prueba2", "alto": 2.0, "golpe": .5},
 	# el héroe: pon su base.fbx de Mixamo en SPRITE_FACTORY/input/characters/heroe y conviértelo igual
 	"heroe": {"glb": "heroe", "alto": 1.8, "golpe": .5},
@@ -28,7 +27,8 @@ var ficha := {}
 static func hay(id: String) -> bool:
 	return FICHAS.has(id) and ResourceLoader.exists("res://assets/monstruos/%s.glb" % FICHAS[id].glb)
 
-static func crear(id: String) -> Modelo3D:
+## tinte: multiplica el color de todos los materiales (los esqueletos enemigos van más oscuros y rojizos)
+static func crear(id: String, tinte: Color = Color.WHITE) -> Modelo3D:
 	if not hay(id):
 		return null
 	var f: Dictionary = FICHAS[id]
@@ -46,6 +46,15 @@ static func crear(id: String) -> Modelo3D:
 		m.reproducir("idle")
 	for mi in esc.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if tinte != Color.WHITE and mi.mesh != null:
+			for k in mi.mesh.get_surface_count():
+				var mat: Material = mi.mesh.surface_get_material(k)
+				if mat is BaseMaterial3D:
+					var m2: BaseMaterial3D = mat.duplicate()
+					m2.albedo_color = m2.albedo_color * tinte
+					mi.set_surface_override_material(k, m2)
+	for k in f.get("parts", []):
+		m.add_child(_particulas(k, float(f.alto)))
 	if f.has("luz"):
 		var l := OmniLight3D.new()
 		l.light_color = f.luz
@@ -96,6 +105,50 @@ static func agarre(id: String = "esqueleto", nodo: String = "arma_main_hand") ->
 		esc.free()
 	_agarres[k] = r
 	return r
+
+## brasas que suben del cuerpo y humo por encima (las «parts» de la ficha de la fábrica)
+static func _particulas(tipo: String, alto: float) -> CPUParticles3D:
+	var f := CPUParticles3D.new()
+	var q := QuadMesh.new()
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.vertex_color_use_as_albedo = true
+	m.albedo_texture = MazmorraGridMap._punto()
+	var g := Gradient.new()
+	f.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	f.emission_box_extents = Vector3(.3, alto * .3, .3) * (alto / 2.0)
+	f.position = Vector3(0, alto * .55, 0)
+	f.direction = Vector3.UP
+	f.spread = 25
+	f.gravity = Vector3.ZERO
+	if tipo == "humo":
+		f.amount = 14
+		f.lifetime = 1.6
+		f.position.y = alto * .85
+		f.initial_velocity_min = .3
+		f.initial_velocity_max = .7
+		f.scale_amount_min = .5
+		f.scale_amount_max = .9
+		q.size = Vector2.ONE * .6
+		g.offsets = PackedFloat32Array([0, .3, 1])
+		g.colors = PackedColorArray([Color(.15, .12, .11, 0), Color(.2, .17, .15, .45), Color(.25, .22, .2, 0)])
+	else:
+		f.amount = int(10 + alto * 8)
+		f.lifetime = .9
+		f.initial_velocity_min = .5
+		f.initial_velocity_max = 1.3
+		f.scale_amount_min = .04
+		f.scale_amount_max = .09
+		q.size = Vector2.ONE
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		g.offsets = PackedFloat32Array([0, .4, 1])
+		g.colors = PackedColorArray([Color(1, .85, .4, 1), Color(1, .45, .1, .9), Color(.6, .1, .02, 0)])
+	q.material = m
+	f.mesh = q
+	f.color_ramp = g
+	return f
 
 func duracion(n: String) -> float:
 	return anim.get_animation(n).length if anim != null and anim.has_animation(n) else 1.0

@@ -16,10 +16,11 @@ var inventory: Inventory
 var personaje: Personaje
 var state := "play"
 var opciones_camara: Array = []
-var heroe_id := "heroe"   # --heroe=esqueleto para probar con otro modelo
+var heroe_id := "esqueleto"   # modelo del héroe (--heroe=… para probar otro)
 
 
 var _bot: Bot = null
+var _junto := ""   # pruebas: --junto=demonCaptain pone al héroe al lado de ese monstruo
 var _shot_path := ""
 var _shot_frames := 0
 var _frame := 0
@@ -42,6 +43,7 @@ func _ready() -> void:
 		elif a.begins_with("--semilla="): semilla = a.get_slice("=", 1)
 		elif a == "--bot": _bot = Bot.new()
 		elif a.begins_with("--heroe="): heroe_id = a.get_slice("=", 1)
+		elif a.begins_with("--junto="): _junto = a.get_slice("=", 1)
 		elif a.begins_with("--inclinacion=") or a.begins_with("--giro=") or a.begins_with("--zoom=") or a == "--perspectiva": opciones_camara.append(a)
 		elif a.begins_with("--shot="):
 			var p := a.get_slice("=", 1).split(",")
@@ -81,6 +83,17 @@ func _ready() -> void:
 	sim.new_game(piso, semilla, clase)
 	_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
 	fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
+	if _junto != "":
+		for e in sim.enemies:
+			if e.mon == _junto:
+				for k in 16:
+					var q := Vector2(e.x, e.y) + Vector2.from_angle(k * TAU / 16) * 110
+					if sim.fits(q.x, q.y, 8):
+						sim.p.x = q.x
+						sim.p.y = q.y
+						break
+				break
+		_camara(1.0)
 
 func _entrar(L: Dictionary) -> void:
 	fx.reset()
