@@ -1,0 +1,684 @@
+{
+ "source_sha1": "50eb8e307fff",
+ "source_bytes": 11006196,
+ "images": [
+  {
+   "name": "atlas_sprites",
+   "file": "img/atlas_sprites.png",
+   "bytes": 93543,
+   "sha1": "381878a6edd1"
+  },
+  {
+   "name": "tiles",
+   "file": "img/tiles.webp",
+   "bytes": 222390,
+   "sha1": "389bf796828d"
+  },
+  {
+   "name": "deco",
+   "file": "img/deco.png",
+   "bytes": 23147,
+   "sha1": "f95876dbeee8"
+  },
+  {
+   "name": "brick",
+   "file": "img/brick.png",
+   "bytes": 8110,
+   "sha1": "b2e3bd080690"
+  },
+  {
+   "name": "stone",
+   "file": "img/stone.png",
+   "bytes": 7962,
+   "sha1": "6e5fff87c42e"
+  },
+  {
+   "name": "knight",
+   "file": "img/knight.webp",
+   "bytes": 1022748,
+   "sha1": "5000ce5d0ecc"
+  },
+  {
+   "name": "death_knight",
+   "file": "img/death_knight.webp",
+   "bytes": 1641738,
+   "sha1": "a367f9ea6159"
+  },
+  {
+   "name": "archer",
+   "file": "img/archer.webp",
+   "bytes": 595236,
+   "sha1": "1119257bc7fa"
+  },
+  {
+   "name": "dark_lord",
+   "file": "img/dark_lord.webp",
+   "bytes": 1541624,
+   "sha1": "e2f696ca5f4b"
+  },
+  {
+   "name": "fx",
+   "file": "img/fx.webp",
+   "bytes": 235042,
+   "sha1": "a4849ecacc30"
+  },
+  {
+   "name": "mage_portrait",
+   "file": "img/mage_portrait.png",
+   "bytes": 28571,
+   "sha1": "4ceabeac9fea"
+  },
+  {
+   "name": "wizard",
+   "file": "img/wizard.webp",
+   "bytes": 1349418,
+   "sha1": "b516dcad8d21"
+  },
+  {
+   "name": "items",
+   "file": "img/items.png",
+   "bytes": 146234,
+   "sha1": "2cb1b46ee0d0"
+  },
+  {
+   "name": "potion",
+   "file": "img/potion.png",
+   "bytes": 780,
+   "sha1": "3a10e49309b6"
+  },
+  {
+   "name": "tree_icons_src",
+   "file": "img/tree_icons_src.png",
+   "bytes": 22395,
+   "sha1": "f77daf7e2b53"
+  },
+  {
+   "name": "css",
+   "file": "img/css.png",
+   "bytes": 27035,
+   "sha1": "8785b18dd4f1"
+  },
+  {
+   "name": "orn_gal_duelo_T",
+   "file": "img/orn_gal_duelo_T.png",
+   "bytes": 1839,
+   "sha1": "06670fea7be8"
+  },
+  {
+   "name": "orn_gal_duelo_M",
+   "file": "img/orn_gal_duelo_M.png",
+   "bytes": 1556,
+   "sha1": "ed35acdbe199"
+  },
+  {
+   "name": "orn_gal_aquelarre_T",
+   "file": "img/orn_gal_aquelarre_T.png",
+   "bytes": 2782,
+   "sha1": "27f9083018e9"
+  },
+  {
+   "name": "orn_gal_aquelarre_M",
+   "file": "img/orn_gal_aquelarre_M.png",
+   "bytes": 2307,
+   "sha1": "f0741e989520"
+  },
+  {
+   "name": "orn_gal_saturno_T",
+   "file": "img/orn_gal_saturno_T.png",
+   "bytes": 1520,
+   "sha1": "0307511a4bd8"
+  },
+  {
+   "name": "orn_gal_saturno_M",
+   "file": "img/orn_gal_saturno_M.png",
+   "bytes": 1079,
+   "sha1": "9bc7520b646e"
+  },
+  {
+   "name": "orn_rel_velo_piedra_N",
+   "file": "img/orn_rel_velo_piedra_N.png",
+   "bytes": 1017,
+   "sha1": "3ae011d1a7d8"
+  },
+  {
+   "name": "orn_rel_velo_piedra_G",
+   "file": "img/orn_rel_velo_piedra_G.png",
+   "bytes": 1415,
+   "sha1": "c806d191224a"
+  },
+  {
+   "name": "orn_rel_velo_hueso_N",
+   "file": "img/orn_rel_velo_hueso_N.png",
+   "bytes": 1085,
+   "sha1": "084895a30570"
+  },
+  {
+   "name": "orn_rel_velo_hueso_G",
+   "file": "img/orn_rel_velo_hueso_G.png",
+   "bytes": 1497,
+   "sha1": "259adc61bee1"
+  },
+  {
+   "name": "orn_rel_velo_cripta_N",
+   "file": "img/orn_rel_velo_cripta_N.png",
+   "bytes": 1075,
+   "sha1": "23f4ec1c9fe5"
+  },
+  {
+   "name": "orn_rel_velo_cripta_G",
+   "file": "img/orn_rel_velo_cripta_G.png",
+   "bytes": 1484,
+   "sha1": "f43cc3da14ba"
+  },
+  {
+   "name": "orn_rel_velo_bronce_N",
+   "file": "img/orn_rel_velo_bronce_N.png",
+   "bytes": 1079,
+   "sha1": "0823d0aa4a00"
+  },
+  {
+   "name": "orn_rel_velo_bronce_G",
+   "file": "img/orn_rel_velo_bronce_G.png",
+   "bytes": 1498,
+   "sha1": "994be88e4d83"
+  },
+  {
+   "name": "orn_rel_medusa_piedra_N",
+   "file": "img/orn_rel_medusa_piedra_N.png",
+   "bytes": 1347,
+   "sha1": "51356c0af3cb"
+  },
+  {
+   "name": "orn_rel_medusa_piedra_G",
+   "file": "img/orn_rel_medusa_piedra_G.png",
+   "bytes": 1877,
+   "sha1": "e67d9dc357f8"
+  },
+  {
+   "name": "orn_rel_medusa_hueso_N",
+   "file": "img/orn_rel_medusa_hueso_N.png",
+   "bytes": 1450,
+   "sha1": "ff96f02d0e61"
+  },
+  {
+   "name": "orn_rel_medusa_hueso_G",
+   "file": "img/orn_rel_medusa_hueso_G.png",
+   "bytes": 2001,
+   "sha1": "5bb34ee75504"
+  },
+  {
+   "name": "orn_rel_medusa_cripta_N",
+   "file": "img/orn_rel_medusa_cripta_N.png",
+   "bytes": 1420,
+   "sha1": "c75ce75730ff"
+  },
+  {
+   "name": "orn_rel_medusa_cripta_G",
+   "file": "img/orn_rel_medusa_cripta_G.png",
+   "bytes": 1991,
+   "sha1": "adc6506238e8"
+  },
+  {
+   "name": "orn_rel_medusa_bronce_N",
+   "file": "img/orn_rel_medusa_bronce_N.png",
+   "bytes": 1403,
+   "sha1": "fc31f7407539"
+  },
+  {
+   "name": "orn_rel_medusa_bronce_G",
+   "file": "img/orn_rel_medusa_bronce_G.png",
+   "bytes": 1956,
+   "sha1": "0256ca3d38d3"
+  },
+  {
+   "name": "orn_rel_baco_piedra_N",
+   "file": "img/orn_rel_baco_piedra_N.png",
+   "bytes": 1382,
+   "sha1": "a21efc202bf8"
+  },
+  {
+   "name": "orn_rel_baco_piedra_G",
+   "file": "img/orn_rel_baco_piedra_G.png",
+   "bytes": 1940,
+   "sha1": "203553837cd4"
+  },
+  {
+   "name": "orn_rel_baco_hueso_N",
+   "file": "img/orn_rel_baco_hueso_N.png",
+   "bytes": 1415,
+   "sha1": "0bc7987acf2b"
+  },
+  {
+   "name": "orn_rel_baco_hueso_G",
+   "file": "img/orn_rel_baco_hueso_G.png",
+   "bytes": 2045,
+   "sha1": "eb9fd5963312"
+  },
+  {
+   "name": "orn_rel_baco_cripta_N",
+   "file": "img/orn_rel_baco_cripta_N.png",
+   "bytes": 1424,
+   "sha1": "a8ff33b54f73"
+  },
+  {
+   "name": "orn_rel_baco_cripta_G",
+   "file": "img/orn_rel_baco_cripta_G.png",
+   "bytes": 2033,
+   "sha1": "5e5b50ac847e"
+  },
+  {
+   "name": "orn_rel_baco_bronce_N",
+   "file": "img/orn_rel_baco_bronce_N.png",
+   "bytes": 1389,
+   "sha1": "680b8207473d"
+  },
+  {
+   "name": "orn_rel_baco_bronce_G",
+   "file": "img/orn_rel_baco_bronce_G.png",
+   "bytes": 1994,
+   "sha1": "b6e60cd56eef"
+  },
+  {
+   "name": "orn_rel_melena_piedra_N",
+   "file": "img/orn_rel_melena_piedra_N.png",
+   "bytes": 952,
+   "sha1": "b7f27fbde898"
+  },
+  {
+   "name": "orn_rel_melena_piedra_G",
+   "file": "img/orn_rel_melena_piedra_G.png",
+   "bytes": 1430,
+   "sha1": "aa39c1989291"
+  },
+  {
+   "name": "orn_rel_melena_hueso_N",
+   "file": "img/orn_rel_melena_hueso_N.png",
+   "bytes": 1001,
+   "sha1": "6cd558f53591"
+  },
+  {
+   "name": "orn_rel_melena_hueso_G",
+   "file": "img/orn_rel_melena_hueso_G.png",
+   "bytes": 1493,
+   "sha1": "e5249f7edd19"
+  },
+  {
+   "name": "orn_rel_melena_cripta_N",
+   "file": "img/orn_rel_melena_cripta_N.png",
+   "bytes": 992,
+   "sha1": "903008105c5e"
+  },
+  {
+   "name": "orn_rel_melena_cripta_G",
+   "file": "img/orn_rel_melena_cripta_G.png",
+   "bytes": 1478,
+   "sha1": "fa06c8ff55d0"
+  },
+  {
+   "name": "orn_rel_melena_bronce_N",
+   "file": "img/orn_rel_melena_bronce_N.png",
+   "bytes": 1005,
+   "sha1": "f5a6ef281905"
+  },
+  {
+   "name": "orn_rel_melena_bronce_G",
+   "file": "img/orn_rel_melena_bronce_G.png",
+   "bytes": 1490,
+   "sha1": "578945247207"
+  },
+  {
+   "name": "orn_rel_fauno_piedra_N",
+   "file": "img/orn_rel_fauno_piedra_N.png",
+   "bytes": 1507,
+   "sha1": "6688d9cb0d88"
+  },
+  {
+   "name": "orn_rel_fauno_piedra_G",
+   "file": "img/orn_rel_fauno_piedra_G.png",
+   "bytes": 2178,
+   "sha1": "c929ab62d18e"
+  },
+  {
+   "name": "orn_rel_fauno_hueso_N",
+   "file": "img/orn_rel_fauno_hueso_N.png",
+   "bytes": 1559,
+   "sha1": "9532cb3d2523"
+  },
+  {
+   "name": "orn_rel_fauno_hueso_G",
+   "file": "img/orn_rel_fauno_hueso_G.png",
+   "bytes": 2269,
+   "sha1": "fee156815f75"
+  },
+  {
+   "name": "orn_rel_fauno_cripta_N",
+   "file": "img/orn_rel_fauno_cripta_N.png",
+   "bytes": 1559,
+   "sha1": "270a6a297cd9"
+  },
+  {
+   "name": "orn_rel_fauno_cripta_G",
+   "file": "img/orn_rel_fauno_cripta_G.png",
+   "bytes": 2255,
+   "sha1": "0f392eca077a"
+  },
+  {
+   "name": "orn_rel_fauno_bronce_N",
+   "file": "img/orn_rel_fauno_bronce_N.png",
+   "bytes": 1528,
+   "sha1": "be1cee540c46"
+  },
+  {
+   "name": "orn_rel_fauno_bronce_G",
+   "file": "img/orn_rel_fauno_bronce_G.png",
+   "bytes": 2220,
+   "sha1": "d1b275f6d959"
+  },
+  {
+   "name": "orn_rel_aguila_piedra_N",
+   "file": "img/orn_rel_aguila_piedra_N.png",
+   "bytes": 1013,
+   "sha1": "9c21f8d85314"
+  },
+  {
+   "name": "orn_rel_aguila_piedra_G",
+   "file": "img/orn_rel_aguila_piedra_G.png",
+   "bytes": 1428,
+   "sha1": "2867fa924b91"
+  },
+  {
+   "name": "orn_rel_aguila_hueso_N",
+   "file": "img/orn_rel_aguila_hueso_N.png",
+   "bytes": 1043,
+   "sha1": "2490d4461e39"
+  },
+  {
+   "name": "orn_rel_aguila_hueso_G",
+   "file": "img/orn_rel_aguila_hueso_G.png",
+   "bytes": 1495,
+   "sha1": "3092f66b268d"
+  },
+  {
+   "name": "orn_rel_aguila_cripta_N",
+   "file": "img/orn_rel_aguila_cripta_N.png",
+   "bytes": 1027,
+   "sha1": "f213d94d3c1d"
+  },
+  {
+   "name": "orn_rel_aguila_cripta_G",
+   "file": "img/orn_rel_aguila_cripta_G.png",
+   "bytes": 1483,
+   "sha1": "540f64d58e80"
+  },
+  {
+   "name": "orn_rel_aguila_bronce_N",
+   "file": "img/orn_rel_aguila_bronce_N.png",
+   "bytes": 1004,
+   "sha1": "ecd8186304a0"
+  },
+  {
+   "name": "orn_rel_aguila_bronce_G",
+   "file": "img/orn_rel_aguila_bronce_G.png",
+   "bytes": 1471,
+   "sha1": "066474dbbaf7"
+  },
+  {
+   "name": "rn_pieces_sword",
+   "file": "img/rn_pieces_sword.webp",
+   "bytes": 7522,
+   "sha1": "e18393f357de"
+  },
+  {
+   "name": "rn_pieces_chest",
+   "file": "img/rn_pieces_chest.webp",
+   "bytes": 39194,
+   "sha1": "16b07c0f6c28"
+  },
+  {
+   "name": "rn_pieces_helm",
+   "file": "img/rn_pieces_helm.webp",
+   "bytes": 21160,
+   "sha1": "ca8d214887aa"
+  },
+  {
+   "name": "rn_pieces_shield",
+   "file": "img/rn_pieces_shield.webp",
+   "bytes": 17842,
+   "sha1": "fbc52d44c764"
+  },
+  {
+   "name": "rn_pieces_boots",
+   "file": "img/rn_pieces_boots.webp",
+   "bytes": 30708,
+   "sha1": "9c1abef59ab6"
+  },
+  {
+   "name": "rn_pieces_belt",
+   "file": "img/rn_pieces_belt.webp",
+   "bytes": 10200,
+   "sha1": "626a62e12240"
+  },
+  {
+   "name": "rn_pieces_gloves",
+   "file": "img/rn_pieces_gloves.webp",
+   "bytes": 23322,
+   "sha1": "10c368f39db6"
+  },
+  {
+   "name": "rn_statue",
+   "file": "img/rn_statue.png",
+   "bytes": 10206,
+   "sha1": "6a0e69428c19"
+  },
+  {
+   "name": "rn_sets_img_dl_chest",
+   "file": "img/rn_sets_img_dl_chest.webp",
+   "bytes": 19110,
+   "sha1": "7767e12dc5f2"
+  },
+  {
+   "name": "rn_sets_img_dl_helm",
+   "file": "img/rn_sets_img_dl_helm.webp",
+   "bytes": 19378,
+   "sha1": "543c9ff8eb9f"
+  },
+  {
+   "name": "rn_sets_img_dl_gloves",
+   "file": "img/rn_sets_img_dl_gloves.webp",
+   "bytes": 17306,
+   "sha1": "afbd57e9f8d8"
+  },
+  {
+   "name": "rn_sets_img_dl_belt",
+   "file": "img/rn_sets_img_dl_belt.webp",
+   "bytes": 14888,
+   "sha1": "45f7838e8536"
+  },
+  {
+   "name": "rn_sets_img_dl_boots",
+   "file": "img/rn_sets_img_dl_boots.webp",
+   "bytes": 13666,
+   "sha1": "3af1344e16c2"
+  },
+  {
+   "name": "rn_sets_img_archer_sword",
+   "file": "img/rn_sets_img_archer_sword.webp",
+   "bytes": 11622,
+   "sha1": "c307b3c6b365"
+  },
+  {
+   "name": "rn_sets_img_archer_shield",
+   "file": "img/rn_sets_img_archer_shield.webp",
+   "bytes": 19638,
+   "sha1": "663fdf74f2e8"
+  },
+  {
+   "name": "rn_sets_img_archer_chest",
+   "file": "img/rn_sets_img_archer_chest.webp",
+   "bytes": 39668,
+   "sha1": "f2d4a2e073f0"
+  },
+  {
+   "name": "rn_sets_img_archer_helm",
+   "file": "img/rn_sets_img_archer_helm.webp",
+   "bytes": 15268,
+   "sha1": "72a9a5ec5a43"
+  },
+  {
+   "name": "rn_sets_img_archer_gloves",
+   "file": "img/rn_sets_img_archer_gloves.webp",
+   "bytes": 29430,
+   "sha1": "5261ec959319"
+  },
+  {
+   "name": "rn_sets_img_archer_boots",
+   "file": "img/rn_sets_img_archer_boots.webp",
+   "bytes": 25216,
+   "sha1": "1bf12ea17a3b"
+  },
+  {
+   "name": "rn_sets_img_dk_sword",
+   "file": "img/rn_sets_img_dk_sword.webp",
+   "bytes": 9560,
+   "sha1": "29fb5c649c8f"
+  },
+  {
+   "name": "rn_sets_img_dk_chest",
+   "file": "img/rn_sets_img_dk_chest.webp",
+   "bytes": 34224,
+   "sha1": "aafb73179ffe"
+  },
+  {
+   "name": "rn_sets_img_dk_helm",
+   "file": "img/rn_sets_img_dk_helm.webp",
+   "bytes": 19724,
+   "sha1": "47eecfe02b72"
+  },
+  {
+   "name": "rn_sets_img_dk_gloves",
+   "file": "img/rn_sets_img_dk_gloves.webp",
+   "bytes": 19000,
+   "sha1": "f43be7089d25"
+  },
+  {
+   "name": "rn_sets_img_dk_boots",
+   "file": "img/rn_sets_img_dk_boots.webp",
+   "bytes": 21122,
+   "sha1": "7ad48c9bac10"
+  },
+  {
+   "name": "rn_sets_img_dk_belt",
+   "file": "img/rn_sets_img_dk_belt.webp",
+   "bytes": 8666,
+   "sha1": "2d436be15fac"
+  },
+  {
+   "name": "rn_sets_img_dk_shield",
+   "file": "img/rn_sets_img_dk_shield.webp",
+   "bytes": 16062,
+   "sha1": "ccda4f67778d"
+  },
+  {
+   "name": "rn_sets_img_mage_chest",
+   "file": "img/rn_sets_img_mage_chest.webp",
+   "bytes": 8456,
+   "sha1": "02f6ffd4e3b5"
+  },
+  {
+   "name": "rn_sets_img_mage_legs",
+   "file": "img/rn_sets_img_mage_legs.webp",
+   "bytes": 3436,
+   "sha1": "100c9b20d878"
+  },
+  {
+   "name": "rn_sets_img_mage_belt",
+   "file": "img/rn_sets_img_mage_belt.webp",
+   "bytes": 3594,
+   "sha1": "d37ee774fb5e"
+  },
+  {
+   "name": "rn_sets_img_mage_boots",
+   "file": "img/rn_sets_img_mage_boots.webp",
+   "bytes": 4190,
+   "sha1": "213d5c7e7a33"
+  },
+  {
+   "name": "rn_sets_img_mage_gloves",
+   "file": "img/rn_sets_img_mage_gloves.webp",
+   "bytes": 5876,
+   "sha1": "eceb34fd8956"
+  }
+ ],
+ "data": [
+  "affixes",
+  "archer_atlas",
+  "attacks",
+  "champions",
+  "chest_types",
+  "classes",
+  "constants",
+  "death_knight_atlas",
+  "deco_meta",
+  "enemy_types",
+  "item_size",
+  "items_atlas",
+  "knight_atlas",
+  "monster_skills",
+  "monsters",
+  "quality",
+  "renegade_heroes",
+  "runes",
+  "skill_tree",
+  "skills",
+  "sprites_atlas",
+  "stairs_text",
+  "start_gear",
+  "stat_defs",
+  "theme_bands",
+  "theme_deco",
+  "tile_codes",
+  "tiles_floors",
+  "tiles_heights",
+  "tiles_look",
+  "tiles_meta",
+  "tiles_order",
+  "tiles_walls",
+  "upgrades",
+  "wall_deco",
+  "wizard_atlas"
+ ],
+ "generated": [
+  "chest_cursed_closed",
+  "chest_cursed_open",
+  "chest_gold_closed",
+  "chest_gold_open",
+  "chest_iron_closed",
+  "chest_iron_open",
+  "chest_mimic_closed",
+  "chest_mimic_open",
+  "chest_wood_closed",
+  "chest_wood_open",
+  "fountain_base",
+  "grave",
+  "icon_archer_0",
+  "icon_archer_1",
+  "icon_archer_2",
+  "icon_dk_0",
+  "icon_dk_1",
+  "icon_dk_2",
+  "icon_dl_0",
+  "icon_dl_1",
+  "icon_dl_2",
+  "icon_knight_0",
+  "icon_knight_1",
+  "icon_knight_2",
+  "icon_mage_0",
+  "icon_mage_1",
+  "icon_mage_2",
+  "knight_variant_0",
+  "knight_variant_1",
+  "knight_variant_2",
+  "knight_variant_3",
+  "pillar"
+ ]
+}

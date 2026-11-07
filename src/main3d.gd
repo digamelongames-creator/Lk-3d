@@ -1,0 +1,271 @@
+extends Node3D
+## Last Knight en 3D: la misma simulación (src/core) con vista 3D, mazmorra en GridMap
+## y la interfaz de siempre (HUD, inventario, personaje y árbol).
+##
+## Opciones de línea de órdenes (después de --):
+##   --clase=knight|dk|archer|mage|dl   --piso=N   --semilla=texto   --bot   --shot=/tmp/x.png,frames
+
+var sim := Sim.new()
+var fx := Fx3D.new()
+var mazmorra: MazmorraGridMap
+var actores: Actores3D
+var camara: Camera3D
+var hud: Hud
+var inventory: Inventory
+var personaje: Personaje
+var state := "play"
+
+const CAM_DIST := 19.0
+## inclinación: 90° = cenital, 45° = isométrica. giro: 0° = mira al norte (Diablo 4), 45° = en diagonal (Diablo 2)
+var cam_inclinacion := deg_to_rad(45.0)
+var cam_giro := deg_to_rad(0.0)
+
+var _bot: Bot = null
+var _shot_path := ""
+var _shot_frames := 0
+var _frame := 0
+var _attack_edge := false
+var _dash_edge := false
+var _skill_edge := -1
+var _interact_edge := false
+var _potion_edge := false
+
+func _ready() -> void:
+	Idioma.iniciar()
+	Atlas.load_all()   # iconos de objetos, pociones y runas para la interfaz
+	_setup_input()
+	var clase := "knight"
+	var piso := 1
+	var semilla := ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--clase="): clase = a.get_slice("=", 1)
+		elif a.begins_with("--piso="): piso = int(a.get_slice("=", 1))
+		elif a.begins_with("--semilla="): semilla = a.get_slice("=", 1)
+		elif a == "--bot": _bot = Bot.new()
+		elif a.begins_with("--inclinacion="): cam_inclinacion = deg_to_rad(float(a.get_slice("=", 1)))
+		elif a.begins_with("--giro="): cam_giro = deg_to_rad(float(a.get_slice("=", 1)))
+		elif a.begins_with("--shot="):
+			var p := a.get_slice("=", 1).split(",")
+			_shot_path = p[0]
+			_shot_frames = int(p[1]) if p.size() > 1 else 60
+	_ambiente()
+	mazmorra = MazmorraGridMap.new()
+	add_child(mazmorra)
+	actores = Actores3D.new()
+	actores.sim = sim
+	add_child(actores)
+	fx.raiz = self
+	fx.sim = sim
+	sim.fx = fx
+	camara = Camera3D.new()
+	camara.fov = 38
+	camara.far = 120
+	add_child(camara)
+	var ui := CanvasLayer.new()
+	add_child(ui)
+	hud = Hud.new()
+	hud.sim = sim
+	hud.fx = fx
+	ui.add_child(hud)
+	inventory = Inventory.new()
+	inventory.sim = sim
+	ui.add_child(inventory)
+	inventory.closed.connect(func(): if state == "inv": _set_state("play"))
+	personaje = Personaje.new()
+	personaje.sim = sim
+	ui.add_child(personaje)
+	personaje.closed.connect(func(): if state == "char": _set_state("play"))
+	sim.new_game(piso, semilla, clase)
+	_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
+	fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
+
+func _entrar(L: Dictionary) -> void:
+	fx.reset()
+	sim.enter_level(L)
+	mazmorra.construir(sim.L)
+	actores.nuevo_piso()
+	_camara(1.0)
+
+func _bajar() -> void:
+	sim.score += sim.wave * 25
+	sim.p.inv = 0
+	sim.wave += 1
+	_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
+	fx.banner("Un campeón guarda la escalera" if sim.wave % 5 == 0 else "Busca la escalera para bajar", "Oleada %d" % sim.wave)
+	Guardado.guardar(sim)
+
+func _ambiente() -> void:
+	var we := WorldEnvironment.new()
+	var e := Environment.new()
+	e.background_mode = Environment.BG_COLOR
+	e.background_color = Color(.01, .008, .014)
+	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	e.ambient_light_color = Color(.35, .38, .5)
+	e.ambient_light_energy = .25
+	e.tonemap_mode = Environment.TONE_MAPPER_ACES
+	e.tonemap_exposure = 1.1
+	e.glow_enabled = true
+	e.glow_intensity = .9
+	e.glow_bloom = .08
+	e.glow_hdr_threshold = 1.0
+	e.ssao_enabled = true
+	e.ssao_radius = 1.2
+	e.ssao_intensity = 2.5
+	e.volumetric_fog_enabled = true
+	e.volumetric_fog_density = .025
+	e.volumetric_fog_albedo = Color(.6, .55, .6)
+	e.volumetric_fog_length = 40
+	e.adjustment_enabled = true
+	e.adjustment_saturation = .85
+	e.adjustment_contrast = 1.1
+	we.environment = e
+	add_child(we)
+	var luna := DirectionalLight3D.new()
+	luna.rotation = Vector3(deg_to_rad(-60), deg_to_rad(30), 0)
+	luna.light_color = Color(.55, .6, .85)
+	luna.light_energy = .12
+	luna.shadow_enabled = true
+	add_child(luna)
+
+# ======================================================================
+#  bucle
+# ======================================================================
+func _process(dt: float) -> void:
+	_frame += 1
+	dt = minf(dt, .033)
+	if state == "play":
+		var inp := _read_input() if _bot == null else _bot.play(sim)
+		var r := sim.step(dt, inp)
+		if r == "descend":
+			_bajar()
+		elif r == "over":
+			fx.banner("Has caído", "Fin de la partida")
+			state = "over"
+	fx.tick(dt)
+	actores.actualizar(dt)
+	_camara(dt)
+	if sim.p != null:
+		RenderingServer.global_shader_parameter_set("pos_heroe", MazmorraGridMap.a3d(sim.p.x, sim.p.y))
+	if _shot_path != "" and _frame == _shot_frames:
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(_shot_path)
+		print("captura: ", _shot_path)
+		get_tree().quit()
+
+func _camara(dt: float) -> void:
+	if sim.p == null:
+		return
+	var objetivo := MazmorraGridMap.a3d(sim.p.x, sim.p.y) + Vector3(0, 1, 0)
+	var atras := _hacia_camara()
+	var vista := Vector3(atras.x * cos(cam_inclinacion), sin(cam_inclinacion), atras.y * cos(cam_inclinacion))
+	camara.position = camara.position.lerp(objetivo + vista * CAM_DIST, minf(1, dt * 8))
+	if fx.temblor > 0:
+		camara.position += Vector3(randf() - .5, randf() - .5, randf() - .5) * fx.temblor * .4
+	camara.look_at(camara.position - vista)
+	RenderingServer.global_shader_parameter_set("dir_camara", atras)
+
+## dirección (x, z) del suelo que va del héroe hacia la cámara
+func _hacia_camara() -> Vector2:
+	return Vector2(0, 1).rotated(-cam_giro)
+
+## el punto del suelo bajo el ratón, en px de la simulación
+func _raton_en_suelo() -> Vector2:
+	var m := get_viewport().get_mouse_position()
+	var o := camara.project_ray_origin(m)
+	var d := camara.project_ray_normal(m)
+	if absf(d.y) < .001:
+		return Vector2(sim.p.x, sim.p.y)
+	var t := -o.y / d.y
+	return MazmorraGridMap.a_px(o + d * t)
+
+func _set_state(s: String) -> void:
+	state = s
+	if s == "inv":
+		inventory.open()
+	if s != "inv" and inventory.visible:
+		inventory.close()
+	if s != "char" and personaje.visible:
+		personaje.visible = false
+
+# ======================================================================
+#  entrada (como en Last Knight 2D)
+# ======================================================================
+func _setup_input() -> void:
+	var add := func(name: String, events: Array) -> void:
+		if not InputMap.has_action(name):
+			InputMap.add_action(name, .2)
+		for e in events:
+			InputMap.action_add_event(name, e)
+	var key := func(k: Key) -> InputEventKey:
+		var e := InputEventKey.new(); e.physical_keycode = k; return e
+	var mb := func(b: MouseButton) -> InputEventMouseButton:
+		var e := InputEventMouseButton.new(); e.button_index = b; return e
+	add.call("lk_left", [key.call(KEY_A), key.call(KEY_LEFT)])
+	add.call("lk_right", [key.call(KEY_D), key.call(KEY_RIGHT)])
+	add.call("lk_up", [key.call(KEY_W), key.call(KEY_UP)])
+	add.call("lk_down", [key.call(KEY_S), key.call(KEY_DOWN)])
+	add.call("lk_attack", [mb.call(MOUSE_BUTTON_LEFT), key.call(KEY_J)])
+	add.call("lk_block", [mb.call(MOUSE_BUTTON_RIGHT), key.call(KEY_E)])
+	add.call("lk_dash", [key.call(KEY_SHIFT), key.call(KEY_K)])
+	add.call("lk_skill1", [key.call(KEY_1)])
+	add.call("lk_skill2", [key.call(KEY_2)])
+	add.call("lk_skill3", [key.call(KEY_3)])
+	add.call("lk_use", [key.call(KEY_SPACE)])
+	add.call("lk_potion", [key.call(KEY_Q)])
+	add.call("lk_map", [key.call(KEY_M)])
+	add.call("lk_inv", [key.call(KEY_I)])
+	add.call("lk_char", [key.call(KEY_TAB), key.call(KEY_C)])
+	add.call("lk_tree", [key.call(KEY_T)])
+	add.call("lk_fullscreen", [key.call(KEY_F11)])
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if ev.is_action_pressed("lk_fullscreen"):
+		var w := get_window()
+		w.mode = Window.MODE_WINDOWED if w.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
+		return
+	if state != "play" or sim.p == null:
+		return
+	if ev.is_action_pressed("lk_map"):
+		hud.big_map = not hud.big_map
+		return
+	if ev.is_action_pressed("lk_inv") and not sim.p.dead:
+		hud.big_map = false
+		_set_state("inv")
+		get_viewport().set_input_as_handled()
+		return
+	if (ev.is_action_pressed("lk_char") or ev.is_action_pressed("lk_tree")) and not sim.p.dead:
+		get_viewport().set_input_as_handled()
+		_set_state("char")
+		personaje.open("stats" if ev.is_action_pressed("lk_char") else "tree")
+		return
+	if ev.is_action_pressed("lk_attack"): _attack_edge = true
+	if ev.is_action_pressed("lk_dash"): _dash_edge = true
+	for i in 3:
+		if ev.is_action_pressed("lk_skill%d" % (i + 1)):
+			_skill_edge = i
+	if ev.is_action_pressed("lk_use"): _interact_edge = true
+	if ev.is_action_pressed("lk_potion"): _potion_edge = true
+
+## la cámara mira al norte, así que W/S/A/D son norte/sur/oeste/este del mapa, igual que en 2D
+func _read_input() -> Sim.Inp:
+	var inp := Sim.Inp.new()
+	var kx := (1 if Input.is_action_pressed("lk_right") else 0) - (1 if Input.is_action_pressed("lk_left") else 0)
+	var ky := (1 if Input.is_action_pressed("lk_down") else 0) - (1 if Input.is_action_pressed("lk_up") else 0)
+	# W va «hacia arriba de la pantalla»: con la cámara girada, se gira también el movimiento
+	inp.move = Vector2(kx, ky).rotated(-cam_giro)
+	inp.aim = _raton_en_suelo()
+	inp.aim_mouse = true
+	sim.ally_target = {"x": inp.aim.x, "y": inp.aim.y}
+	inp.attack = _attack_edge
+	inp.attack_held = Input.is_action_pressed("lk_attack")
+	inp.block = Input.is_action_pressed("lk_block")
+	inp.dash = _dash_edge
+	inp.skill = _skill_edge
+	inp.interact = _interact_edge
+	inp.potion = _potion_edge
+	_attack_edge = false
+	_dash_edge = false
+	_skill_edge = -1
+	_interact_edge = false
+	_potion_edge = false
+	return inp

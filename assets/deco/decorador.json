@@ -1,0 +1,403 @@
+{
+ "_": "Reglas del decorador (pisos 1-5). Cantidades por cada 10 casillas de la sala, salvo 'velas' y 'focal'. 'muebles' = objetos sólidos de la hoja de Diego contra las paredes; 'sueltos' = objetos pequeños del atlas sin colisión.",
+ "papeles": {
+  "entrada": {
+   "focal": "",
+   "suelo": {
+    "grieta": 0.3,
+    "losa": 0.2,
+    "escombro": 0.2
+   },
+   "muebles": [
+    "barril",
+    "barril_2",
+    "barril_3",
+    "caja",
+    "cubo",
+    "cubo_2",
+    "cofre_largo",
+    "jarra",
+    "jarra_2",
+    "jarra_3",
+    "jarra_4",
+    "jarra_5",
+    "vasija"
+   ],
+   "n_muebles": 0.25,
+   "sueltos": [
+    "candle_triple",
+    "stool"
+   ],
+   "n_sueltos": 0.15,
+   "velas": 0,
+   "vineta": 0.0,
+   "telas": 0.3,
+   "cadenas": 0.0,
+   "humedad": 0.2
+  },
+  "salon": {
+   "focal": "alfombra",
+   "suelo": {
+    "grieta": 0.3,
+    "losa": 0.2
+   },
+   "muebles": [
+    "jarra",
+    "jarra_2",
+    "jarra_3",
+    "jarra_4",
+    "jarra_5",
+    "vasija",
+    "caja",
+    "barril"
+   ],
+   "n_muebles": 0.3,
+   "sueltos": [
+    "candle_triple",
+    "bottle_A_labeled_green",
+    "stool"
+   ],
+   "n_sueltos": 0.25,
+   "velas": 4,
+   "vineta": 0.4,
+   "telas": 0.6,
+   "cadenas": 0.2,
+   "humedad": 0.3
+  },
+  "capilla": {
+   "focal": "circulo",
+   "suelo": {
+    "grieta": 0.3,
+    "cera": 0.6
+   },
+   "muebles": [
+    "jarra",
+    "jarra_2",
+    "jarra_3",
+    "jarra_4",
+    "jarra_5",
+    "vasija",
+    "columna_rota",
+    "columna_rota_2"
+   ],
+   "n_muebles": 0.2,
+   "sueltos": [
+    "candle_triple"
+   ],
+   "n_sueltos": 0.2,
+   "velas": 6,
+   "vineta": 0.2,
+   "telas": 0.8,
+   "cadenas": 0.0,
+   "humedad": 0.2,
+   "luz": [
+    255,
+    120,
+    60
+   ]
+  },
+  "cripta": {
+   "focal": "osario",
+   "suelo": {
+    "grieta": 0.4,
+    "huesos": 0.5,
+    "losa": 0.3
+   },
+   "muebles": [
+    "jarra",
+    "jarra_2",
+    "jarra_3",
+    "jarra_4",
+    "jarra_5",
+    "vasija",
+    "escombro",
+    "escombro_2",
+    "escombro_3",
+    "escombro_4",
+    "escombro_5",
+    "columna_rota",
+    "columna_rota_2",
+    "columna_rota_3",
+    "columna_rota_4"
+   ],
+   "n_muebles": 0.3,
+   "sueltos": [
+    "candle_triple",
+    "rubble_half"
+   ],
+   "n_sueltos": 0.15,
+   "velas": 2,
+   "vineta": 0.6,
+   "telas": 1.0,
+   "cadenas": 0.5,
+   "humedad": 0.6,
+   "luz": [
+    140,
+    200,
+    150
+   ]
+  },
+  "osario": {
+   "focal": "osario",
+   "suelo": {
+    "huesos": 0.8,
+    "escombro": 0.3
+   },
+   "muebles": [
+    "escombro",
+    "escombro_2",
+    "escombro_3",
+    "escombro_4",
+    "escombro_5",
+    "columna_rota",
+    "columna_rota_2",
+    "columna_rota_3",
+    "columna_rota_4",
+    "vasija"
+   ],
+   "n_muebles": 0.25,
+   "sueltos": [
+    "rubble_half"
+   ],
+   "n_sueltos": 0.1,
+   "velas": 0,
+   "vineta": 0.8,
+   "telas": 0.8,
+   "cadenas": 0.7,
+   "humedad": 0.4
+  },
+  "ruina": {
+   "focal": "derrumbe",
+   "suelo": {
+    "grieta": 0.6,
+    "escombro": 0.6,
+    "losa": 0.5
+   },
+   "muebles": [
+    "escombro",
+    "escombro_2",
+    "escombro_3",
+    "escombro_4",
+    "escombro_5",
+    "columna_rota",
+    "columna_rota_2",
+    "columna_rota_3",
+    "columna_rota_4"
+   ],
+   "n_muebles": 0.45,
+   "sueltos": [
+    "rubble_half"
+   ],
+   "n_sueltos": 0.3,
+   "velas": 0,
+   "vineta": 0.3,
+   "telas": 0.5,
+   "cadenas": 0.1,
+   "humedad": 0.7
+  },
+  "almacen": {
+   "focal": "rejilla",
+   "suelo": {
+    "escombro": 0.3,
+    "grieta": 0.3,
+    "paja": 0.4
+   },
+   "muebles": [
+    "barril",
+    "barril_2",
+    "barril_3",
+    "caja",
+    "cubo",
+    "cubo_2",
+    "cofre_largo"
+   ],
+   "n_muebles": 0.55,
+   "sueltos": [
+    "bottle_A_labeled_green",
+    "stool",
+    "rubble_half"
+   ],
+   "n_sueltos": 0.2,
+   "velas": 1,
+   "vineta": 0.2,
+   "telas": 0.7,
+   "cadenas": 0.2,
+   "humedad": 0.3
+  },
+  "guarida": {
+   "focal": "osario",
+   "suelo": {
+    "huesos": 0.5,
+    "grieta": 0.5,
+    "escombro": 0.3
+   },
+   "muebles": [
+    "barril",
+    "barril_2",
+    "barril_3",
+    "caja",
+    "cubo",
+    "cubo_2",
+    "cofre_largo",
+    "escombro",
+    "escombro_2",
+    "escombro_3",
+    "escombro_4",
+    "escombro_5",
+    "columna_rota",
+    "columna_rota_2",
+    "columna_rota_3",
+    "columna_rota_4"
+   ],
+   "n_muebles": 0.35,
+   "sueltos": [
+    "candle_triple",
+    "rubble_half"
+   ],
+   "n_sueltos": 0.2,
+   "velas": 4,
+   "vineta": 1.0,
+   "telas": 0.6,
+   "cadenas": 0.8,
+   "humedad": 0.3,
+   "luz": [
+    255,
+    70,
+    40
+   ]
+  },
+  "santuario": {
+   "focal": "",
+   "suelo": {
+    "grieta": 0.2
+   },
+   "muebles": [
+    "jarra",
+    "jarra_2",
+    "jarra_3",
+    "jarra_4",
+    "jarra_5",
+    "vasija"
+   ],
+   "n_muebles": 0.2,
+   "sueltos": [
+    "candle_triple"
+   ],
+   "n_sueltos": 0.2,
+   "velas": 2,
+   "vineta": 0.0,
+   "telas": 0.3,
+   "cadenas": 0.0,
+   "humedad": 0.9,
+   "luz": [
+    120,
+    180,
+    255
+   ]
+  },
+  "tesoro": {
+   "focal": "alfombra",
+   "suelo": {
+    "monedas": 0.5,
+    "grieta": 0.2
+   },
+   "muebles": [
+    "caja",
+    "cubo",
+    "cubo_2",
+    "cofre_largo",
+    "jarra",
+    "jarra_2",
+    "jarra_3",
+    "jarra_4",
+    "jarra_5",
+    "vasija"
+   ],
+   "n_muebles": 0.35,
+   "sueltos": [
+    "coin_stack_large",
+    "candle_triple"
+   ],
+   "n_sueltos": 0.3,
+   "velas": 4,
+   "vineta": 0.3,
+   "telas": 0.6,
+   "cadenas": 0.0,
+   "humedad": 0.2,
+   "luz": [
+    255,
+    200,
+    90
+   ]
+  }
+ },
+ "reparto": {
+  "grande": [
+   "salon",
+   "capilla",
+   "cripta",
+   "ruina"
+  ],
+  "mediana": [
+   "cripta",
+   "almacen",
+   "ruina",
+   "capilla",
+   "salon",
+   "osario"
+  ],
+  "pequena": [
+   "almacen",
+   "ruina",
+   "cripta",
+   "osario"
+  ]
+ },
+ "pisos": {
+  "1": {
+   "humedad": 0.8,
+   "musgo": 0.8,
+   "desgaste": 1.0
+  },
+  "2": {
+   "humedad": 1.0,
+   "musgo": 1.0,
+   "desgaste": 1.0
+  },
+  "3": {
+   "humedad": 1.2,
+   "musgo": 1.2,
+   "desgaste": 1.1,
+   "cadenas_abismo": 0.08
+  },
+  "4": {
+   "humedad": 1.2,
+   "musgo": 1.0,
+   "desgaste": 1.2,
+   "cadenas_abismo": 0.1
+  },
+  "5": {
+   "humedad": 1.4,
+   "musgo": 1.4,
+   "desgaste": 1.3,
+   "cadenas_abismo": 0.12
+  }
+ },
+ "pasillos": {
+  "grieta": 0.25,
+  "escombro": 0.15,
+  "huesos": 0.05
+ },
+ "separacion": {
+  "grieta": 3,
+  "losa": 2,
+  "escombro": 2,
+  "mancha": 3,
+  "musgo": 2,
+  "charco": 4,
+  "huesos": 2,
+  "cera": 1,
+  "paja": 2,
+  "monedas": 2
+ }
+}

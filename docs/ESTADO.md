@@ -1,0 +1,18 @@
+# Estado · 7 nov 2026
+
+## Hecho
+- Proyecto nuevo en Forward+ (PC). Del repositorio `last-knight` se ha traído sin cambios `src/core` (simulación, botín, runas, clases, árbol, decorador, generador), los datos (`assets/web/data`, `assets/deco`) y la interfaz (`hud`, `inventory`, `personaje`). En `hud.gd` y `view_fx.gd` solo se han quitado tipos que apuntaban a la vista 2D.
+- La mazmorra se monta con 3 GridMap (suelo, muros, objetos) a partir de la rejilla de `DungeonGen`. Las antorchas y lo del Decorador (velas con luz, calaveras, alfombras, losas) van como nodos sueltos.
+- Kit provisional generado por código (`KitMazmorra`). Si existe `assets/kit/mazmorra.meshlib`, se usa ese.
+- Héroe, enemigos, botín, oro, cofres y puertas son provisionales (cápsulas y cajas). El equipo puesto se cuelga de enganches en la mano derecha, la izquierda y la cabeza, y cambia al tocar el inventario.
+- Muros que se vuelven transparentes al tapar al héroe, radio de luz del héroe, niebla volumétrica, glow, SSAO y números de daño en 3D.
+- Cámara con inclinación de 45° por defecto y giro configurable (0° como Diablo 4, 45° en diagonal como Diablo 2).
+- `test_botin` y `test_clases` dan «todo bien».
+
+## Falta
+- Kit 3D de verdad (MeshLibrary) y piezas de muro por vecinos (recto, esquina, en T). Hoy el muro es un bloque.
+- Modelos del héroe y los monstruos (los .fbx de SPRITE_FACTORY y Mixamo) con AnimationTree. Los enganches pasan a ser BoneAttachment3D.
+- Pisos 3–5 (abismo, alturas y escaleras largas): ahora el abismo sale como vacío y no hay alturas.
+- Efectos de las habilidades y las runas (rayos, tajos, fuego): `Runes.bolts/slashes/fires` no se pintan.
+- Sonido, menús de inicio y pausa, guardar y continuar desde el menú.
+- Salas hechas a mano: cambiar el generador por plantillas de sala unidas por pasillos.
