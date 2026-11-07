@@ -16,9 +16,14 @@ Responde en español.
 - `src/view`: solo `atlas.gd` y `view_fx.gd`, porque la interfaz usa sus iconos y colores. No añadir más vista 2D.
 - Conversión: `MazmorraGridMap.a3d(x, y, z)` px → m y `a_px(v)` m → px.
 
+## Arte
+- Kit de la mazmorra: `python3 tools/blender/kit_mazmorra.py assets/kit/kit_mazmorra.glb` (módulo bpy: `pip install bpy`).
+- Monstruos: `python3 tools/blender/monstruos_glb.py <SPRITE_FACTORY> assets/monstruos [id…]`.
+- Sala de prueba: `scenes/sala_prueba.tscn` (`--heroe=… --anim=… --zoom=… --centro=x,z`).
+
 ## Ejecutar y probar
 - Godot 4.7.2, renderizador Forward+.
 - Importar: `godot --headless --path . --editor --quit`.
-- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` y `tests/test_clases.gd` (deben decir «todo bien»).
+- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd` y `tests/test_modelos.gd` (deben decir «todo bien»).
 - Captura: `xvfb-run -a godot --path . -- --bot --shot=/tmp/x.png,200` (sin GPU: `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`).
 - Opciones: `--clase=knight|dk|archer|mage|dl --piso=N --semilla=… --inclinacion=45 --giro=0 --bot`.

@@ -12,12 +12,13 @@ class_name KitMazmorra
 
 const RUTA_GLB := "res://assets/kit/kit_mazmorra.glb"
 const CELDA := 2.0       # metros por casilla (una casilla de la simulación = 32 px)
-const ALTO_MURO := 2.5
+const ALTO_MURO := 3.0
 
 ## piezas de casilla (van al GridMap). Las que tienen variantes se eligen al azar por casilla.
-const DE_CASILLA := ["muro", "muro_b", "muro_c", "suelo", "suelo_b", "suelo_sala", "pilar", "arco",
+const DE_CASILLA := ["muro", "nucleo", "nucleo_b", "cara", "cara_b", "cara_columna", "cara_nicho", "cara_arco_ciego",
+	"cara_reja", "cara_rota", "cara_hiedra", "columna_esquina", "suelo", "suelo_b", "suelo_sala", "pilar", "arco",
 	"agua", "puente", "tumba", "escombro", "mueble", "escalera_baja", "escalera_sube"]
-const VARIANTES := {"muro": ["muro", "muro_b", "muro_c"], "suelo": ["suelo", "suelo_b"]}
+const VARIANTES := {"nucleo": ["nucleo", "nucleo_b"], "suelo": ["suelo", "suelo_b"]}
 
 static var _lib: MeshLibrary
 static var _mallas := {}      # nombre → Mesh con los materiales de Godot
@@ -163,9 +164,9 @@ void fragment() {
 	float hacia = dot(r, dir_camara);
 	float de_lado = dot(r, vec2(dir_camara.y, -dir_camara.x));
 	float delante = smoothstep(-.5, 1.0, hacia) * (1.0 - smoothstep(5.0, 8.0, hacia));
-	float lado = 1.0 - smoothstep(2.0, 4.0, abs(de_lado));
+	float lado = 1.0 - smoothstep(2.5, 4.5, abs(de_lado));
 	float alto = smoothstep(.3, 1.0, wp.y);
-	float corte = delante * lado * alto * .85 * cortar;
+	float corte = delante * lado * alto * cortar;
 	float tramado = fract(sin(dot(floor(FRAGCOORD.xy), vec2(12.9898, 78.233))) * 43758.5453);
 	if (tramado < corte) discard;
 	float n = triplanar(ruido, wp * .35, wn).r;

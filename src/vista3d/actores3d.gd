@@ -9,10 +9,14 @@ extends Node3D
 ## Con un modelo de Mixamo: BoneAttachment3D en mixamorig_RightHand y la misma función _vestir().
 
 var sim: Sim
+var heroe_id := "heroe"   # modelo del héroe (Modelo3D.FICHAS); si no existe, cápsula
 var heroe: Node3D
-var _mano_der: Marker3D
-var _mano_izq: Marker3D
-var _cabeza: Marker3D
+var _modelo_heroe: Modelo3D
+var _hp_antes := -1.0
+var _combo_antes := -2
+var _mano_der: Node3D
+var _mano_izq: Node3D
+var _cabeza: Node3D
 var _cuerpo: MeshInstance3D
 var _firma_equipo := ""
 var _enemigos := {}        # id del objeto → Node3D
@@ -25,7 +29,9 @@ var _t := 0.0
 const COL_CLASE := {"knight": Color(.55, .6, .75), "dk": Color(.25, .22, .3), "archer": Color(.3, .5, .3), "mage": Color(.6, .25, .15), "dl": Color(.35, .1, .4)}
 
 func nuevo_piso() -> void:
-	for d in [_enemigos.values(), _botin, _oro, _cofres, _puertas]:
+	for d in _enemigos.values():
+		d.n.queue_free()
+	for d in [_botin, _oro, _cofres, _puertas]:
 		for n in d:
 			n.queue_free()
 	_enemigos.clear()
@@ -61,27 +67,7 @@ func actualizar(dt: float) -> void:
 	heroe.rotation.y = _giro(p.face)
 	_animar_heroe(p)
 	_vestir()
-	# enemigos: se crean al aparecer y se quitan al morir
-	var vivos := {}
-	for e in sim.enemies:
-		if e.dead:
-			continue
-		var k: int = e.get_instance_id()
-		vivos[k] = true
-		var n: Node3D = _enemigos.get(k)
-		if n == null:
-			n = _nuevo_enemigo(e)
-			add_child(n)
-			_enemigos[k] = n
-		n.position = MazmorraGridMap.a3d(e.x, e.y)
-		n.rotation.y = _giro(e.face)
-		var golpe: bool = e.act == "strike" or e.act == "wind"
-		n.get_child(0).position.z = -.25 if e.act == "strike" else 0.0
-		n.get_child(0).rotation.x = -.35 if golpe else 0.0
-	for k in _enemigos.keys():
-		if not vivos.has(k):
-			_enemigos[k].queue_free()
-			_enemigos.erase(k)
+	_actualizar_enemigos(dt)
 	# botín y oro: reserva de nodos del tamaño de la lista
 	_reserva(_botin, sim.loot.size(), func(): return _caja(Vector3(.35, .35, .35), Color.WHITE, Color.WHITE))
 	for i in sim.loot.size():
@@ -100,12 +86,99 @@ func actualizar(dt: float) -> void:
 	for i in mini(_puertas.size(), sim.doors.size()):
 		_puertas[i].visible = not sim.doors[i].open
 
+## enemigos: se crean al aparecer; al morir se quedan tumbados un rato y se hunden en el suelo
+func _actualizar_enemigos(dt: float) -> void:
+	var vistos := {}
+	for e in sim.enemies:
+		var k: int = e.get_instance_id()
+		var d: Dictionary = _enemigos.get(k, {})
+		if d.is_empty():
+			if e.dead:
+				continue
+			d = _nuevo_enemigo(e)
+			_enemigos[k] = d
+		vistos[k] = true
+		var n: Node3D = d.n
+		var antes: Vector3 = n.position
+		n.position = MazmorraGridMap.a3d(e.x, e.y, e.bz)
+		n.rotation.y = lerp_angle(n.rotation.y, _giro(e.face), minf(1, dt * 12))
+		var m: Modelo3D = d.m
+		if m == null:   # cápsula provisional
+			var golpe: bool = e.act == "strike" or e.act == "wind"
+			n.get_child(0).position.z = -.25 if e.act == "strike" else 0.0
+			n.get_child(0).rotation.x = -.35 if golpe else 0.0
+			if e.dead or e.dying > 0:
+				d.muerto = d.get("muerto", 0.0) + dt
+			continue
+		if e.dead or e.dying > 0:
+			if not d.get("muere", false):
+				d.muere = true
+				m.reproducir("death", 1.0, .1, true)
+			d.muerto = d.get("muerto", 0.0) + dt
+			continue
+		var vel := Vector2(n.position.x - antes.x, n.position.z - antes.z).length() / maxf(dt, .001)
+		if e.act == "wind" and d.get("act", "") != "wind":
+			# el golpe de la animación cae al final de la preparación (hit_at de la fábrica)
+			var t_golpe: float = m.duracion("attack") * float(m.ficha.get("golpe", .6))
+			m.reproducir("attack", t_golpe / maxf(.12, e.wind_t), .08, true)
+		elif e.act == "wind" or e.act == "strike":
+			pass
+		elif e.mon_hurt > 0 and d.get("hurt", 0.0) <= 0:
+			m.reproducir("hurt", 1.4, .05, true)
+		elif m.actual == "hurt" and not m.terminada():
+			pass
+		elif vel > .4:
+			# andar o correr con los pasos al ritmo del desplazamiento (los clips de Mixamo avanzan ~1,4 y ~3,5 m/s)
+			if vel > 2.4:
+				m.reproducir("run", clampf(vel / 3.5, .6, 1.8))
+			else:
+				m.reproducir("walk", clampf(vel / 1.4, .6, 1.8))
+		else:
+			m.reproducir("idle")
+		d.act = e.act
+		d.hurt = e.mon_hurt
+	# los que ya no están (o llevan rato muertos): se hunden y se quitan
+	for k in _enemigos.keys():
+		var d: Dictionary = _enemigos[k]
+		if not vistos.has(k):
+			d.muerto = maxf(d.get("muerto", 0.0), .01) + dt
+			if d.m != null and not d.get("muere", false):
+				d.muere = true
+				d.m.reproducir("death", 1.0, .1, true)
+		var t: float = d.get("muerto", 0.0)
+		if t > 6.0:
+			d.n.position.y -= dt * .4
+		if t > 8.0 or (d.m == null and t > 0):
+			d.n.queue_free()
+			_enemigos.erase(k)
+
 ## en la simulación face es el ángulo en el plano (x, y) con y hacia abajo; en 3D el nodo mira a -z
 static func _giro(face: float) -> float:
 	return atan2(-cos(face), -sin(face))
 
 func _animar_heroe(p: Ent.Hero) -> void:
 	var corre := p.mx != 0 or p.my != 0
+	var m := _modelo_heroe
+	if m != null:
+		if p.dead:
+			if m.actual != "death":
+				m.reproducir("death", 1.0, .1, true)
+		elif p.atk_t > 0:
+			# cada golpe del combo vuelve a empezar el tajo
+			if m.actual != "attack" or p.combo_step != _combo_antes:
+				m.reproducir("attack", 1.6, .06, true)
+			_combo_antes = p.combo_step
+		elif _hp_antes >= 0 and p.hp < _hp_antes - .5 and m.actual != "attack":
+			m.reproducir("hurt", 1.6, .05, true)
+		elif m.actual == "hurt" and not m.terminada():
+			pass
+		elif p.roll_t > 0 or corre:
+			m.reproducir("run", 1.3 if p.roll_t > 0 else 1.0)
+		else:
+			m.reproducir("idle")
+			_combo_antes = -2
+		_hp_antes = p.hp
+		return
 	_cuerpo.position.y = .9 + (absf(sin(_t * 12)) * .06 if corre else sin(_t * 2) * .015)
 	var ataca := p.atk_t > 0
 	_mano_der.rotation.x = lerpf(_mano_der.rotation.x, -1.6 if ataca else -.2, .4)
@@ -128,7 +201,23 @@ func _vestir() -> void:
 			c.queue_free()
 	var arma = eq.get("sword")
 	var guantes = eq.get("gloves")
-	if arma != null:
+	var agarre := Modelo3D.agarre() if _modelo_heroe != null else {}
+	if arma != null and not agarre.is_empty():
+		# la espada de la fábrica, cogida como la coge el esqueleto; brilla con el color de su calidad
+		var e := MeshInstance3D.new()
+		e.mesh = agarre.mesh
+		e.transform = agarre.t
+		if int(arma.get("q", 0)) > 0:
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = Color(.7, .7, .75)
+			mat.metallic = .9
+			mat.roughness = .3
+			mat.emission_enabled = true
+			mat.emission = Items_col(arma)
+			mat.emission_energy_multiplier = .6
+			e.material_overlay = mat
+		_mano_der.add_child(e)
+	elif arma != null:
 		var hoja := _caja(Vector3(.08, .08, 1.1), Color(.8, .8, .85), Items_col(arma))
 		hoja.position = Vector3(0, 0, -.55)
 		_mano_der.add_child(hoja)
@@ -141,8 +230,9 @@ func _vestir() -> void:
 	if casco != null:
 		_cabeza.add_child(_caja(Vector3(.36, .3, .38), Color(.5, .5, .55), Items_col(casco)))
 	var pecho = eq.get("chest")
-	var base: Color = COL_CLASE.get(sim.p.cls, Color.GRAY)
-	_color(_cuerpo, base.lerp(Items_col(pecho), .35) if pecho != null else base)
+	if _cuerpo != null:
+		var base: Color = COL_CLASE.get(sim.p.cls, Color.GRAY)
+		_color(_cuerpo, base.lerp(Items_col(pecho), .35) if pecho != null else base)
 
 static func Items_col(it) -> Color:
 	if it == null:
@@ -153,18 +243,25 @@ static func Items_col(it) -> Color:
 func _nuevo_heroe() -> Node3D:
 	var n := Node3D.new()
 	n.name = "Heroe"
-	_cuerpo = _capsula(.35, 1.8, Color.GRAY)
-	_cuerpo.position.y = .9
-	n.add_child(_cuerpo)
-	_mano_der = Marker3D.new()
-	_mano_der.position = Vector3(.45, .35, -.1)
-	_cuerpo.add_child(_mano_der)
-	_mano_izq = Marker3D.new()
-	_mano_izq.position = Vector3(-.45, .2, -.05)
-	_cuerpo.add_child(_mano_izq)
-	_cabeza = Marker3D.new()
-	_cabeza.position = Vector3(0, .75, 0)
-	_cuerpo.add_child(_cabeza)
+	_modelo_heroe = Modelo3D.crear(heroe_id)
+	if _modelo_heroe != null:
+		n.add_child(_modelo_heroe)
+		_mano_der = _modelo_heroe.enganche("RightHand")
+		_mano_izq = _modelo_heroe.enganche("LeftHand")
+		_cabeza = _modelo_heroe.enganche("HeadTop_End")
+	else:
+		_cuerpo = _capsula(.35, 1.8, Color.GRAY)
+		_cuerpo.position.y = .9
+		n.add_child(_cuerpo)
+		_mano_der = Marker3D.new()
+		_mano_der.position = Vector3(.45, .35, -.1)
+		_cuerpo.add_child(_mano_der)
+		_mano_izq = Marker3D.new()
+		_mano_izq.position = Vector3(-.45, .2, -.05)
+		_cuerpo.add_child(_mano_izq)
+		_cabeza = Marker3D.new()
+		_cabeza.position = Vector3(0, .75, 0)
+		_cuerpo.add_child(_cabeza)
 	# el radio de luz del héroe, como en Diablo
 	var luz := OmniLight3D.new()
 	luz.position = Vector3(0, 3.0, .5)
@@ -175,7 +272,18 @@ func _nuevo_heroe() -> Node3D:
 	n.add_child(luz)
 	return n
 
-func _nuevo_enemigo(e: Ent.Enemy) -> Node3D:
+func _nuevo_enemigo(e: Ent.Enemy) -> Dictionary:
+	var m := Modelo3D.crear(e.mon) if e.mon != "" else null
+	if m != null:
+		var raiz := Node3D.new()
+		raiz.add_child(m)
+		add_child(raiz)
+		return {"n": raiz, "m": m}
+	var n := _capsula_enemigo(e)
+	add_child(n)
+	return {"n": n, "m": null}
+
+func _capsula_enemigo(e: Ent.Enemy) -> Node3D:
 	var n := Node3D.new()
 	var grande := e.boss != "" or e.elite or e.rare
 	var k := 1.6 if e.boss != "" else (1.2 if grande else 1.0)

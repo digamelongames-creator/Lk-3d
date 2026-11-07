@@ -27,6 +27,9 @@ var _shot := ""
 var _shot_frames := 60
 var _frame := 0
 var _t := 0.0
+var _centro := Vector3(11.5, 0, 12.5)
+var _heroe_id := ""   # --heroe=esqueleto: el héroe con modelo y la espada en la mano
+var _anim := "idle"   # animación de los monstruos de la galería (--anim=walk…)
 
 func _ready() -> void:
 	CamaraIso.ambiente(self)
@@ -38,6 +41,11 @@ func _ready() -> void:
 		elif a.begins_with("--inclinacion="): camara.inclinacion = deg_to_rad(float(a.get_slice("=", 1)))
 		elif a.begins_with("--zoom="): camara.zoom = float(a.get_slice("=", 1))
 		elif a == "--perspectiva": camara.ortografica = false
+		elif a.begins_with("--anim="): _anim = a.get_slice("=", 1)
+		elif a.begins_with("--heroe="): _heroe_id = a.get_slice("=", 1)
+		elif a.begins_with("--centro="):
+			var c := a.get_slice("=", 1).split(",")
+			_centro = Vector3(float(c[0]), 0, float(c[1]))
 		elif a.begins_with("--shot="):
 			var p := a.get_slice("=", 1).split(",")
 			_shot = p[0]
@@ -48,7 +56,22 @@ func _ready() -> void:
 	heroe = _heroe()
 	heroe.position = Vector3(12.5, 0, 14.5)
 	add_child(heroe)
-	camara.seguir(Vector3(11.5, 0, 12.5), 1.0, false)
+	_galeria()
+	camara.seguir(_centro, 1.0, false)
+
+## los monstruos de SPRITE_FACTORY en fila, cada uno con la animación pedida
+func _galeria() -> void:
+	var ids := Modelo3D.FICHAS.keys()
+	for i in ids.size():
+		var m := Modelo3D.crear(ids[i])
+		if m == null:
+			continue
+		m.position = Vector3(6.5 + i * 2.0, 0, 9.5 + (i % 2) * 1.2)
+		m.rotation.y = deg_to_rad(-135)   # mirando a la cámara
+		add_child(m)
+		m.reproducir(_anim)
+		if m.anim != null:
+			m.anim.seek(fmod(i * .37, m.duracion(_anim)), true)
 
 ## el plano escrito arriba, como un piso de DungeonGen (rejilla del tamaño del mapa, todo roca alrededor)
 func _piso() -> Dictionary:
@@ -101,6 +124,19 @@ func _amueblar() -> void:
 
 # ---------- piezas provisionales de la sala (hasta tener sus modelos) ----------
 func _heroe() -> Node3D:
+	var mod := Modelo3D.crear(_heroe_id) if _heroe_id != "" else null
+	if mod != null:
+		var raiz := Node3D.new()
+		raiz.add_child(mod)
+		mod.rotation.y = deg_to_rad(-135)
+		mod.reproducir(_anim)
+		var ag := Modelo3D.agarre()
+		if not ag.is_empty():
+			var e := MeshInstance3D.new()
+			e.mesh = ag.mesh
+			e.transform = ag.t
+			mod.enganche("RightHand").add_child(e)
+		return raiz
 	var n := Node3D.new()
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color(.55, .58, .65)

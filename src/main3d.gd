@@ -16,6 +16,7 @@ var inventory: Inventory
 var personaje: Personaje
 var state := "play"
 var opciones_camara: Array = []
+var heroe_id := "heroe"   # --heroe=esqueleto para probar con otro modelo
 
 
 var _bot: Bot = null
@@ -40,7 +41,8 @@ func _ready() -> void:
 		elif a.begins_with("--piso="): piso = int(a.get_slice("=", 1))
 		elif a.begins_with("--semilla="): semilla = a.get_slice("=", 1)
 		elif a == "--bot": _bot = Bot.new()
-		elif a.begins_with("--inclinacion=") or a.begins_with("--giro=") or a == "--perspectiva": opciones_camara.append(a)
+		elif a.begins_with("--heroe="): heroe_id = a.get_slice("=", 1)
+		elif a.begins_with("--inclinacion=") or a.begins_with("--giro=") or a.begins_with("--zoom=") or a == "--perspectiva": opciones_camara.append(a)
 		elif a.begins_with("--shot="):
 			var p := a.get_slice("=", 1).split(",")
 			_shot_path = p[0]
@@ -50,6 +52,7 @@ func _ready() -> void:
 	add_child(mazmorra)
 	actores = Actores3D.new()
 	actores.sim = sim
+	actores.heroe_id = heroe_id
 	add_child(actores)
 	fx.raiz = self
 	fx.sim = sim
@@ -58,6 +61,7 @@ func _ready() -> void:
 	for a in opciones_camara:
 		if a.begins_with("--inclinacion="): camara.inclinacion = deg_to_rad(float(a.get_slice("=", 1)))
 		elif a.begins_with("--giro="): camara.giro = deg_to_rad(float(a.get_slice("=", 1)))
+		elif a.begins_with("--zoom="): camara.zoom = float(a.get_slice("=", 1))
 		elif a == "--perspectiva": camara.ortografica = false
 	add_child(camara)
 	var ui := CanvasLayer.new()

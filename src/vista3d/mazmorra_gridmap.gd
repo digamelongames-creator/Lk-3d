@@ -11,8 +11,14 @@ extends Node3D
 const PX_M := KitMazmorra.CELDA / DungeonGen.TS
 
 var suelo: GridMap
-var muros: GridMap
+var muros: GridMap         # núcleos de muro y arcos
 var objetos: GridMap
+var caras: Array[GridMap] = []      # sillería de cada lado que da al suelo: 0 sur, 1 este, 2 norte, 3 oeste
+var esquinas: Array[GridMap] = []   # columnas de esquina: 0 suroeste, 1 sureste, 2 noreste, 3 noroeste
+const DIRS := [Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0)]
+const ESQ := [Vector2i(-1, 1), Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, -1)]
+const GIROS := [0.0, PI / 2, PI, -PI / 2]
+var _G: PackedByteArray
 var adornos: Node3D
 var luces: Array[OmniLight3D] = []
 var _llamas: Array = []   # [OmniLight3D, energía base, fase]
@@ -30,6 +36,9 @@ func _ready() -> void:
 	suelo = _gm("Suelo")
 	muros = _gm("Muros")
 	objetos = _gm("Objetos")
+	for k in 4:
+		caras.append(_gm("Caras%d" % k))
+		esquinas.append(_gm("Esquinas%d" % k))
 	adornos = Node3D.new()
 	adornos.name = "Adornos"
 	add_child(adornos)
@@ -44,7 +53,7 @@ func _gm(n: String) -> GridMap:
 	return g
 
 func construir(L: Dictionary) -> void:
-	for g in [suelo, muros, objetos]:
+	for g in [suelo, muros, objetos] + caras + esquinas:
 		g.clear()
 	for c in adornos.get_children():
 		c.queue_free()
@@ -53,6 +62,7 @@ func construir(L: Dictionary) -> void:
 	var W := DungeonGen.GW
 	var H := DungeonGen.GH
 	var G: PackedByteArray = L.grid
+	_G = G
 	var sala: PackedInt32Array = L.get("room_of", PackedInt32Array())
 	var i_sala := KitMazmorra.id("suelo_sala")
 	var i_arco := KitMazmorra.id("arco")
@@ -72,8 +82,7 @@ func construir(L: Dictionary) -> void:
 			var celda := Vector3i(cx, 0, cy)
 			if t == DungeonGen.ROCK:
 				if _junto_a_suelo(G, cx, cy):
-					# bloque de muro: variante y giro al azar (fijos por casilla) para que no se repita
-					muros.set_cell_item(celda, KitMazmorra.variante("muro", cx, cy), _giro_azar(cx, cy))
+					_muro(cx, cy)
 				continue
 			if t == DungeonGen.ABISMO:
 				continue
@@ -100,6 +109,45 @@ func _junto_a_suelo(G: PackedByteArray, cx: int, cy: int) -> bool:
 			if t != DungeonGen.ROCK and t != DungeonGen.ABISMO:
 				return true
 	return false
+
+# ---------- muros: núcleo + caras + columnas de esquina ----------
+func _pisable(x: int, y: int) -> bool:
+	if x < 0 or y < 0 or x >= DungeonGen.GW or y >= DungeonGen.GH:
+		return false
+	var t := _G[y * DungeonGen.GW + x]
+	return t != DungeonGen.ROCK and t != DungeonGen.ABISMO and t != DungeonGen.DOOR
+
+func _ori(g: GridMap, giro: float) -> int:
+	return g.get_orthogonal_index_from_basis(Basis(Vector3.UP, giro))
+
+func _muro(cx: int, cy: int) -> void:
+	var celda := Vector3i(cx, 0, cy)
+	muros.set_cell_item(celda, KitMazmorra.variante("nucleo", cx, cy), _giro_azar(cx, cy))
+	for k in 4:
+		var d: Vector2i = DIRS[k]
+		if _pisable(cx + d.x, cy + d.y):
+			caras[k].set_cell_item(celda, KitMazmorra.id(_cara_para(cx, cy, k)), _ori(caras[k], GIROS[k]))
+	for k in 4:
+		var e: Vector2i = ESQ[k]
+		var a := _pisable(cx + e.x, cy)
+		var b := _pisable(cx, cy + e.y)
+		var diag := _pisable(cx + e.x, cy + e.y)
+		# esquina de dentro de una sala (solo la diagonal es suelo) o esquina que sobresale (los dos lados)
+		if (diag and not a and not b) or (a and b):
+			esquinas[k].set_cell_item(celda, KitMazmorra.id("columna_esquina"), _ori(esquinas[k], GIROS[k]))
+
+## qué cara lleva el lado k del muro (cx, cy): columnas cada 3 casillas y, entre medias, variantes al azar
+func _cara_para(cx: int, cy: int, k: int) -> String:
+	var t := cx if k % 2 == 0 else cy
+	if posmod(t, 3) == 0:
+		return "cara_columna"
+	var h := absi(hash(Vector3i(cx, cy, k))) % 100
+	if h < 14: return "cara_arco_ciego"
+	if h < 24: return "cara_nicho"
+	if h < 30: return "cara_rota"
+	if h < 36: return "cara_hiedra"
+	if h < 40: return "cara_reja"
+	return "cara" if h % 2 == 0 else "cara_b"
 
 func _giro_azar(a: int, b: int) -> int:
 	return muros.get_orthogonal_index_from_basis(Basis(Vector3.UP, (absi(hash(Vector2i(a * 7, b * 13))) % 4) * PI / 2))
@@ -140,10 +188,20 @@ func poner_en_pared(nombre: String, celda: Vector2i, cara: Vector2i, altura: flo
 	var n := KitMazmorra.pieza(nombre)
 	var dir := Vector3(cara.x, 0, cara.y)
 	var lado := Vector3(-cara.y, 0, cara.x)
-	n.position = centro(celda) + dir * (KitMazmorra.CELDA / 2 - .02) + lado * corre + Vector3(0, altura, 0)
+	n.position = centro(celda) + dir * (KitMazmorra.CELDA / 2 - .1) + lado * corre + Vector3(0, altura, 0)
+	_cara_lisa(celda + cara, cara)
 	n.rotation.y = atan2(-float(cara.x), -float(cara.y))
 	adornos.add_child(n)
 	return n
+
+## lo que se cuelga de una pared necesita la cara lisa detrás (sin columna, nicho ni reja)
+func _cara_lisa(muro: Vector2i, cara: Vector2i) -> void:
+	var k := DIRS.find(-cara)
+	if k < 0 or caras.is_empty():
+		return
+	var c := Vector3i(muro.x, 0, muro.y)
+	if caras[k].get_cell_item(c) != GridMap.INVALID_CELL_ITEM:
+		caras[k].set_cell_item(c, KitMazmorra.id("cara"), caras[k].get_cell_item_orientation(c))
 
 func poner_antorcha(celda: Vector2i, cara: Vector2i, corre: float = 0.0) -> void:
 	var a := poner_en_pared("antorcha", celda, cara, 1.55, corre)
