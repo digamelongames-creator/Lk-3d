@@ -1,6 +1,7 @@
 # Estado · 7 nov 2026
 
 ## Hecho
+- Espada del esqueleto colocada por Diego con el panel (8 nov) y `esqueleto.glb` reconvertido con sus 6 animaciones.
 - Agarres de armas: `colocar_arma.bat` abre Blender con el personaje y el panel «Agarre» (mano, espada o escudo, arma, animación, espejar, guardar). Se guarda en la ficha (`agarres_3d`) como matriz respecto al hueso; comprobado de punta a punta (panel → conversor → Godot, menos de 5 mm). La espada actual del héroe venía mal de la conversión antigua (`offset` + `length_m` con una malla en diagonal): se arregla al colocarla con el panel y reconvertir.
 - Mano izquierda: escudo, segunda espada o nada. Caballero y caballero oscuro pueden poner una espada en el hueco del escudo: +15% de daño (`Items.DOS_ESPADAS_DMG`) y sin bloqueo. Prueba: `tests/test_dos_espadas.gd`. La espada izquierda sale reflejando la derecha si no se ha colocado aparte.
 - Armadura visible (`Armadura3D`): casco, peto con 2 hombreras, guantes, cinturón y botas, colgados de los huesos de Mixamo y con piezas provisionales. Cuando exista `assets/armaduras/<casco|peto|hombrera|guante|cinturon|bota>.glb` se usa ese modelo (el izquierdo sale en espejo y se ajusta en `AJUSTE`). Aura según la calidad: básico sin aura, mágico/dorado/legendario con brillo de borde que late, y dorado/legendario además con chispas.
@@ -28,7 +29,7 @@
 - `test_botin` y `test_clases` dan «todo bien».
 
 ## Falta
-- Colocar con el panel la espada del esqueleto (y escudo y espada izquierda si se quiere), copiar la ficha y reconvertir `esqueleto.glb`.
+- Colocar con el panel el escudo y, si se quiere, la espada izquierda del esqueleto (ahora sale reflejada de la derecha).
 - Modelos de armadura de Diego (en `C:\\SPRITE_FACTORY\\armaduras\\`) y ajustarlos a los huesos. Espadas y escudos nuevos, en otro chat.
 - Pasar los demonios a sus pisos de verdad (2–4) cuando acabe la prueba.
 - Modelos propios para los humanos: riggear en Mixamo los de `input/raw` (elf, violeta, cuernitos, medusa, vaquita).
