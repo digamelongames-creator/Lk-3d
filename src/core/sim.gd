@@ -1779,9 +1779,9 @@ func kill_enemy(e: Ent.Enemy, ang: float) -> void:
 	e.die_a = ang
 	e.flash = .06
 	e.hp = 0
-	var fly := 110.0 if champ or e.mon != "" else 260.0
-	e.vx = cos(ang) * fly
-	e.vy = sin(ang) * fly
+	# cae justo donde muere: sin empujón (decidido por Diego)
+	e.vx = 0
+	e.vy = 0
 	var mult := 1 + mini(4, int(floorf(p.chain / 5.0)))
 	kills += 1
 	var kk: Dictionary = stats.get("kills", {})
@@ -2251,10 +2251,9 @@ func _update_enemies(dt: float) -> void:
 		if _caida_enemigo(e, dt):
 			continue
 		if e.dying:
-			e.dying -= dt
-			mv(e, e.vx * dt, e.vy * dt)
-			e.vx *= pow(.01, dt)
-			e.vy *= pow(.01, dt)
+			e.dying -= dt   # se queda donde cae: sin desplazarse mientras muere
+			e.vx = 0
+			e.vy = 0
 			if rnd() < .7:
 				fx.bleed(e.x, e.y, 10, e.die_a + PI, 1, 25, 1.5)
 			if e.dying <= 0:

@@ -10,6 +10,7 @@ extends Node3D
 ## La armadura (casco, peto y hombreras, guantes, cinturón y botas) la pone Armadura3D en sus huesos.
 
 var sim: Sim
+const VEL_TAJO := 2.5   # ritmo del clip de ataque del héroe (recortado, ver _animar_heroe)
 var heroe_id := "esqueleto"   # modelo del héroe (Modelo3D.FICHAS); si no existe, cápsula
 ## los enemigos sin modelo propio (caballeros, renegados…) usan este, provisional
 const MODELO_HUMANOS := "prueba2"
@@ -223,8 +224,11 @@ func _animar_heroe(p: Ent.Hero) -> void:
 				m.reproducir("death", 1.0, .1, true)
 		elif p.atk_t > 0:
 			# cada golpe del combo vuelve a empezar el tajo
+			# el clip se recorta: empieza poco antes del impacto para que la espada toque justo cuando la simulación hace el daño
 			if m.actual != "attack" or p.combo_step != _combo_antes:
-				m.reproducir("attack", 1.6, .06, true)
+				var t_imp: float = m.duracion("attack") * float(m.ficha.get("golpe", .5))
+				var t_dano: float = (float(p.seq.hit) if p.seq != null else 3.0) * Sim.AFT
+				m.reproducir_desde("attack", t_imp - t_dano * VEL_TAJO, VEL_TAJO)
 			_combo_antes = p.combo_step
 		elif _hp_antes >= 0 and p.hp < _hp_antes - .5 and m.actual != "attack":
 			m.reproducir("hurt", 1.6, .05, true)

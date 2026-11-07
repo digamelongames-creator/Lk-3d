@@ -7,7 +7,7 @@ extends Node3D
 
 ## monstruo de la simulación (Enemy.mon) → modelo y datos (de config/characters/*.json de la fábrica)
 const FICHAS := {
-	"esqueleto": {"glb": "esqueleto", "alto": 1.8, "golpe": .5},
+	"esqueleto": {"glb": "esqueleto", "alto": 1.8, "golpe": .36},   # la espada toca a 0,82 s de 2,27 (pico de velocidad de la mano)
 	"bufona": {"glb": "jester", "alto": 1.75, "golpe": .8, "luz": Color8(190, 90, 255)},
 	"miniDemon": {"glb": "minidemon", "alto": 1.15, "golpe": .8, "luz": Color8(255, 120, 30), "parts": ["brasas"]},
 	"middleDemon": {"glb": "middledemon", "alto": 2.3, "golpe": .8, "luz": Color8(255, 110, 30), "parts": ["brasas"]},
@@ -174,6 +174,15 @@ func reproducir(n: String, velocidad: float = 1.0, mezcla: float = .15, forzar: 
 	anim.play(n, mezcla)
 	if forzar:
 		anim.seek(0, true)
+
+## reproduce n empezando en el segundo desde del clip (para saltarse la preparación de un tajo)
+func reproducir_desde(n: String, desde: float, velocidad: float = 1.0, mezcla: float = .06) -> void:
+	if anim == null or not anim.has_animation(n):
+		return
+	anim.speed_scale = velocidad
+	actual = n
+	anim.play(n, mezcla)
+	anim.seek(clampf(desde, 0.0, duracion(n)), true)
 
 func terminada() -> bool:
 	return anim == null or not anim.is_playing()

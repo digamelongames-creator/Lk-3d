@@ -27,6 +27,8 @@
 - Muros que se vuelven transparentes al tapar al héroe, radio de luz del héroe, niebla volumétrica, glow, SSAO y números de daño en 3D.
 - Cámara con inclinación de 45° por defecto y giro configurable (0° como Diablo 4, 45° en diagonal como Diablo 2).
 - `test_botin` y `test_clases` dan «todo bien».
+- Tajo del héroe (8 nov): el clip de ataque se recorta y empieza poco antes del impacto (`Modelo3D.reproducir_desde`, `Actores3D.VEL_TAJO` = 2,5), para que la espada toque justo cuando la simulación hace el daño. En el esqueleto la espada toca al 36 % del clip (0,82 s de 2,27), medido por el pico de velocidad de la mano; los esqueletos enemigos usan el mismo dato. Los 3 tajos usan el mismo clip.
+- Muerte de enemigos (8 nov): sin empujón, caen donde mueren (`Sim.kill_enemy` y el tramo `dying` de `_update_enemies`). La animación de muerte de Mixamo sigue moviendo la cadera unos 50 cm al caer (Diego decidió no anclarla).
 
 ## Falta
 - Colocar con el panel el escudo y, si se quiere, la espada izquierda del esqueleto (ahora sale reflejada de la derecha).
