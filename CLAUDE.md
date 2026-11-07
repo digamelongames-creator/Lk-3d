@@ -24,7 +24,7 @@ Responde en español.
 ## Ejecutar y probar
 - Godot 4.7.2, renderizador Forward+.
 - Importar: `godot --headless --path . --editor --quit`.
-- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` `tests/test_demonios.gd`, `tests/test_zoom.gd` y `tests/test_combate.gd` (deben decir «todo bien»).
+- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` `tests/test_demonios.gd`, `tests/test_zoom.gd`, `tests/test_combate.gd` y `tests/test_armadura.gd` (deben decir «todo bien»).
 - Captura: `xvfb-run -a godot --path . -- --bot --shot=/tmp/x.png,200` (sin GPU: `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`).
 - Opciones: `--clase=knight|dk|archer|mage|dl --piso=N --semilla=… --heroe=… --junto=<monstruo> --morir --zoom=… --giro=… --inclinacion=… --perspectiva --bot`.
 - El juego arranca en pantalla completa; F11 cambia a ventana. Rueda o +/− para el zoom (7–20 m).

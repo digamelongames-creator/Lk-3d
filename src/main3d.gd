@@ -350,6 +350,7 @@ func _read_input() -> Sim.Inp:
 func _exit_tree() -> void:
 	KitMazmorra.limpiar()
 	Modelo3D.limpiar()
+	Armadura3D.limpiar()
 	MazmorraGridMap.limpiar()
 	Atlas.limpiar()
 	Fonts.limpiar()
