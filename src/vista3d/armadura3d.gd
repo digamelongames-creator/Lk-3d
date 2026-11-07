@@ -24,12 +24,12 @@ const PIEZAS := {
 }
 ## ajuste fino de cada modelo sobre su hueso (en metros y grados), para cuando lleguen los .glb
 const AJUSTE := {
-	"casco": {"pos": Vector3(0, .1, .01), "rot": Vector3.ZERO, "esc": 1.0},
-	"peto": {"pos": Vector3(0, .02, .02), "rot": Vector3.ZERO, "esc": 1.0},
-	"hombrera": {"pos": Vector3(0, .1, 0), "rot": Vector3.ZERO, "esc": 1.0},
-	"guante": {"pos": Vector3(0, .04, 0), "rot": Vector3.ZERO, "esc": 1.0},
+	"casco": {"pos": Vector3(0, .08, .01), "rot": Vector3.ZERO, "esc": 1.0},
+	"peto": {"pos": Vector3(0, .0, .03), "rot": Vector3.ZERO, "esc": 1.0},
+	"hombrera": {"pos": Vector3(0, .12, -.03), "rot": Vector3.ZERO, "esc": 1.0},
+	"guante": {"pos": Vector3(0, .03, 0), "rot": Vector3.ZERO, "esc": 1.0},
 	"cinturon": {"pos": Vector3(0, .04, 0), "rot": Vector3.ZERO, "esc": 1.0},
-	"bota": {"pos": Vector3(0, .02, 0), "rot": Vector3.ZERO, "esc": 1.0},
+	"bota": {"pos": Vector3.ZERO, "rot": Vector3.ZERO, "esc": 1.0},
 }
 ## color base del metal de las piezas provisionales
 const METAL := Color(.42, .43, .47)
@@ -103,43 +103,45 @@ static func _cargar(archivo: String) -> Node3D:
 		return esc
 	return _provisional(archivo)
 
-## piezas provisionales con primitivas (ejes del hueso de Mixamo: +Y a lo largo del hueso, +Z delante)
+## piezas provisionales con primitivas. Ejes de los huesos del esqueleto (medidos en reposo):
+## cabeza, Spine2 y cadera: +Y arriba, +Z delante; hombros: +Y hacia el brazo, −Z arriba;
+## manos: +Y hacia los dedos; pies: +Y hacia la punta, +Z arriba.
 static func _provisional(archivo: String) -> Node3D:
 	var n := Node3D.new()
 	match archivo:
 		"casco":
 			var cup := SphereMesh.new()
-			cup.radius = .15
-			cup.height = .15
+			cup.radius = .14
+			cup.height = .14
 			cup.is_hemisphere = true
 			n.add_child(_malla(cup, Vector3.ZERO))
 			var ala := CylinderMesh.new()
-			ala.top_radius = .165
-			ala.bottom_radius = .165
+			ala.top_radius = .155
+			ala.bottom_radius = .155
 			ala.height = .03
 			n.add_child(_malla(ala, Vector3(0, -.01, 0)))
 			var nasal := BoxMesh.new()
 			nasal.size = Vector3(.025, .12, .02)
-			n.add_child(_malla(nasal, Vector3(0, -.06, .155)))
+			n.add_child(_malla(nasal, Vector3(0, -.06, .148)))
 		"peto":
 			var c := CapsuleMesh.new()
-			c.radius = .17
-			c.height = .42
+			c.radius = .2
+			c.height = .46
 			var mi := _malla(c, Vector3.ZERO)
-			mi.scale = Vector3(1.05, 1, .72)
+			mi.scale = Vector3(1.0, 1, .8)
 			n.add_child(mi)
 		"hombrera":
 			var h := SphereMesh.new()
 			h.radius = .1
 			h.height = .1
 			h.is_hemisphere = true
-			var mi2 := _malla(h, Vector3(.04, 0, 0))
-			mi2.rotation_degrees = Vector3(0, 0, -70)
-			mi2.scale = Vector3(1, 1, 1.2)
+			var mi2 := _malla(h, Vector3.ZERO)
+			mi2.rotation_degrees = Vector3(-62, 0, 0)   # la cúpula, hacia arriba y hacia fuera
+			mi2.scale = Vector3(1.15, 1, 1.15)
 			n.add_child(mi2)
 		"guante":
 			var g := BoxMesh.new()
-			g.size = Vector3(.1, .12, .07)
+			g.size = Vector3(.09, .11, .06)
 			n.add_child(_malla(g, Vector3.ZERO))
 			var pu := CylinderMesh.new()
 			pu.top_radius = .06
@@ -157,13 +159,15 @@ static func _provisional(archivo: String) -> Node3D:
 			hebilla.size = Vector3(.07, .06, .03)
 			n.add_child(_malla(hebilla, Vector3(0, 0, .16), Color(.75, .6, .25)))
 		"bota":
-			var cana := CylinderMesh.new()
-			cana.top_radius = .07
+			var cana := CylinderMesh.new()   # la caña sube por el tobillo (+Z del pie)
+			cana.top_radius = .075
 			cana.bottom_radius = .065
 			cana.height = .2
-			n.add_child(_malla(cana, Vector3(0, -.06, 0)))
+			var mc := _malla(cana, Vector3(0, -.01, .08))
+			mc.rotation_degrees.x = 90
+			n.add_child(mc)
 			var pie := BoxMesh.new()
-			pie.size = Vector3(.1, .18, .08)
+			pie.size = Vector3(.1, .2, .07)
 			n.add_child(_malla(pie, Vector3(0, .07, -.02)))
 	return n
 
