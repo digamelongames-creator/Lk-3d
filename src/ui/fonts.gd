@@ -4,6 +4,10 @@ class_name Fonts
 static var _px := {}
 static var _gothic := {}
 
+static func limpiar() -> void:
+	_px.clear()
+	_gothic.clear()
+
 static func px(weight: int = 500) -> FontFile:
 	if not _px.has(weight):
 		var o := _prueba("--fuente=", weight)

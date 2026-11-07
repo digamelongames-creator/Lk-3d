@@ -24,8 +24,9 @@ Responde en español.
 ## Ejecutar y probar
 - Godot 4.7.2, renderizador Forward+.
 - Importar: `godot --headless --path . --editor --quit`.
-- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` y `tests/test_demonios.gd` (deben decir «todo bien»).
+- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` `tests/test_demonios.gd` y `tests/test_zoom.gd` (deben decir «todo bien»).
 - Captura: `xvfb-run -a godot --path . -- --bot --shot=/tmp/x.png,200` (sin GPU: `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`).
 - Opciones: `--clase=knight|dk|archer|mage|dl --piso=N --semilla=… --heroe=… --junto=<monstruo> --zoom=… --giro=… --inclinacion=… --perspectiva --bot`.
-- El juego arranca en pantalla completa; F11 cambia a ventana.
+- El juego arranca en pantalla completa; F11 cambia a ventana. Rueda o +/− para el zoom (7–20 m).
+- Todo lo estático que guarde recursos (texturas, mallas, traducciones) se suelta en `_exit_tree` de la escena principal; si no, Godot se cuelga al cerrar.
 - Repositorio: github.com/digamelongames-creator/Lk-3d (rama `main`). Cada entrega se sube ahí y además se pasa el zip.

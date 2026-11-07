@@ -38,6 +38,12 @@ static func mesh_library() -> MeshLibrary:
 			_lib.set_item_mesh(i, _mallas[n])
 	return _lib
 
+## vaciar las cachés estáticas al salir: si siguen vivas cuando Godot apaga el servidor gráfico, el juego se cuelga al cerrar
+static func limpiar() -> void:
+	_lib = null
+	_mallas.clear()
+	_mats.clear()
+
 static func id(nombre: String) -> int:
 	return mesh_library().find_item_by_name(nombre)
 

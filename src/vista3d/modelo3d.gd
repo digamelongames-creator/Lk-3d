@@ -88,6 +88,9 @@ func enganche(hueso: String) -> Node3D:
 ## el agarre del arma de un modelo de la fábrica (malla y posición en la mano) para dárselo a otro
 ## con el mismo esqueleto de Mixamo. Por defecto, la espada del esqueleto.
 static var _agarres := {}
+
+static func limpiar() -> void:
+	_agarres.clear()
 static func agarre(id: String = "esqueleto", nodo: String = "arma_main_hand") -> Dictionary:
 	var k := id + "/" + nodo
 	if _agarres.has(k):

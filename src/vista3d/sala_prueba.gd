@@ -270,3 +270,12 @@ func _process(dt: float) -> void:
 		get_viewport().get_texture().get_image().save_png(_shot)
 		print("captura: ", _shot)
 		get_tree().quit()
+
+
+## al salir, soltar las cachés estáticas antes de que Godot apague el servidor gráfico
+func _exit_tree() -> void:
+	KitMazmorra.limpiar()
+	Modelo3D.limpiar()
+	MazmorraGridMap.limpiar()
+	Atlas.limpiar()
+	Fonts.limpiar()

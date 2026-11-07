@@ -20,6 +20,10 @@ var heroe_id := "esqueleto"   # modelo del héroe (--heroe=… para probar otro)
 
 
 var _bot: Bot = null
+const ZOOM_MIN := 7.0
+const ZOOM_MAX := 20.0
+var _zoom_label: Label
+var _zoom_t := 0.0
 var _junto := ""   # pruebas: --junto=demonCaptain pone al héroe al lado de ese monstruo
 var _shot_path := ""
 var _shot_frames := 0
@@ -80,6 +84,19 @@ func _ready() -> void:
 	personaje.sim = sim
 	ui.add_child(personaje)
 	personaje.closed.connect(func(): if state == "char": _set_state("play"))
+	# indicador del zoom (aparece al cambiarlo y se apaga solo)
+	_zoom_label = Label.new()
+	_zoom_label.add_theme_font_override("font", Fonts.px(700))
+	_zoom_label.add_theme_font_size_override("font_size", 16)
+	_zoom_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_zoom_label.add_theme_constant_override("outline_size", 5)
+	_zoom_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_zoom_label.offset_left = -170
+	_zoom_label.offset_right = -20
+	_zoom_label.offset_top = 296
+	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_zoom_label.modulate.a = 0
+	ui.add_child(_zoom_label)
 	sim.new_game(piso, semilla, clase)
 	_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
 	fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
@@ -125,6 +142,9 @@ func _process(dt: float) -> void:
 			fx.banner("Has caído", "Fin de la partida")
 			state = "over"
 	fx.tick(dt)
+	if _zoom_t > 0:
+		_zoom_t -= dt
+		_zoom_label.modulate.a = clampf(_zoom_t / .5, 0, 1)
 	actores.actualizar(dt)
 	_camara(dt)
 	if sim.p != null:
@@ -192,6 +212,22 @@ func _unhandled_input(ev: InputEvent) -> void:
 		return
 	if state != "play" or sim.p == null:
 		return
+	# zoom: rueda del ratón o + y −, entre ZOOM_MIN y ZOOM_MAX metros de alto en pantalla
+	var dz := 0.0
+	if ev is InputEventMouseButton and ev.pressed:
+		if ev.button_index == MOUSE_BUTTON_WHEEL_UP: dz = -1.0
+		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN: dz = 1.0
+	elif ev is InputEventKey and ev.pressed:
+		if ev.physical_keycode in [KEY_EQUAL, KEY_KP_ADD, KEY_PLUS, KEY_BRACKETRIGHT]: dz = -1.0
+		elif ev.physical_keycode in [KEY_MINUS, KEY_KP_SUBTRACT, KEY_SLASH]: dz = 1.0
+	if dz != 0:
+		camara.zoom = clampf(camara.zoom + dz, ZOOM_MIN, ZOOM_MAX)
+		camara.aplicar()
+		_zoom_label.text = "Zoom: %d m" % int(camara.zoom)
+		_zoom_label.modulate.a = 1.0
+		_zoom_t = 2.0
+		get_viewport().set_input_as_handled()
+		return
 	if ev.is_action_pressed("lk_map"):
 		hud.big_map = not hud.big_map
 		return
@@ -236,3 +272,13 @@ func _read_input() -> Sim.Inp:
 	_interact_edge = false
 	_potion_edge = false
 	return inp
+
+
+## al salir, soltar las cachés estáticas antes de que Godot apague el servidor gráfico
+func _exit_tree() -> void:
+	KitMazmorra.limpiar()
+	Modelo3D.limpiar()
+	MazmorraGridMap.limpiar()
+	Atlas.limpiar()
+	Fonts.limpiar()
+	Idioma.soltar()

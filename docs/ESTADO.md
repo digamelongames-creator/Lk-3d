@@ -1,6 +1,9 @@
 # Estado · 7 nov 2026
 
 ## Hecho
+- Arreglado el cuelgue al cerrar el juego: faltaba `Idioma.soltar()` (la traducción propia se liberaba después de los scripts). Además, al salir se vacían las cachés estáticas (`KitMazmorra`, `Modelo3D`, `Atlas`, `Fonts`).
+- Zoom con la rueda del ratón o con + y −, entre 7 y 20 m, con indicador en pantalla (`tests/test_zoom.gd`).
+- Escudo redondo de madera con borde y umbo de hierro (brilla con su calidad si es mágico o mejor). Ya no sale la caja blanca, y con modelo no se pone caja de casco.
 - El héroe usa el modelo del esqueleto, con la espada del equipo en la mano. Los esqueletos enemigos salen más oscuros y rojizos. Los enemigos humanos (caballeros, renegados) usan Prueba2 de forma provisional.
 - Demonios en la simulación (`monsters.json`, piso 1 de prueba, `from`/`to` = 1). Hay 4 minidemonios juntos, un middle, un capitán y un demonio de fuego, cada uno en su sala. El capitán salta (`monster_skills` → `salto`): al caer daña, aturde al héroe 2 s (`Hero.aturdido`) y da dos puñetazos. Brasas y humo en 3D según la ficha. Prueba: `tests/test_demonios.gd`.
 - El juego arranca en pantalla completa (`window/size/mode=3`) y F11 cambia a ventana. Opción de prueba: `--junto=<monstruo>`.

@@ -29,6 +29,13 @@ static func hard(c: Color, a: float = 1.0) -> Color:
 static func soft(c: Color, a: float = 1.0) -> Color:
 	return Color(-c.r - 1.0, -c.g - 1.0, -c.b - 1.0, a)
 
+## soltar las texturas al salir (en Vulkan, si siguen vivas al apagar el servidor gráfico, el juego se cuelga)
+static func limpiar() -> void:
+	knight = null; dk = null; deco = null; tiles = null; items = null; sprites = null; potion = null
+	fountain_base = null; fx_tex = null; statue = null
+	knight_var.clear(); chest.clear(); alt.clear(); mon_sheets.clear()
+	_gear_img.clear(); _gear_tex.clear(); _gear_world.clear()
+
 static func load_all() -> void:
 	if _ready:
 		return

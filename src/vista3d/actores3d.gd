@@ -237,14 +237,56 @@ func _vestir() -> void:
 		_mano_der.add_child(_caja(Vector3(.2, .2, .2), Items_col(guantes), Items_col(guantes)))
 	var escudo = eq.get("shield")
 	if escudo != null:
-		_mano_izq.add_child(_caja(Vector3(.6, .7, .08), Color(.35, .3, .25), Items_col(escudo)))
+		_mano_izq.add_child(_escudo(escudo))
 	var casco = eq.get("helm")
-	if casco != null:
+	if casco != null and _modelo_heroe == null:   # el modelo ya trae su cabeza: el casco se verá cuando haya modelos de casco
 		_cabeza.add_child(_caja(Vector3(.36, .3, .38), Color(.5, .5, .55), Items_col(casco)))
 	var pecho = eq.get("chest")
 	if _cuerpo != null:
 		var base: Color = COL_CLASE.get(sim.p.cls, Color.GRAY)
 		_color(_cuerpo, base.lerp(Items_col(pecho), .35) if pecho != null else base)
+
+## escudo redondo de madera con borde y umbo de hierro; los mágicos o mejores brillan un poco con su color
+func _escudo(it) -> Node3D:
+	var raiz := Node3D.new()
+	var madera := KitMazmorra.material("madera")
+	var hierro := KitMazmorra.material("hierro")
+	var tabla := MeshInstance3D.new()
+	var c := CylinderMesh.new()
+	c.top_radius = .3
+	c.bottom_radius = .3
+	c.height = .04
+	c.radial_segments = 24
+	c.material = madera
+	tabla.mesh = c
+	raiz.add_child(tabla)
+	var borde := MeshInstance3D.new()
+	var t := TorusMesh.new()
+	t.inner_radius = .285
+	t.outer_radius = .33
+	t.material = hierro
+	borde.mesh = t
+	raiz.add_child(borde)
+	var umbo := MeshInstance3D.new()
+	var e := SphereMesh.new()
+	e.radius = .07
+	e.height = .07
+	e.material = hierro
+	umbo.mesh = e
+	umbo.position.y = .02
+	raiz.add_child(umbo)
+	if int(it.get("q", 0)) > 0:
+		var brillo := StandardMaterial3D.new()
+		brillo.albedo_color = Color(0, 0, 0, 0)
+		brillo.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		brillo.emission_enabled = true
+		brillo.emission = Items_col(it)
+		brillo.emission_energy_multiplier = .5
+		borde.material_overlay = brillo
+	# la cara del escudo mira hacia fuera del brazo (eje x del hueso de la mano izquierda)
+	raiz.rotation.z = PI / 2
+	raiz.position = Vector3(-.08, .05, 0) if _modelo_heroe != null else Vector3.ZERO
+	return raiz
 
 static func Items_col(it) -> Color:
 	if it == null:

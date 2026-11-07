@@ -300,6 +300,10 @@ func _fuego(p: Vector3, tam: float) -> void:
 	adornos.add_child(f)
 
 static var _tex_punto: Texture2D
+
+## ver KitMazmorra.limpiar()
+static func limpiar() -> void:
+	_tex_punto = null
 static func _punto() -> Texture2D:
 	if _tex_punto == null:
 		var g := Gradient.new()
