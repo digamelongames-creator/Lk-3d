@@ -1324,6 +1324,16 @@ func try_pickup(l: Dictionary) -> void:
 			loot.erase(l)
 		fx.hud()
 		return
+	# autoequipado: si su hueco está vacío y la clase puede llevarla, se la pone; si no, a la mochila
+	if it.get("gear", false) and p.eq.get(it.slot) == null and Items.why_equip(p, it) == "":
+		p.eq[it.slot] = it
+		loot.erase(l)
+		runes.agg(p)
+		var cq: String = Items.RQ_C[it.q]
+		fx.text(p.x, p.y - 50, it.name + " · puesto", cq, 10, false, 1.4, false, false)
+		fx.burst(l.x, l.y, 10, ["#fff3c0", cq], 10, 60)
+		fx.hud()
+		return
 	if not Items.bag_add(p, it):
 		_bag_full_msg()
 		return

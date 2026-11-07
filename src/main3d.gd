@@ -27,6 +27,7 @@ const ZOOM_MAX := 20.0
 var _zoom_label: Label
 var _zoom_t := 0.0
 var _morir := false
+var _equipo := -1  # pruebas: --equipo=0..3 pone casco, peto, guantes, cinturón y botas de esa calidad y suelta una de cada calidad al lado
 var _junto := ""   # pruebas: --junto=demonCaptain pone al héroe al lado de ese monstruo
 var _shot_path := ""
 var _shot_frames := 0
@@ -51,6 +52,7 @@ func _ready() -> void:
 		elif a == "--bot": _bot = Bot.new()
 		elif a.begins_with("--heroe="): heroe_id = a.get_slice("=", 1)
 		elif a.begins_with("--junto="): _junto = a.get_slice("=", 1)
+		elif a.begins_with("--equipo="): _equipo = int(a.get_slice("=", 1))
 		elif a == "--morir": _morir = true   # pruebas: el héroe cae al empezar (panel de muerte)
 		elif a.begins_with("--inclinacion=") or a.begins_with("--giro=") or a.begins_with("--zoom=") or a == "--perspectiva": opciones_camara.append(a)
 		elif a.begins_with("--shot="):
@@ -117,6 +119,18 @@ func _ready() -> void:
 						break
 				break
 		_camara(1.0)
+	if _equipo >= 0:
+		var k: String = sim.p.cls_key()
+		for s_ in ["helm", "chest", "gloves", "belt", "boots"]:
+			if Items.set_of(k).slots.has(s_):
+				sim.p.eq[s_] = Items.make_gear(sim.rng, clampi(_equipo, 0, 3), k, s_)
+		sim.runes.agg(sim.p)
+		var i := 0
+		for q in 4:
+			for s_ in ["helm", "chest", "boots"]:
+				var v := sim.safe_spot(sim.p.x - 70 + q * 45, sim.p.y + 40 + i % 3 * 26, Vector2(sim.p.x, sim.p.y))
+				sim.loot.append({"x": v.x, "y": v.y, "item": Items.make_gear(sim.rng, q, k, s_), "bob": 0.0, "fly": null})
+				i += 1
 
 func _entrar(L: Dictionary) -> void:
 	fx.reset()
@@ -350,6 +364,7 @@ func _read_input() -> Sim.Inp:
 func _exit_tree() -> void:
 	KitMazmorra.limpiar()
 	Modelo3D.limpiar()
+	Armadura3D.limpiar()
 	MazmorraGridMap.limpiar()
 	Atlas.limpiar()
 	Fonts.limpiar()

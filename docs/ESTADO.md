@@ -3,6 +3,8 @@
 ## Hecho
 - Agarres de armas: `colocar_arma.bat` abre Blender con el personaje y el panel «Agarre» (mano, espada o escudo, arma, animación, espejar, guardar). Se guarda en la ficha (`agarres_3d`) como matriz respecto al hueso; comprobado de punta a punta (panel → conversor → Godot, menos de 5 mm). La espada actual del héroe venía mal de la conversión antigua (`offset` + `length_m` con una malla en diagonal): se arregla al colocarla con el panel y reconvertir.
 - Mano izquierda: escudo, segunda espada o nada. Caballero y caballero oscuro pueden poner una espada en el hueco del escudo: +15% de daño (`Items.DOS_ESPADAS_DMG`) y sin bloqueo. Prueba: `tests/test_dos_espadas.gd`. La espada izquierda sale reflejando la derecha si no se ha colocado aparte.
+- Armadura visible (`Armadura3D`): casco, peto con 2 hombreras, guantes, cinturón y botas, colgados de los huesos de Mixamo y con piezas provisionales. Cuando exista `assets/armaduras/<casco|peto|hombrera|guante|cinturon|bota>.glb` se usa ese modelo (el izquierdo sale en espejo y se ajusta en `AJUSTE`). Aura según la calidad: básico sin aura, mágico/dorado/legendario con brillo de borde que late, y dorado/legendario además con chispas.
+- Autoequipado: la pieza recogida se pone sola si su hueco está vacío; si no, va a la mochila (`Sim.try_pickup`). En el suelo, las piezas se ven con su forma 3D, su aura y una luz de su color. La espada y el escudo también se ven con su modelo. Prueba: `tests/test_armadura.gd`. Vitrina para ajustar las piezas: `tools/vitrina_armadura.gd`. Opción `--equipo=0..3` (equipo de esa calidad y piezas en el suelo).
 - Combate 3D (`Sim.INTERRUMPIR`, `EMPUJE`, `LUNGE`): el héroe no avanza al atacar, tus golpes no cortan el ataque del enemigo (salvo la parada perfecta), el empujón se queda al 30% y los enemigos no hacen gesto de dolor. Prueba: `tests/test_combate.gd`.
 - Panel «Has caído» con Revivir (en el sitio, media vida, sin apartar enemigos) y Nueva partida. Al morir, el héroe queda tumbado y con su luz. Prueba: `--morir`.
 - Arreglado el cuelgue al cerrar el juego: faltaba `Idioma.soltar()` (la traducción propia se liberaba después de los scripts). Además, al salir se vacían las cachés estáticas (`KitMazmorra`, `Modelo3D`, `Atlas`, `Fonts`).
@@ -27,6 +29,7 @@
 
 ## Falta
 - Colocar con el panel la espada del esqueleto (y escudo y espada izquierda si se quiere), copiar la ficha y reconvertir `esqueleto.glb`.
+- Modelos de armadura de Diego (en `C:\\SPRITE_FACTORY\\armaduras\\`) y ajustarlos a los huesos. Espadas y escudos nuevos, en otro chat.
 - Pasar los demonios a sus pisos de verdad (2–4) cuando acabe la prueba.
 - Modelos propios para los humanos: riggear en Mixamo los de `input/raw` (elf, violeta, cuernitos, medusa, vaquita).
 - Piezas de muro según las vecinas (rotas, con hiedra, de esquina) y el arco en las puertas del juego, porque las puertas siguen siendo cajas de Actores3D.

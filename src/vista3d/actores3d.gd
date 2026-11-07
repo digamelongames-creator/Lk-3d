@@ -7,6 +7,7 @@ extends Node3D
 ## Equipo: el héroe tiene «enganches» (Marker3D) en la mano derecha, la izquierda y la cabeza, que hacen
 ## de BoneAttachment3D. Al cambiar el equipo en el inventario se cuelga la pieza nueva del enganche.
 ## Con un modelo de Mixamo: BoneAttachment3D en mixamorig_RightHand y la misma función _vestir().
+## La armadura (casco, peto y hombreras, guantes, cinturón y botas) la pone Armadura3D en sus huesos.
 
 var sim: Sim
 var heroe_id := "esqueleto"   # modelo del héroe (Modelo3D.FICHAS); si no existe, cápsula
@@ -23,6 +24,8 @@ var _mano_izq: Node3D
 var _cabeza: Node3D
 var _cuerpo: MeshInstance3D
 var _firma_equipo := ""
+var _armadura: Array[Node3D] = []
+var _botin_nodos := {}     # id del objeto del suelo → Node3D
 var _enemigos := {}        # id del objeto → Node3D
 var _botin: Array[Node3D] = []
 var _oro: Array[Node3D] = []
@@ -39,6 +42,9 @@ func nuevo_piso() -> void:
 		for n in d:
 			n.queue_free()
 	_enemigos.clear()
+	for n in _botin_nodos.values():
+		n.queue_free()
+	_botin_nodos.clear()
 	_botin.clear()
 	_oro.clear()
 	_cofres.clear()
@@ -74,15 +80,7 @@ func actualizar(dt: float) -> void:
 	_vestir()
 	_actualizar_enemigos(dt)
 	# botín y oro: reserva de nodos del tamaño de la lista
-	_reserva(_botin, sim.loot.size(), func(): return _caja(Vector3(.35, .35, .35), Color.WHITE, Color.WHITE))
-	for i in sim.loot.size():
-		var l: Dictionary = sim.loot[i]
-		var n := _botin[i]
-		var it: Dictionary = l.item
-		var c := Color(Items.RN_TC[clampi(int(it.get("n", 1)), 1, 5)]) if it.slot == "rune" else Color(Items.RQ_C[clampi(int(it.q), 0, 3)])
-		_color(n, c)
-		n.position = MazmorraGridMap.a3d(l.x, l.y, 6) + Vector3(0, .15 * sin(_t * 3 + l.bob), 0)
-		n.rotation.y = _t * 1.5
+	_actualizar_botin()
 	_reserva(_oro, sim.gold.size(), func(): return _caja(Vector3(.3, .08, .3), Color(1, .8, .2), Color(1, .7, .1)))
 	for i in sim.gold.size():
 		_oro[i].position = MazmorraGridMap.a3d(sim.gold[i].x, sim.gold[i].y, 2)
@@ -90,6 +88,59 @@ func actualizar(dt: float) -> void:
 		_cofres[i].get_child(1).rotation.x = -1.2 if sim.chests[i].open else 0.0
 	for i in mini(_puertas.size(), sim.doors.size()):
 		_puertas[i].visible = not sim.doors[i].open
+
+## botín del suelo: las piezas de equipo con su forma 3D y su aura; runas y pociones, cajitas de color
+func _actualizar_botin() -> void:
+	var vistos := {}
+	for l in sim.loot:
+		var it: Dictionary = l.item
+		var k = it.get("id", -1)
+		vistos[k] = true
+		var n: Node3D = _botin_nodos.get(k)
+		if n == null:
+			n = _nueva_pieza_suelo(it)
+			add_child(n)
+			_botin_nodos[k] = n
+		var flota: bool = n.get_meta("caja", false)
+		n.position = MazmorraGridMap.a3d(l.x, l.y, 6 if flota else 2) + Vector3(0, (.15 if flota else .06) * sin(_t * 3 + l.bob), 0)
+		n.rotation.y = _t * (1.5 if flota else .6)
+	for k in _botin_nodos.keys():
+		if not vistos.has(k):
+			_botin_nodos[k].queue_free()
+			_botin_nodos.erase(k)
+
+func _nueva_pieza_suelo(it: Dictionary) -> Node3D:
+	var n: Node3D = null
+	if it.get("gear", false):
+		n = Armadura3D.suelta(it)
+		if n == null and it.slot == "shield":
+			n = Node3D.new()
+			var e := _escudo(it)
+			e.rotation_degrees.x = -80
+			n.add_child(e)
+		elif n == null and it.slot == "sword":
+			var ag := Modelo3D.agarre()
+			if not ag.is_empty():
+				n = Node3D.new()
+				var mi := MeshInstance3D.new()
+				mi.mesh = ag.mesh
+				mi.rotation_degrees = Vector3(90, 0, 0)
+				mi.scale = ag.t.basis.get_scale()
+				n.add_child(mi)
+	if n == null:
+		var c := Color(Items.RN_TC[clampi(int(it.get("n", 1)), 1, 5)]) if it.slot == "rune" else Color(Items.RQ_C[clampi(int(it.get("q", 0)), 0, 3)])
+		n = _caja(Vector3(.35, .35, .35), c, c)
+		n.set_meta("caja", true)
+	# los objetos mágicos o mejores dan un poco de luz de su color en el suelo
+	var q := clampi(int(it.get("q", 0)), 0, 3)
+	if it.get("gear", false) and q > 0:
+		var luz := OmniLight3D.new()
+		luz.light_color = Color(Items.RQ_C[q])
+		luz.light_energy = .5 + .3 * q
+		luz.omni_range = 1.8
+		luz.position.y = .4
+		n.add_child(luz)
+	return n
 
 ## enemigos: se crean al aparecer; al morir se quedan tumbados un rato y se hunden en el suelo
 func _actualizar_enemigos(dt: float) -> void:
@@ -197,7 +248,7 @@ func _animar_heroe(p: Ent.Hero) -> void:
 func _vestir() -> void:
 	var eq: Dictionary = sim.p.eq
 	var firma := ""
-	for s in ["sword", "shield", "helm", "chest", "gloves"]:
+	for s in ["sword", "shield", "helm", "chest", "gloves", "belt", "boots"]:
 		var it = eq.get(s)
 		firma += "%s:%s;" % [s, "" if it == null else str(it.id)]
 	if firma == _firma_equipo:
@@ -206,6 +257,12 @@ func _vestir() -> void:
 	for m in [_mano_der, _mano_izq, _cabeza]:
 		for c in m.get_children():
 			c.queue_free()
+	for c in _armadura:
+		if is_instance_valid(c):
+			c.queue_free()
+	_armadura.clear()
+	if _modelo_heroe != null:   # casco, peto y hombreras, guantes, cinturón y botas en sus huesos
+		_armadura = Armadura3D.vestir(_modelo_heroe, eq)
 	var arma = eq.get("sword")
 	var guantes = eq.get("gloves")
 	var agarre := Modelo3D.agarre() if _modelo_heroe != null else {}
@@ -216,7 +273,7 @@ func _vestir() -> void:
 		var hoja := _caja(Vector3(.08, .08, 1.1), Color(.8, .8, .85), Items_col(arma))
 		hoja.position = Vector3(0, 0, -.55)
 		_mano_der.add_child(hoja)
-	elif guantes != null:   # mago y Señor Oscuro pegan con los guantes
+	elif guantes != null and _modelo_heroe == null:   # mago y Señor Oscuro pegan con los guantes
 		_mano_der.add_child(_caja(Vector3(.2, .2, .2), Items_col(guantes), Items_col(guantes)))
 	# mano izquierda: escudo, segunda espada o nada
 	var izq = eq.get("shield")
