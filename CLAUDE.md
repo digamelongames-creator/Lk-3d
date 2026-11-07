@@ -3,6 +3,7 @@
 Responde en español.
 
 ## Forma de trabajar
+- Antes de hacer nada, plantea lo que haga falta decidir como preguntas numeradas (1, 2, 3…) que se contesten con sí o no, por orden, y termina con «¿Qué hacemos?». Diego contesta por número y no se empieza hasta tener las respuestas.
 - Ve al grano: sin introducciones ni resúmenes de lo que vas a hacer.
 - Al explicar cambios de código, enseña solo las funciones o líneas tocadas, con el archivo.
 - Si una tarea es grande o ambigua, haz una sola pregunta antes de empezar.

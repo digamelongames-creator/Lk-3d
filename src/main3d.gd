@@ -4,21 +4,19 @@ extends Node3D
 ##
 ## Opciones de línea de órdenes (después de --):
 ##   --clase=knight|dk|archer|mage|dl   --piso=N   --semilla=texto   --bot   --shot=/tmp/x.png,frames
+##   --inclinacion=33   --giro=45   --perspectiva
 
 var sim := Sim.new()
 var fx := Fx3D.new()
 var mazmorra: MazmorraGridMap
 var actores: Actores3D
-var camara: Camera3D
+var camara: CamaraIso
 var hud: Hud
 var inventory: Inventory
 var personaje: Personaje
 var state := "play"
+var opciones_camara: Array = []
 
-const CAM_DIST := 19.0
-## inclinación: 90° = cenital, 45° = isométrica. giro: 0° = mira al norte (Diablo 4), 45° = en diagonal (Diablo 2)
-var cam_inclinacion := deg_to_rad(45.0)
-var cam_giro := deg_to_rad(0.0)
 
 var _bot: Bot = null
 var _shot_path := ""
@@ -42,13 +40,12 @@ func _ready() -> void:
 		elif a.begins_with("--piso="): piso = int(a.get_slice("=", 1))
 		elif a.begins_with("--semilla="): semilla = a.get_slice("=", 1)
 		elif a == "--bot": _bot = Bot.new()
-		elif a.begins_with("--inclinacion="): cam_inclinacion = deg_to_rad(float(a.get_slice("=", 1)))
-		elif a.begins_with("--giro="): cam_giro = deg_to_rad(float(a.get_slice("=", 1)))
+		elif a.begins_with("--inclinacion=") or a.begins_with("--giro=") or a == "--perspectiva": opciones_camara.append(a)
 		elif a.begins_with("--shot="):
 			var p := a.get_slice("=", 1).split(",")
 			_shot_path = p[0]
 			_shot_frames = int(p[1]) if p.size() > 1 else 60
-	_ambiente()
+	CamaraIso.ambiente(self)
 	mazmorra = MazmorraGridMap.new()
 	add_child(mazmorra)
 	actores = Actores3D.new()
@@ -57,9 +54,11 @@ func _ready() -> void:
 	fx.raiz = self
 	fx.sim = sim
 	sim.fx = fx
-	camara = Camera3D.new()
-	camara.fov = 38
-	camara.far = 120
+	camara = CamaraIso.new()
+	for a in opciones_camara:
+		if a.begins_with("--inclinacion="): camara.inclinacion = deg_to_rad(float(a.get_slice("=", 1)))
+		elif a.begins_with("--giro="): camara.giro = deg_to_rad(float(a.get_slice("=", 1)))
+		elif a == "--perspectiva": camara.ortografica = false
 	add_child(camara)
 	var ui := CanvasLayer.new()
 	add_child(ui)
@@ -94,39 +93,6 @@ func _bajar() -> void:
 	fx.banner("Un campeón guarda la escalera" if sim.wave % 5 == 0 else "Busca la escalera para bajar", "Oleada %d" % sim.wave)
 	Guardado.guardar(sim)
 
-func _ambiente() -> void:
-	var we := WorldEnvironment.new()
-	var e := Environment.new()
-	e.background_mode = Environment.BG_COLOR
-	e.background_color = Color(.01, .008, .014)
-	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color = Color(.35, .38, .5)
-	e.ambient_light_energy = .25
-	e.tonemap_mode = Environment.TONE_MAPPER_ACES
-	e.tonemap_exposure = 1.1
-	e.glow_enabled = true
-	e.glow_intensity = .9
-	e.glow_bloom = .08
-	e.glow_hdr_threshold = 1.0
-	e.ssao_enabled = true
-	e.ssao_radius = 1.2
-	e.ssao_intensity = 2.5
-	e.volumetric_fog_enabled = true
-	e.volumetric_fog_density = .025
-	e.volumetric_fog_albedo = Color(.6, .55, .6)
-	e.volumetric_fog_length = 40
-	e.adjustment_enabled = true
-	e.adjustment_saturation = .85
-	e.adjustment_contrast = 1.1
-	we.environment = e
-	add_child(we)
-	var luna := DirectionalLight3D.new()
-	luna.rotation = Vector3(deg_to_rad(-60), deg_to_rad(30), 0)
-	luna.light_color = Color(.55, .6, .85)
-	luna.light_energy = .12
-	luna.shadow_enabled = true
-	add_child(luna)
-
 # ======================================================================
 #  bucle
 # ======================================================================
@@ -155,28 +121,12 @@ func _process(dt: float) -> void:
 func _camara(dt: float) -> void:
 	if sim.p == null:
 		return
-	var objetivo := MazmorraGridMap.a3d(sim.p.x, sim.p.y) + Vector3(0, 1, 0)
-	var atras := _hacia_camara()
-	var vista := Vector3(atras.x * cos(cam_inclinacion), sin(cam_inclinacion), atras.y * cos(cam_inclinacion))
-	camara.position = camara.position.lerp(objetivo + vista * CAM_DIST, minf(1, dt * 8))
-	if fx.temblor > 0:
-		camara.position += Vector3(randf() - .5, randf() - .5, randf() - .5) * fx.temblor * .4
-	camara.look_at(camara.position - vista)
-	RenderingServer.global_shader_parameter_set("dir_camara", atras)
-
-## dirección (x, z) del suelo que va del héroe hacia la cámara
-func _hacia_camara() -> Vector2:
-	return Vector2(0, 1).rotated(-cam_giro)
+	camara.temblor = fx.temblor
+	camara.seguir(MazmorraGridMap.a3d(sim.p.x, sim.p.y) + Vector3(0, 1, 0), dt)
 
 ## el punto del suelo bajo el ratón, en px de la simulación
 func _raton_en_suelo() -> Vector2:
-	var m := get_viewport().get_mouse_position()
-	var o := camara.project_ray_origin(m)
-	var d := camara.project_ray_normal(m)
-	if absf(d.y) < .001:
-		return Vector2(sim.p.x, sim.p.y)
-	var t := -o.y / d.y
-	return MazmorraGridMap.a_px(o + d * t)
+	return MazmorraGridMap.a_px(camara.suelo_bajo(get_viewport().get_mouse_position()))
 
 func _set_state(s: String) -> void:
 	state = s
@@ -252,7 +202,7 @@ func _read_input() -> Sim.Inp:
 	var kx := (1 if Input.is_action_pressed("lk_right") else 0) - (1 if Input.is_action_pressed("lk_left") else 0)
 	var ky := (1 if Input.is_action_pressed("lk_down") else 0) - (1 if Input.is_action_pressed("lk_up") else 0)
 	# W va «hacia arriba de la pantalla»: con la cámara girada, se gira también el movimiento
-	inp.move = Vector2(kx, ky).rotated(-cam_giro)
+	inp.move = Vector2(kx, ky).rotated(-camara.giro)
 	inp.aim = _raton_en_suelo()
 	inp.aim_mouse = true
 	sim.ally_target = {"x": inp.aim.x, "y": inp.aim.y}

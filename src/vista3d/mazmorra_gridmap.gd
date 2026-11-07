@@ -37,7 +37,7 @@ func _ready() -> void:
 func _gm(n: String) -> GridMap:
 	var g := GridMap.new()
 	g.name = n
-	g.mesh_library = KitMazmorra.cargar()
+	g.mesh_library = KitMazmorra.mesh_library()
 	g.cell_size = Vector3(KitMazmorra.CELDA, 1, KitMazmorra.CELDA)
 	g.cell_center_y = false
 	add_child(g)
@@ -54,9 +54,8 @@ func construir(L: Dictionary) -> void:
 	var H := DungeonGen.GH
 	var G: PackedByteArray = L.grid
 	var sala: PackedInt32Array = L.get("room_of", PackedInt32Array())
-	var i_suelo := KitMazmorra.id("suelo")
 	var i_sala := KitMazmorra.id("suelo_sala")
-	var i_muro := KitMazmorra.id("muro")
+	var i_arco := KitMazmorra.id("arco")
 	var pieza := {
 		DungeonGen.WATER: KitMazmorra.id("agua"),
 		DungeonGen.BRIDGE: KitMazmorra.id("puente"),
@@ -73,15 +72,18 @@ func construir(L: Dictionary) -> void:
 			var celda := Vector3i(cx, 0, cy)
 			if t == DungeonGen.ROCK:
 				if _junto_a_suelo(G, cx, cy):
-					muros.set_cell_item(celda, i_muro, _orientacion_muro(G, cx, cy))
+					# bloque de muro: variante y giro al azar (fijos por casilla) para que no se repita
+					muros.set_cell_item(celda, KitMazmorra.variante("muro", cx, cy), _giro_azar(cx, cy))
 				continue
 			if t == DungeonGen.ABISMO:
 				continue
 			# todo lo que no es roca ni vacío lleva suelo debajo (también agua, puertas, tumbas…)
 			if t != DungeonGen.WATER:
 				var en_sala := sala.size() > 0 and sala[cy * W + cx] >= 0
-				suelo.set_cell_item(celda, i_sala if en_sala and i_sala >= 0 else i_suelo)
-			if pieza.has(t) and pieza[t] >= 0:
+				suelo.set_cell_item(celda, i_sala if en_sala and i_sala >= 0 else KitMazmorra.variante("suelo", cx, cy), _giro_azar(cy, cx))
+			if t == DungeonGen.DOOR and i_arco >= 0:
+				muros.set_cell_item(celda, i_arco, _orientacion_arco(G, cx, cy))
+			elif pieza.has(t) and pieza[t] >= 0:
 				objetos.set_cell_item(celda, pieza[t])
 	_antorchas(L)
 	_decorador(L)
@@ -99,6 +101,16 @@ func _junto_a_suelo(G: PackedByteArray, cx: int, cy: int) -> bool:
 				return true
 	return false
 
+func _giro_azar(a: int, b: int) -> int:
+	return muros.get_orthogonal_index_from_basis(Basis(Vector3.UP, (absi(hash(Vector2i(a * 7, b * 13))) % 4) * PI / 2))
+
+## el arco se hace de norte a sur; si la roca está al norte y al sur, el paso va de este a oeste
+func _orientacion_arco(G: PackedByteArray, cx: int, cy: int) -> int:
+	var roca := func(x: int, y: int) -> bool:
+		return x < 0 or y < 0 or x >= DungeonGen.GW or y >= DungeonGen.GH or G[y * DungeonGen.GW + x] == DungeonGen.ROCK
+	var este_oeste: bool = roca.call(cx, cy - 1) and roca.call(cx, cy + 1)
+	return muros.get_orthogonal_index_from_basis(Basis(Vector3.UP, PI / 2 if este_oeste else 0.0))
+
 ## giro de la pieza de muro según hacia dónde da el suelo. Con el bloque provisional da igual;
 ## con un kit de muros finos (la cara pintada mirando a -z en Blender) la deja mirando al suelo.
 func _orientacion_muro(G: PackedByteArray, cx: int, cy: int) -> int:
@@ -115,18 +127,43 @@ func _orientacion_muro(G: PackedByteArray, cx: int, cy: int) -> int:
 
 # ---------- luces ----------
 func _antorchas(L: Dictionary) -> void:
+	# la antorcha cuelga de la cara sur del muro de la casilla (cx, cy - 1)
 	for tr in L.get("torches", []):
-		# la antorcha cuelga de la cara sur del muro de la casilla (cx, cy - 1)
-		var p := Vector3((tr.cx + .5) * KitMazmorra.CELDA, 2.1, tr.cy * KitMazmorra.CELDA + .25)
-		var soporte := MeshInstance3D.new()
-		var b := BoxMesh.new()
-		b.size = Vector3(.12, .5, .12)
-		soporte.mesh = b
-		soporte.position = p - Vector3(0, .3, 0)
-		adornos.add_child(soporte)
-		_fuego(p, .25)
-		var luz := _luz(p + Vector3(0, 0, .4), Color(1, .55, .25), 2.6, 9.0)
+		poner_antorcha(Vector2i(tr.cx, tr.cy), Vector2i(0, -1))
+
+## centro del suelo de una casilla, en metros
+static func centro(c: Vector2i) -> Vector3:
+	return Vector3((c.x + .5) * KitMazmorra.CELDA, 0, (c.y + .5) * KitMazmorra.CELDA)
+
+## pieza colgada de la pared: celda es la casilla de suelo y cara la dirección hacia el muro
+func poner_en_pared(nombre: String, celda: Vector2i, cara: Vector2i, altura: float, corre: float = 0.0) -> Node3D:
+	var n := KitMazmorra.pieza(nombre)
+	var dir := Vector3(cara.x, 0, cara.y)
+	var lado := Vector3(-cara.y, 0, cara.x)
+	n.position = centro(celda) + dir * (KitMazmorra.CELDA / 2 - .02) + lado * corre + Vector3(0, altura, 0)
+	n.rotation.y = atan2(-float(cara.x), -float(cara.y))
+	adornos.add_child(n)
+	return n
+
+func poner_antorcha(celda: Vector2i, cara: Vector2i, corre: float = 0.0) -> void:
+	var a := poner_en_pared("antorcha", celda, cara, 1.55, corre)
+	var llama := a.transform * Vector3(0, .45, .3)   # la copa de la antorcha (ver kit_mazmorra.py)
+	_fuego(llama, .13)
+	var luz := _luz(llama + Vector3(-cara.x, 0, -cara.y) * .5, Color(1, .62, .36), 2.8, 9.0)
+	_llamas.append([luz, luz.light_energy, randf() * 10])
+
+## pieza suelta de pie en el suelo (brasero, barril, caja…) en un punto en metros
+func poner_en_suelo(nombre: String, pos: Vector3, giro: float = 0.0) -> Node3D:
+	var n := KitMazmorra.pieza(nombre)
+	n.position = pos
+	n.rotation.y = giro
+	adornos.add_child(n)
+	if nombre == "brasero":
+		var arriba := pos + Vector3(0, 1.15, 0)
+		_fuego(arriba, .26)
+		var luz := _luz(arriba + Vector3(0, .6, 0), Color(1, .6, .32), 3.2, 10.0)
 		_llamas.append([luz, luz.light_energy, randf() * 10])
+	return n
 
 func _decorador(L: Dictionary) -> void:
 	var D: Dictionary = L.get("deco", {})
@@ -170,7 +207,7 @@ func _luz(p: Vector3, c: Color, e: float, r: float) -> OmniLight3D:
 	l.light_energy = e
 	l.omni_range = r
 	l.omni_attenuation = 1.4
-	l.light_volumetric_fog_energy = 1.5
+	l.light_volumetric_fog_energy = .6
 	adornos.add_child(l)
 	luces.append(l)
 	return l
@@ -178,8 +215,8 @@ func _luz(p: Vector3, c: Color, e: float, r: float) -> OmniLight3D:
 func _fuego(p: Vector3, tam: float) -> void:
 	var f := CPUParticles3D.new()
 	f.position = p
-	f.amount = 16
-	f.lifetime = .5
+	f.amount = 24
+	f.lifetime = .45
 	f.direction = Vector3.UP
 	f.spread = 15
 	f.initial_velocity_min = .3
@@ -188,7 +225,7 @@ func _fuego(p: Vector3, tam: float) -> void:
 	f.scale_amount_min = tam
 	f.scale_amount_max = tam * 1.6
 	var q := QuadMesh.new()
-	q.size = Vector2.ONE * .5
+	q.size = Vector2(.32, .5)
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
@@ -199,8 +236,8 @@ func _fuego(p: Vector3, tam: float) -> void:
 	q.material = m
 	f.mesh = q
 	var g := Gradient.new()
-	g.set_color(0, Color(1, .8, .3, 1))
-	g.set_color(1, Color(.8, .15, .02, 0))
+	g.offsets = PackedFloat32Array([0, .35, 1])
+	g.colors = PackedColorArray([Color(1, .75, .35, .9), Color(1, .42, .08, .75), Color(.5, .08, .02, 0)])
 	f.color_ramp = g
 	adornos.add_child(f)
 

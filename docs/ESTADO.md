@@ -1,6 +1,9 @@
 # Estado · 7 nov 2026
 
 ## Hecho
+- Kit de arquitectura generado en Blender (`tools/blender/kit_mazmorra.py` → `assets/kit/kit_mazmorra.glb`). Tiene 3 muros de bloques, 3 suelos de losas, arco, pilar, antorcha, brasero, estandarte, barril y caja. `KitMazmorra` lo carga y pone los materiales de Godot según el nombre del material de Blender.
+- Cámara isométrica ortográfica (`CamaraIso`: giro de 45° e inclinación de 33°), muros de 2,5 m. La opción `--perspectiva` vuelve a la vista en perspectiva.
+- Sala de prueba `scenes/sala_prueba.tscn` con la sala de combate del concept: arcos, antorchas, braseros, estandartes, círculo grabado, rejilla y sangre.
 - Proyecto nuevo en Forward+ (PC). Del repositorio `last-knight` se ha traído sin cambios `src/core` (simulación, botín, runas, clases, árbol, decorador, generador), los datos (`assets/web/data`, `assets/deco`) y la interfaz (`hud`, `inventory`, `personaje`). En `hud.gd` y `view_fx.gd` solo se han quitado tipos que apuntaban a la vista 2D.
 - La mazmorra se monta con 3 GridMap (suelo, muros, objetos) a partir de la rejilla de `DungeonGen`. Las antorchas y lo del Decorador (velas con luz, calaveras, alfombras, losas) van como nodos sueltos.
 - Kit provisional generado por código (`KitMazmorra`). Si existe `assets/kit/mazmorra.meshlib`, se usa ese.
@@ -10,7 +13,8 @@
 - `test_botin` y `test_clases` dan «todo bien».
 
 ## Falta
-- Kit 3D de verdad (MeshLibrary) y piezas de muro por vecinos (recto, esquina, en T). Hoy el muro es un bloque.
+- Piezas de muro según las vecinas (rotas, con hiedra, de esquina) y el arco en las puertas del juego, porque las puertas siguen siendo cajas de Actores3D.
+- Más luz por pared: hoy el generador solo pone antorchas en las paredes del norte.
 - Modelos del héroe y los monstruos (los .fbx de SPRITE_FACTORY y Mixamo) con AnimationTree. Los enganches pasan a ser BoneAttachment3D.
 - Pisos 3–5 (abismo, alturas y escaleras largas): ahora el abismo sale como vacío y no hay alturas.
 - Efectos de las habilidades y las runas (rayos, tajos, fuego): `Runes.bolts/slashes/fires` no se pintan.
