@@ -211,28 +211,26 @@ func _vestir() -> void:
 	var agarre := Modelo3D.agarre() if _modelo_heroe != null else {}
 	if arma != null and not agarre.is_empty():
 		# la espada de la fábrica, cogida como la coge el esqueleto; brilla con el color de su calidad
-		var e := MeshInstance3D.new()
-		e.mesh = agarre.mesh
-		e.transform = agarre.t
-		if int(arma.get("q", 0)) > 0:
-			var mat := StandardMaterial3D.new()
-			mat.albedo_color = Color(.7, .7, .75)
-			mat.metallic = .9
-			mat.roughness = .3
-			mat.emission_enabled = true
-			mat.emission = Items_col(arma)
-			mat.emission_energy_multiplier = .6
-			e.material_overlay = mat
-		_mano_der.add_child(e)
+		_mano_der.add_child(_arma_modelo(agarre, arma))
 	elif arma != null:
 		var hoja := _caja(Vector3(.08, .08, 1.1), Color(.8, .8, .85), Items_col(arma))
 		hoja.position = Vector3(0, 0, -.55)
 		_mano_der.add_child(hoja)
 	elif guantes != null:   # mago y Señor Oscuro pegan con los guantes
 		_mano_der.add_child(_caja(Vector3(.2, .2, .2), Items_col(guantes), Items_col(guantes)))
-	var escudo = eq.get("shield")
-	if escudo != null:
-		_mano_izq.add_child(_escudo(escudo))
+	# mano izquierda: escudo, segunda espada o nada
+	var izq = eq.get("shield")
+	if izq != null:
+		var tipo := "espada" if izq.slot == "sword" else "escudo"
+		var ag := Modelo3D.agarre("esqueleto", "off_hand", tipo) if _modelo_heroe != null else {}
+		if not ag.is_empty():
+			_mano_izq.add_child(_arma_modelo(ag, izq))
+		elif tipo == "escudo":
+			_mano_izq.add_child(_escudo(izq))
+		else:
+			var hoja2 := _caja(Vector3(.08, .08, 1.1), Color(.8, .8, .85), Items_col(izq))
+			hoja2.position = Vector3(0, 0, -.55)
+			_mano_izq.add_child(hoja2)
 	var casco = eq.get("helm")
 	if casco != null and _modelo_heroe == null:   # el modelo ya trae su cabeza: el casco se verá cuando haya modelos de casco
 		_cabeza.add_child(_caja(Vector3(.36, .3, .38), Color(.5, .5, .55), Items_col(casco)))
@@ -240,6 +238,22 @@ func _vestir() -> void:
 	if _cuerpo != null:
 		var base: Color = COL_CLASE.get(sim.p.cls, Color.GRAY)
 		_color(_cuerpo, base.lerp(Items_col(pecho), .35) if pecho != null else base)
+
+## un arma de la fábrica con su agarre; las mágicas o mejores brillan con el color de su calidad
+func _arma_modelo(ag: Dictionary, it) -> MeshInstance3D:
+	var e := MeshInstance3D.new()
+	e.mesh = ag.mesh
+	e.transform = ag.t
+	if int(it.get("q", 0)) > 0:
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(.7, .7, .75)
+		mat.metallic = .9
+		mat.roughness = .3
+		mat.emission_enabled = true
+		mat.emission = Items_col(it)
+		mat.emission_energy_multiplier = .6
+		e.material_overlay = mat
+	return e
 
 ## escudo redondo de madera con borde y umbo de hierro; los mágicos o mejores brillan un poco con su color
 func _escudo(it) -> Node3D:

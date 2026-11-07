@@ -301,19 +301,32 @@ static func why_not(h, r: Dictionary, slot: String) -> String:
 		return "Ya llevas 2 runas legendarias."
 	return ""
 
+## caballero y caballero oscuro pueden llevar una segunda espada en el hueco del escudo:
+## sin bloqueo, a cambio de más daño (DOS_ESPADAS_DMG)
+const DOS_ESPADAS := ["knight", "dk"]
+const DOS_ESPADAS_DMG := .15
+
+## si la pieza va en ese hueco
+static func cabe(cls: String, it, slot: String) -> bool:
+	return it.slot == slot or (slot == "shield" and it.slot == "sword" and DOS_ESPADAS.has(cls))
+
+static func dos_espadas(h) -> bool:
+	var izq = h.eq.get("shield")
+	return izq != null and izq.slot == "sword"
+
 static func why_equip(h, it, slot: String = "") -> String:
 	if it == null or not it.get("gear", false):
 		return "Eso no se equipa."
 	var k: String = h.cls_key()
 	if it.cls != k:
 		return "Es de %s: tu clase no puede usarlo." % CLS_N[it.cls]
-	if slot != "" and it.slot != slot:
+	if slot != "" and not cabe(k, it, slot):
 		return "Va en el hueco de %s." % slot_name(k, it.slot).to_lower()
 	var leg := 0
 	for id in it.socks:
 		if id != null and int(rune(id).get("t", 0)) == 5:
 			leg += 1
-	if leg and leg_count(h, it.slot) + leg > 2:
+	if leg and leg_count(h, slot if slot != "" else it.slot) + leg > 2:
 		return "Llevarías más de 2 runas legendarias engarzadas."
 	return ""
 

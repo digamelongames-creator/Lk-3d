@@ -38,6 +38,9 @@ static func crear(id: String, tinte: Color = Color.WHITE) -> Modelo3D:
 	esc.rotation.y = PI
 	esc.scale = Vector3.ONE * (float(f.alto) / ALTO_ORIGINAL)
 	m.add_child(esc)
+	# los agarres de repuesto (para el equipo del héroe) no se ven: solo se ve lo que lleva el personaje
+	for a in esc.find_children("agarre_*", "MeshInstance3D", true, false):
+		a.visible = false
 	m.anim = esc.find_children("*", "AnimationPlayer", true, false).front() if esc.find_children("*", "AnimationPlayer", true, false).size() else null
 	if m.anim != null:
 		for n in BUCLE:
@@ -85,20 +88,24 @@ func enganche(hueso: String) -> Node3D:
 	m.scale = Vector3.ONE * 100.0   # deshace el 0,01 de Mixamo (la escala de alto del modelo se mantiene)
 	return m
 
-## el agarre del arma de un modelo de la fábrica (malla y posición en la mano) para dárselo a otro
-## con el mismo esqueleto de Mixamo. Por defecto, la espada del esqueleto.
+## el agarre de un arma de un modelo de la fábrica (malla y posición respecto al hueso) para dárselo a otro
+## con el mismo esqueleto de Mixamo. Por defecto, la espada del esqueleto en la mano derecha.
+## mano: «main_hand» o «off_hand»; tipo: «espada» o «escudo». Sale de los agarres colocados con
+## colocar_arma.py («agarre_<mano>_<tipo>» en el .glb) y, si no hay, del arma que trae el modelo.
 static var _agarres := {}
 
 static func limpiar() -> void:
 	_agarres.clear()
-static func agarre(id: String = "esqueleto", nodo: String = "arma_main_hand") -> Dictionary:
-	var k := id + "/" + nodo
+static func agarre(id: String = "esqueleto", mano: String = "main_hand", tipo: String = "espada") -> Dictionary:
+	var k := "%s/%s/%s" % [id, mano, tipo]
 	if _agarres.has(k):
 		return _agarres[k]
 	var r := {}
 	if hay(id):
 		var esc: Node = (load("res://assets/monstruos/%s.glb" % FICHAS[id].glb) as PackedScene).instantiate()
-		var a := esc.find_child(nodo, true, false) as MeshInstance3D
+		var a := esc.find_child("agarre_%s_%s" % [mano, tipo], true, false) as MeshInstance3D
+		if a == null and tipo == "espada":
+			a = esc.find_child("arma_" + mano, true, false) as MeshInstance3D
 		if a != null:
 			# en metros, relativo al hueso (sin la escala 0,01 del esqueleto)
 			var t := a.transform

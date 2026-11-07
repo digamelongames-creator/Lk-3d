@@ -6,6 +6,9 @@ Lee config/characters/<id>.json (base, juego de animaciones, armas) y config/ani
 (qué .fbx es cada acción, tramo, si se quita el desplazamiento), igual que la fábrica de sprites, y deja
 <salida>/<id>.glb con las animaciones idle, walk, run, attack, hurt, death (y jump si la hay).
 Las armas del «loadout» van pegadas al hueso de la mano; en Godot salen como BoneAttachment3D.
+Si la ficha tiene agarres colocados con colocar_arma.py («agarres_3d»), mandan sobre el «offset».
+Además, cada agarre que valga para el personaje sale como «agarre_<mano>_<tipo>» (escondido en el juego),
+para que Godot pueda poner cualquier arma del equipo: espada a la derecha, escudo o segunda espada a la izquierda.
 """
 import bpy  # antes que bmesh/mathutils con el módulo bpy de pip
 import json
@@ -13,6 +16,9 @@ import math
 import os
 import sys
 from mathutils import Euler, Matrix, Vector
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import agarre as AG  # noqa: E402
 
 SLOT_HUESO = {"main_hand": "mixamorig:RightHand", "off_hand": "mixamorig:LeftHand"}
 
@@ -96,6 +102,28 @@ def arma(ruta, arm, slot, off, factory, largo=None):
     w.scale = sc * k
 
 
+def poner_armas(factory, cfg, arm):
+    ags = AG.agarres(factory, cfg)
+    bpy.context.view_layer.update()
+    for nombre, l in cfg.get("loadout", {}).items():
+        a = ags.get((l["slot"], AG.tipo_de(nombre + " " + l["file"])))
+        if a is None:
+            arma(l["file"], arm, l["slot"], l.get("offset", {}), factory, l.get("length_m"))
+            continue
+        w = AG.cargar_arma(os.path.join(factory, l["file"]), "arma_" + l["slot"])
+        if w is not None:
+            AG.poner(arm, l["slot"], w, AG.de_lista(a["m"]))
+    # los agarres para el equipo del juego; la espada izquierda, si no está colocada, sale reflejando la derecha
+    if ("main_hand", "espada") in ags and ("off_hand", "espada") not in ags:
+        e = dict(ags[("main_hand", "espada")])
+        e["m"] = AG.a_lista(AG.espejo(arm, AG.de_lista(e["m"])))
+        ags[("off_hand", "espada")] = e
+    for (mano, tipo), a in ags.items():
+        w = AG.cargar_arma(os.path.join(factory, a["file"]), "agarre_%s_%s" % (mano, tipo))
+        if w is not None:
+            AG.poner(arm, mano, w, AG.de_lista(a["m"]))
+
+
 def reducir(o, max_caras):
     """baja los polígonos (los modelos de Tripo salen con cientos de miles) con un Decimate"""
     n = len(o.data.polygons)
@@ -115,6 +143,12 @@ def importar_gltf(ruta):
 
 
 def convertir(factory, salida, cid):
+    cfg, arm = montar(factory, cid)
+    exportar(salida, cid, arm)
+
+
+def montar(factory, cid):
+    """el personaje con todas sus animaciones (pistas NLA) y sus armas, listo para exportar"""
     limpiar()
     cfg = json.load(open(os.path.join(factory, "config/characters", cid + ".json")))
     aset = json.load(open(os.path.join(factory, "config/animation_sets", cfg["animation_set"] + ".json")))
@@ -155,8 +189,11 @@ def convertir(factory, salida, cid):
             st.action_slot = act.slots[0]
         tr.mute = False
     arm.animation_data.action = None
-    for nombre, l in cfg.get("loadout", {}).items():
-        arma(l["file"], arm, l["slot"], l.get("offset", {}), factory, l.get("length_m"))
+    poner_armas(factory, cfg, arm)
+    return cfg, arm
+
+
+def exportar(salida, cid, arm):
     os.makedirs(salida, exist_ok=True)
     ruta = os.path.join(salida, cid.lower() + ".glb")
     bpy.ops.export_scene.gltf(filepath=ruta, export_format="GLB", export_animation_mode="NLA_TRACKS",

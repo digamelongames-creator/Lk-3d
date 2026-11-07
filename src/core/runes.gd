@@ -83,7 +83,7 @@ func mods(h: Ent.Hero) -> Array:
 		var it = h.eq.get(s)
 		if it == null:
 			continue
-		out.append_array(Items.base_mods(k, s))
+		out.append_array(Items.base_mods(k, it.slot))   # una espada en el hueco del escudo da lo de espada
 		for a in it.bonus:
 			var d: Dictionary = AF.get(a, {})
 			if d.is_empty():
@@ -92,6 +92,8 @@ func mods(h: Ent.Hero) -> Array:
 			if d.has("flat"): m.flat = d.flat * it.bonus[a]
 			if d.has("pct"): m.pct = d.pct * it.bonus[a]
 			out.append(m)
+	if Items.dos_espadas(h):
+		out.append({"stat": "dmg", "pct": Items.DOS_ESPADAS_DMG})
 	const FX := {"dmgF": ["dmg", "flat", 1], "dmgP": ["dmg", "pct", .01], "asP": ["atkSpd", "pct", .01], "crit": ["crit", "flat", .01], "critD": ["critMult", "flat", .01], "rangeP": ["range", "pct", .01],
 		"armorPts": ["armorPts", "flat", 1], "dmgRed": ["armor", "flat", .01], "blockCh": ["blockCh", "flat", .01], "thorns": ["thorns", "flat", 1], "dodge": ["dodge", "flat", .01],
 		"resFire": ["resFire", "flat", .01], "resCold": ["resCold", "flat", .01], "resDark": ["resDark", "flat", .01], "resPois": ["resPois", "flat", .01],

@@ -793,7 +793,7 @@ func _draw() -> void:
 	for s in C.slots:
 		var R := _slot_rect(s)
 		var it = p.eq.get(s)
-		var can: bool = hit != null and hit.get("gear", false) and hit.slot == s and hit.cls == ck
+		var can: bool = hit != null and hit.get("gear", false) and Items.cabe(ck, hit, s) and hit.cls == ck
 		var fit_r: bool = hit != null and hit.has("rune") and it != null and Items.why_not(p, Items.rune(hit.rune), s) == ""
 		var hov: bool = _hover != null and _hover.get("slot", "") == s and not _hover.has("sock")
 		# fondo: radial-gradient(rgba(42,34,27,.62) → rgba(20,15,11,.85)), borde #000 e inset 14px #000

@@ -1,6 +1,8 @@
 # Estado · 7 nov 2026
 
 ## Hecho
+- Agarres de armas: `colocar_arma.bat` abre Blender con el personaje y el panel «Agarre» (mano, espada o escudo, arma, animación, espejar, guardar). Se guarda en la ficha (`agarres_3d`) como matriz respecto al hueso; comprobado de punta a punta (panel → conversor → Godot, menos de 5 mm). La espada actual del héroe venía mal de la conversión antigua (`offset` + `length_m` con una malla en diagonal): se arregla al colocarla con el panel y reconvertir.
+- Mano izquierda: escudo, segunda espada o nada. Caballero y caballero oscuro pueden poner una espada en el hueco del escudo: +15% de daño (`Items.DOS_ESPADAS_DMG`) y sin bloqueo. Prueba: `tests/test_dos_espadas.gd`. La espada izquierda sale reflejando la derecha si no se ha colocado aparte.
 - Combate 3D (`Sim.INTERRUMPIR`, `EMPUJE`, `LUNGE`): el héroe no avanza al atacar, tus golpes no cortan el ataque del enemigo (salvo la parada perfecta), el empujón se queda al 30% y los enemigos no hacen gesto de dolor. Prueba: `tests/test_combate.gd`.
 - Panel «Has caído» con Revivir (en el sitio, media vida, sin apartar enemigos) y Nueva partida. Al morir, el héroe queda tumbado y con su luz. Prueba: `--morir`.
 - Arreglado el cuelgue al cerrar el juego: faltaba `Idioma.soltar()` (la traducción propia se liberaba después de los scripts). Además, al salir se vacían las cachés estáticas (`KitMazmorra`, `Modelo3D`, `Atlas`, `Fonts`).
@@ -24,6 +26,7 @@
 - `test_botin` y `test_clases` dan «todo bien».
 
 ## Falta
+- Colocar con el panel la espada del esqueleto (y escudo y espada izquierda si se quiere), copiar la ficha y reconvertir `esqueleto.glb`.
 - Pasar los demonios a sus pisos de verdad (2–4) cuando acabe la prueba.
 - Modelos propios para los humanos: riggear en Mixamo los de `input/raw` (elf, violeta, cuernitos, medusa, vaquita).
 - Piezas de muro según las vecinas (rotas, con hiedra, de esquina) y el arco en las puertas del juego, porque las puertas siguen siendo cajas de Actores3D.

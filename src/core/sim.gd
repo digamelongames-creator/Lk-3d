@@ -1451,7 +1451,7 @@ func _update_hero(dt: float, inp: Inp) -> void:
 	_stat_tick(dt)
 	arbol.tick(p, dt)
 	recalc(p)
-	var want_block := p.cls == "knight" and inp.block and p.roll_t <= 0 and p.hurt_t <= 0 and not (p.spin_t > 0) and not (p.cast_anim > 0) and not (p.ar_t > 0) and not (p.pool_t > 0)
+	var want_block := p.cls == "knight" and not Items.dos_espadas(p) and inp.block and p.roll_t <= 0 and p.hurt_t <= 0 and not (p.spin_t > 0) and not (p.cast_anim > 0) and not (p.ar_t > 0) and not (p.pool_t > 0)
 	if want_block and not p.blocking:
 		p.blocking = true
 		p.block_t = 0
