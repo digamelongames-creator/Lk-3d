@@ -253,6 +253,7 @@ class Enemy extends RefCounted:
 	var mon := ""
 	var mon_dodge := 0.0
 	var mon_hurt := 0.0
+	var ataco := false           # ya ha golpeado al héroe (la vista 3D muestra su silueta tras los muros)
 	var dash_cd := 0.0
 	var dodge_t := 0.0
 	var bz := 0.0                # altura sobre el suelo (picado del Ángel)

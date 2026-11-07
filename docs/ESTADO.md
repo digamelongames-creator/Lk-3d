@@ -1,6 +1,9 @@
 # Estado · 7 nov 2026
 
 ## Hecho
+- Muro que tapa al héroe: trama ordenada (Bayer 4×4 en celdas de 2×2 px), fija y sin parpadeo. Silueta azul del héroe en la parte que queda tapada, y roja de los enemigos que ya te han golpeado (`Enemy.ataco`). Los materiales de Tripo pasan a recorte por alfa para que cuenten en la profundidad.
+- Combate 3D (`Sim.INTERRUMPIR`, `EMPUJE`, `LUNGE`): el héroe no avanza al atacar, tus golpes no cortan el ataque del enemigo (salvo la parada perfecta), el empujón se queda al 30% y los enemigos no hacen gesto de dolor. Prueba: `tests/test_combate.gd`.
+- Panel «Has caído» con Revivir (en el sitio, media vida, sin apartar enemigos) y Nueva partida. Al morir, el héroe queda tumbado y con su luz. Prueba: `--morir`.
 - Arreglado el cuelgue al cerrar el juego: faltaba `Idioma.soltar()` (la traducción propia se liberaba después de los scripts). Además, al salir se vacían las cachés estáticas (`KitMazmorra`, `Modelo3D`, `Atlas`, `Fonts`).
 - Zoom con la rueda del ratón o con + y −, entre 7 y 20 m, con indicador en pantalla (`tests/test_zoom.gd`).
 - Escudo redondo de madera con borde y umbo de hierro (brilla con su calidad si es mágico o mejor). Ya no sale la caja blanca, y con modelo no se pone caja de casco.

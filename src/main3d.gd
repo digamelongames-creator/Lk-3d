@@ -15,6 +15,8 @@ var hud: Hud
 var inventory: Inventory
 var personaje: Personaje
 var state := "play"
+var clase := "knight"
+var _muerte: Control   # panel «Has caído» con Revivir y Nueva partida
 var opciones_camara: Array = []
 var heroe_id := "esqueleto"   # modelo del héroe (--heroe=… para probar otro)
 
@@ -24,6 +26,7 @@ const ZOOM_MIN := 7.0
 const ZOOM_MAX := 20.0
 var _zoom_label: Label
 var _zoom_t := 0.0
+var _morir := false
 var _junto := ""   # pruebas: --junto=demonCaptain pone al héroe al lado de ese monstruo
 var _shot_path := ""
 var _shot_frames := 0
@@ -38,7 +41,7 @@ func _ready() -> void:
 	Idioma.iniciar()
 	Atlas.load_all()   # iconos de objetos, pociones y runas para la interfaz
 	_setup_input()
-	var clase := "knight"
+	clase = "knight"
 	var piso := 1
 	var semilla := ""
 	for a in OS.get_cmdline_user_args():
@@ -48,6 +51,7 @@ func _ready() -> void:
 		elif a == "--bot": _bot = Bot.new()
 		elif a.begins_with("--heroe="): heroe_id = a.get_slice("=", 1)
 		elif a.begins_with("--junto="): _junto = a.get_slice("=", 1)
+		elif a == "--morir": _morir = true   # pruebas: el héroe cae al empezar (panel de muerte)
 		elif a.begins_with("--inclinacion=") or a.begins_with("--giro=") or a.begins_with("--zoom=") or a == "--perspectiva": opciones_camara.append(a)
 		elif a.begins_with("--shot="):
 			var p := a.get_slice("=", 1).split(",")
@@ -84,6 +88,8 @@ func _ready() -> void:
 	personaje.sim = sim
 	ui.add_child(personaje)
 	personaje.closed.connect(func(): if state == "char": _set_state("play"))
+	_muerte = _panel_muerte()
+	ui.add_child(_muerte)
 	# indicador del zoom (aparece al cambiarlo y se apaga solo)
 	_zoom_label = Label.new()
 	_zoom_label.add_theme_font_override("font", Fonts.px(700))
@@ -139,8 +145,8 @@ func _process(dt: float) -> void:
 		if r == "descend":
 			_bajar()
 		elif r == "over":
-			fx.banner("Has caído", "Fin de la partida")
 			state = "over"
+			_muerte.visible = true
 	fx.tick(dt)
 	if _zoom_t > 0:
 		_zoom_t -= dt
@@ -149,6 +155,9 @@ func _process(dt: float) -> void:
 	_camara(dt)
 	if sim.p != null:
 		RenderingServer.global_shader_parameter_set("pos_heroe", MazmorraGridMap.a3d(sim.p.x, sim.p.y))
+	if _morir and _frame == 20:
+		sim.p.hp = 0
+		sim.p.dead = true
 	if _shot_path != "" and _frame == _shot_frames:
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(_shot_path)
@@ -164,6 +173,69 @@ func _camara(dt: float) -> void:
 ## el punto del suelo bajo el ratón, en px de la simulación
 func _raton_en_suelo() -> Vector2:
 	return MazmorraGridMap.a_px(camara.suelo_bajo(get_viewport().get_mouse_position()))
+
+# ======================================================================
+#  muerte: revivir o empezar de nuevo
+# ======================================================================
+func _panel_muerte() -> Control:
+	var raiz := Control.new()
+	raiz.set_anchors_preset(Control.PRESET_FULL_RECT)
+	raiz.visible = false
+	var fondo := ColorRect.new()
+	fondo.color = Color(0, 0, 0, .55)
+	fondo.set_anchors_preset(Control.PRESET_FULL_RECT)
+	raiz.add_child(fondo)
+	var caja := VBoxContainer.new()
+	caja.set_anchors_preset(Control.PRESET_CENTER)
+	caja.offset_left = -170
+	caja.offset_right = 170
+	caja.offset_top = -110
+	caja.offset_bottom = 110
+	caja.add_theme_constant_override("separation", 18)
+	raiz.add_child(caja)
+	var titulo := Label.new()
+	titulo.text = "Has caído"
+	titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	titulo.add_theme_font_override("font", Fonts.gothic(700))
+	titulo.add_theme_font_size_override("font_size", 46)
+	titulo.add_theme_color_override("font_color", Color(.85, .12, .08))
+	titulo.add_theme_color_override("font_outline_color", Color.BLACK)
+	titulo.add_theme_constant_override("outline_size", 8)
+	caja.add_child(titulo)
+	caja.add_child(_boton("Revivir", _revivir))
+	caja.add_child(_boton("Nueva partida", _nueva_partida))
+	return raiz
+
+func _boton(texto: String, accion: Callable) -> Button:
+	var b := Button.new()
+	b.text = texto
+	b.custom_minimum_size = Vector2(0, 48)
+	b.add_theme_font_override("font", Fonts.gothic(700))
+	b.add_theme_font_size_override("font_size", 22)
+	b.add_theme_color_override("font_color", Color8(233, 207, 138))
+	b.add_theme_color_override("font_hover_color", Color(1, .9, .6))
+	for estado in ["normal", "hover", "pressed", "focus"]:
+		var st := StyleBoxFlat.new()
+		st.bg_color = Color(.12, .06, .04, .95) if estado == "normal" else Color(.25, .1, .05, .95)
+		st.border_color = Color8(150, 110, 50) if estado != "hover" else Color8(230, 180, 90)
+		st.set_border_width_all(2)
+		st.set_corner_radius_all(3)
+		b.add_theme_stylebox_override(estado, st)
+	b.pressed.connect(accion)
+	return b
+
+## se levanta en el sitio con media vida (Sim.revive), sin apartar a los enemigos
+func _revivir() -> void:
+	sim.revive()
+	_muerte.visible = false
+	state = "play"
+
+func _nueva_partida() -> void:
+	_muerte.visible = false
+	sim.new_game(1, "", clase)
+	_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
+	fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
+	state = "play"
 
 func _set_state(s: String) -> void:
 	state = s

@@ -11,6 +11,11 @@ static var WW: int:
 static var WH: int:
 	get: return DungeonGen.GH * DungeonGen.TS
 const FRAD := 42
+## versión 3D: los golpes del héroe no cortan el ataque del enemigo ni lo dejan parado (sí la parada perfecta),
+## el empujón es pequeño y el héroe no avanza al atacar
+const INTERRUMPIR := false
+const EMPUJE := .3
+const LUNGE := false
 const BASE_SPD := 138 * .8 * .5 * 1.2
 const ATK_CD := .2
 const COMBO_SPACING := 1.95
@@ -237,6 +242,12 @@ func enter_level(level: Dictionary) -> void:
 	recalc(p)
 
 ## «¡En pie!»: el héroe se levanta con media vida y aparta a los enemigos cercanos (revive de la web)
+## golpe del héroe a un enemigo: con INTERRUMPIR (juego 2D) le corta el ataque y lo deja parado t segundos
+func _interrumpe(e: Ent.Enemy, t: float) -> void:
+	if INTERRUMPIR:
+		e.hurt_t = t
+		e.act = ""
+
 func revive() -> void:
 	if not p.dead:
 		return
@@ -251,16 +262,7 @@ func revive() -> void:
 	p.blocking = false
 	revives += 1
 	runes.revives += 1
-	for e in enemies:
-		var dx: float = e.x - p.x
-		var dy: float = e.y - p.y
-		var d := JS.hypot(dx, dy)
-		if d == 0: d = 1
-		if d < 120:
-			e.vx += dx / d * 320
-			e.vy += dy / d * 320
-			e.act = ""
-			e.hurt_t = .4
+	# versión 3D: al levantarse no se aparta a los enemigos
 	if phase == "descend":
 		phase = "fight"
 		fade = 0
@@ -1487,7 +1489,8 @@ func _update_hero(dt: float, inp: Inp) -> void:
 			p.face = atan2(my, mx)
 	if p.lunge > 0:
 		p.lunge -= dt
-		mv(p, cos(p.face) * 130 * dt, sin(p.face) * 130 * dt)
+		if LUNGE:
+			mv(p, cos(p.face) * 130 * dt, sin(p.face) * 130 * dt)
 	p.hurt_t -= dt; p.roll_cd -= dt; p.atk_t -= dt; p.inv -= dt; p.combo_t -= dt; p.parry_t -= dt
 	for s in p.sk:
 		s.t = maxf(0, s.t - dt)
@@ -1693,8 +1696,7 @@ func _do_hit() -> void:
 		leech(dmg)
 		fx.text(e.x, e.y - 40, (str(dmg) + "!") if crit else str(dmg), "#ff3a2a" if crit else "#d8282e", 15 if crit else 11, crit)
 		if not e.armor and not blk:
-			e.hurt_t = .16
-			e.act = ""
+			_interrumpe(e, .16)
 		if rp and p.st.parryStun > 0:
 			e.hurt_t = maxf(e.hurt_t, p.st.parryStun)
 			e.act = ""
@@ -1702,7 +1704,7 @@ func _do_hit() -> void:
 		if not blk:
 			note_hit(e)
 			carne += 1
-		var kb: float = (25.0 if e.armor else 100.0) * A.kb * p.st.kb / (3.0 if e.rare else 1.0) * (.15 if blk else 1.0)
+		var kb: float = (25.0 if e.armor else 100.0) * A.kb * p.st.kb / (3.0 if e.rare else 1.0) * (.15 if blk else 1.0) * EMPUJE
 		e.vx += cos(p.face) * kb
 		e.vy += sin(p.face) * kb
 		fx.bleed(e.x, e.y, 16, p.face, 46 if crit else 26, 150)
@@ -1735,9 +1737,8 @@ func dk_damage(e: Ent.Enemy, dmg: float, ang: float, small: bool, col: String = 
 	e.flash = .06
 	fx.text(e.x, e.y - 40, str(int(dmg)), col, 9 if small else 11)
 	if not e.armor and not small:
-		e.hurt_t = .14
-		e.act = ""
-	var k: float = (10.0 if small else 45.0) * p.st.kb / (3.0 if e.rare else 1.0)
+		_interrumpe(e, .14)
+	var k: float = (10.0 if small else 45.0) * p.st.kb / (3.0 if e.rare else 1.0) * EMPUJE
 	e.vx += cos(ang) * k
 	e.vy += sin(ang) * k
 	fx.bleed(e.x, e.y, 16, ang, 8 if small else 20, 110)
@@ -1839,6 +1840,8 @@ func drop_gold(x: float, y: float, amt: float, manual: bool) -> void:
 func hurt_player(dmg: float, from_x: float, from_y: float, src, kind: String = "") -> String:
 	if p.inv > 0 or p.roll_t > 0 or p.dead or p.pool_t > 0:
 		return ""
+	if src is Ent.Enemy:
+		src.ataco = true   # la vista marca su silueta a partir de ahora
 	# esquiva, resistencias, armadura, bloqueo sin escudo y efectos de las runas
 	dmg = runes.hurt(dmg, src, kind, from_x, from_y)
 	if not (dmg > 0):
@@ -2088,9 +2091,8 @@ func _update_dk(dt: float) -> void:
 				e.flash = .07
 				fx.text(e.x, e.y - 40, (str(dmg) + "!") if crit else str(dmg), "#ff3a2a" if crit else "#d8282e", 15 if crit else 11, crit)
 				if not e.armor:
-					e.hurt_t = .16
-					e.act = ""
-				var k: float = -110.0 if has("d_whirl_b") else 75 * p.st.kb / (3.0 if e.rare else 1.0)
+					_interrumpe(e, .16)
+				var k: float = (-110.0 if has("d_whirl_b") else 75 * p.st.kb / (3.0 if e.rare else 1.0)) * EMPUJE
 				e.vx += cos(ang) * k
 				e.vy += sin(ang) * k
 				if has("d_whirl_key"):   # «Danza macabra»
@@ -2636,10 +2638,9 @@ func _reflect_hit(e: Ent.Enemy, pr: Dictionary) -> void:
 	fx.text(e.x, e.y - 40, str(dmg) + "!", "#ff3a2a", 15, true)
 	fx.text(e.x, e.y - 62, "CRÍTICO", "#ff2a1a", 14, true, 1.5, true, false)
 	if not e.armor:
-		e.hurt_t = .25
-		e.act = ""
-	e.vx += cos(ang) * 80 * p.st.kb / (3.0 if e.rare else 1.0)
-	e.vy += sin(ang) * 80 * p.st.kb / (3.0 if e.rare else 1.0)
+		_interrumpe(e, .25)
+	e.vx += cos(ang) * 80 * p.st.kb / (3.0 if e.rare else 1.0) * EMPUJE
+	e.vy += sin(ang) * 80 * p.st.kb / (3.0 if e.rare else 1.0) * EMPUJE
 	fx.bleed(e.x, e.y, 16, ang, 46, 150)
 	for i in 18:
 		fx.stain(e.x + (rnd() - .5) * 18, e.y + (rnd() - .5) * 5, BLOOD[i % 4], 2 if rnd() < .5 else 1)

@@ -43,6 +43,7 @@ static func limpiar() -> void:
 	_lib = null
 	_mallas.clear()
 	_mats.clear()
+	_siluetas.clear()
 
 static func id(nombre: String) -> int:
 	return mesh_library().find_item_by_name(nombre)
@@ -141,6 +142,34 @@ static func _piedra(c: Color, rug: float) -> StandardMaterial3D:
 	m.uv1_scale = Vector3(.6, .6, .6)
 	return m
 
+## silueta de lo que queda detrás de algo (héroe, y enemigos que ya te han atacado): solo se pinta
+## donde otra cosa está más cerca de la cámara, con un borde más intenso
+static var _siluetas := {}
+static func silueta(color: Color) -> ShaderMaterial:
+	var k := color.to_html()
+	if _siluetas.has(k):
+		return _siluetas[k]
+	var s := Shader.new()
+	s.code = """
+shader_type spatial;
+render_mode unshaded, depth_test_disabled, depth_draw_never, cull_back, blend_mix, shadows_disabled;
+uniform vec4 color : source_color = vec4(.4, .75, 1.0, .55);
+uniform sampler2D profundidad : hint_depth_texture, filter_nearest;
+void fragment() {
+	float escena = texture(profundidad, SCREEN_UV).r;
+	// profundidad invertida (Forward+): más grande = más cerca. Si la escena está más cerca, esto está tapado.
+	if (escena <= FRAGCOORD.z + 0.00002) discard;
+	float borde = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+	ALBEDO = color.rgb;
+	ALPHA = color.a * (.3 + .7 * borde * borde);
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = s
+	m.set_shader_parameter("color", color)
+	_siluetas[k] = m
+	return m
+
 ## muro que se vuelve transparente (tramado) cuando tapa al héroe, como en Diablo.
 ## Usa los parámetros globales pos_heroe y dir_camara (project.godot > shader_globals).
 static func material_muro() -> ShaderMaterial:
@@ -173,7 +202,10 @@ void fragment() {
 	float lado = 1.0 - smoothstep(2.5, 4.5, abs(de_lado));
 	float alto = smoothstep(.3, 1.0, wp.y);
 	float corte = delante * lado * alto * cortar;
-	float tramado = fract(sin(dot(floor(FRAGCOORD.xy), vec2(12.9898, 78.233))) * 43758.5453);
+	// trama ordenada (Bayer 4×4) en celdas de 2×2 píxeles: un patrón fijo que no parpadea al moverse
+	ivec2 celda = ivec2(floor(FRAGCOORD.xy / 2.0)) % 4;
+	int bayer[16] = int[](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+	float tramado = (float(bayer[celda.y * 4 + celda.x]) + .5) / 16.0;
 	if (tramado < corte) discard;
 	float n = triplanar(ruido, wp * .35, wn).r;
 	float n2 = triplanar(ruido, wp * 1.3 + 7.0, wn).r;
