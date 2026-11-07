@@ -20,7 +20,13 @@ import agarre as AG  # noqa: E402
 import monstruos_glb as MG  # noqa: E402
 
 PALABRAS = ("weapon", "arma", "sword", "espada", "shield", "escudo", "dagger", "daga", "axe", "hacha", "mace", "maza", "spear", "lanza")
-EST = {"factory": "", "cid": "", "ficha": "", "cfg": {}, "arm": None, "armas": []}
+EST = {"factory": "", "cid": "", "ficha": "", "cfg": {}, "arm": "", "armas": []}
+
+
+def esqueleto():
+    """el esqueleto del personaje, buscado por su nombre: cada deshacer de Blender (también al mover
+    con G, R o S) recarga los datos y deja caducadas las referencias guardadas"""
+    return bpy.data.objects.get(EST["arm"])
 MANO_N = {"main_hand": "Derecha", "off_hand": "Izquierda"}
 
 
@@ -66,7 +72,7 @@ def por_defecto(obj, tipo):
 
 
 def cargar(mano, tipo, fichero, m=None):
-    arm = EST["arm"]
+    arm = esqueleto()
     quitar(mano)
     obj = AG.cargar_arma(os.path.join(EST["factory"], fichero), nombre_obj(mano))
     if obj is None:
@@ -99,15 +105,22 @@ def seleccionar(obj):
 # ---------------------------------------------------------------- propiedades
 
 
+# Blender pide que las listas de los desplegables sigan vivas en Python; si no, salen vacías o con basura
+_LISTAS = {}
+
+
 def _armas(self, context):
-    return [(f, os.path.basename(f), f) for f in EST["armas"]] or [("", "(no hay armas)", "")]
+    _LISTAS["armas"] = [(f, os.path.basename(f), f) for f in EST["armas"]] or [("", "(no hay armas)", "")]
+    return _LISTAS["armas"]
 
 
 def _anims(self, context):
-    arm = EST["arm"]
+    arm = esqueleto()
     if arm is None or arm.animation_data is None:
-        return [("", "(ninguna)", "")]
-    return [(t.name, t.name, "") for t in arm.animation_data.nla_tracks]
+        _LISTAS["anims"] = [("", "(ninguna)", "")]
+    else:
+        _LISTAS["anims"] = [(t.name, t.name, "") for t in arm.animation_data.nla_tracks]
+    return _LISTAS["anims"]
 
 
 def _al_cambiar(self, context):
@@ -117,7 +130,7 @@ def _al_cambiar(self, context):
 
 
 def _al_cambiar_anim(self, context):
-    arm = EST["arm"]
+    arm = esqueleto()
     for t in arm.animation_data.nla_tracks:
         t.mute = t.name != context.scene.agarre_anim
         if t.name == context.scene.agarre_anim and len(t.strips):
@@ -148,7 +161,7 @@ class AGARRE_OT_guardar(bpy.types.Operator):
         if obj is None:
             self.report({"ERROR"}, "No hay arma en esa mano")
             return {"CANCELLED"}
-        m = AG.medir(EST["arm"], s.agarre_mano, obj)
+        m = AG.medir(esqueleto(), s.agarre_mano, obj)
         EST["cfg"] = AG.guardar(EST["ficha"], s.agarre_mano, s.agarre_tipo, obj["fichero"], m)
         self.report({"INFO"}, "Guardado: %s, %s, %s" % (MANO_N[s.agarre_mano], s.agarre_tipo, os.path.basename(obj["fichero"])))
         return {"FINISHED"}
@@ -165,7 +178,7 @@ class AGARRE_OT_espejar(bpy.types.Operator):
         if der is None:
             self.report({"ERROR"}, "Primero pon un arma en la mano derecha")
             return {"CANCELLED"}
-        m = AG.espejo(EST["arm"], AG.medir(EST["arm"], "main_hand", der))
+        m = AG.espejo(esqueleto(), AG.medir(esqueleto(), "main_hand", der))
         cargar("off_hand", der["tipo"], der["fichero"], m)
         s["agarre_mano"] = 1   # sin disparar la recarga
         return {"FINISHED"}
@@ -258,7 +271,7 @@ def main():
     EST["factory"], EST["cid"] = factory, cid
     EST["ficha"] = os.path.join(factory, "config/characters", cid + ".json")
     cfg, arm = MG.montar(factory, cid)
-    EST["cfg"], EST["arm"] = cfg, arm
+    EST["cfg"], EST["arm"] = cfg, arm.name
     # lo que pone el conversor se quita: aquí se coloca a mano
     for o in list(bpy.data.objects):
         if o.name.startswith(("arma_", "agarre_")):
