@@ -14,8 +14,6 @@ var heroe_id := "esqueleto"   # modelo del héroe (Modelo3D.FICHAS); si no exist
 const MODELO_HUMANOS := "prueba2"
 ## los esqueletos enemigos, más oscuros y rojizos que el héroe
 const TINTE_ENEMIGO := Color(.72, .42, .36)
-const SILUETA_HEROE := Color(.45, .8, 1.0, .6)
-const SILUETA_ENEMIGO := Color(1.0, .25, .15, .55)
 var heroe: Node3D
 var _modelo_heroe: Modelo3D
 var _hp_antes := -1.0
@@ -124,9 +122,6 @@ func _actualizar_enemigos(dt: float) -> void:
 			d.muerto = d.get("muerto", 0.0) + dt
 			continue
 		var vel := Vector2(n.position.x - antes.x, n.position.z - antes.z).length() / maxf(dt, .001)
-		if e.ataco and not d.get("silueta", false):
-			d.silueta = true
-			_silueta(n, SILUETA_ENEMIGO)
 		if e.act == "jump":
 			if m.actual != "jump":
 				m.reproducir("jump", 1.0, .08, true)
@@ -241,18 +236,10 @@ func _vestir() -> void:
 	var casco = eq.get("helm")
 	if casco != null and _modelo_heroe == null:   # el modelo ya trae su cabeza: el casco se verá cuando haya modelos de casco
 		_cabeza.add_child(_caja(Vector3(.36, .3, .38), Color(.5, .5, .55), Items_col(casco)))
-	_silueta(heroe, SILUETA_HEROE)
 	var pecho = eq.get("chest")
 	if _cuerpo != null:
 		var base: Color = COL_CLASE.get(sim.p.cls, Color.GRAY)
 		_color(_cuerpo, base.lerp(Items_col(pecho), .35) if pecho != null else base)
-
-## la silueta (material de encima) en todas las mallas del nodo
-func _silueta(n: Node, color: Color) -> void:
-	var m := KitMazmorra.silueta(color)
-	for mi in n.find_children("*", "GeometryInstance3D", true, false):
-		if mi is MeshInstance3D and mi.visible:
-			(mi as MeshInstance3D).material_overlay = m
 
 ## escudo redondo de madera con borde y umbo de hierro; los mágicos o mejores brillan un poco con su color
 func _escudo(it) -> Node3D:

@@ -46,11 +46,12 @@ static func crear(id: String, tinte: Color = Color.WHITE) -> Modelo3D:
 		m.reproducir("idle")
 	for mi in esc.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		if mi.mesh != null:
+		if tinte != Color.WHITE and mi.mesh != null:
 			for k in mi.mesh.get_surface_count():
 				var mat: Material = mi.mesh.surface_get_material(k)
 				if mat is BaseMaterial3D:
-					var m2: BaseMaterial3D = _material_opaco(mat, tinte)
+					var m2: BaseMaterial3D = mat.duplicate()
+					m2.albedo_color = m2.albedo_color * tinte
 					mi.set_surface_override_material(k, m2)
 	for k in f.get("parts", []):
 		m.add_child(_particulas(k, float(f.alto)))
@@ -90,7 +91,6 @@ static var _agarres := {}
 
 static func limpiar() -> void:
 	_agarres.clear()
-	_opacos.clear()
 static func agarre(id: String = "esqueleto", nodo: String = "arma_main_hand") -> Dictionary:
 	var k := id + "/" + nodo
 	if _agarres.has(k):
@@ -152,21 +152,6 @@ static func _particulas(tipo: String, alto: float) -> CPUParticles3D:
 	f.mesh = q
 	f.color_ramp = g
 	return f
-
-## los materiales de Tripo vienen como transparentes: así no entran en la profundidad de la escena y la
-## silueta saldría siempre. Se pasan a recorte por alfa (pasada opaca). Se guardan para no repetirlos.
-static var _opacos := {}
-static func _material_opaco(mat: BaseMaterial3D, tinte: Color) -> BaseMaterial3D:
-	var k := str(mat.get_instance_id()) + tinte.to_html()
-	if _opacos.has(k):
-		return _opacos[k]
-	var m2: BaseMaterial3D = mat.duplicate()
-	if m2.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
-		m2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-		m2.alpha_scissor_threshold = .5
-	m2.albedo_color = m2.albedo_color * tinte
-	_opacos[k] = m2
-	return m2
 
 func duracion(n: String) -> float:
 	return anim.get_animation(n).length if anim != null and anim.has_animation(n) else 1.0

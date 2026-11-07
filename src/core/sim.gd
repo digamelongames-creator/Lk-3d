@@ -1840,8 +1840,6 @@ func drop_gold(x: float, y: float, amt: float, manual: bool) -> void:
 func hurt_player(dmg: float, from_x: float, from_y: float, src, kind: String = "") -> String:
 	if p.inv > 0 or p.roll_t > 0 or p.dead or p.pool_t > 0:
 		return ""
-	if src is Ent.Enemy:
-		src.ataco = true   # la vista marca su silueta a partir de ahora
 	# esquiva, resistencias, armadura, bloqueo sin escudo y efectos de las runas
 	dmg = runes.hurt(dmg, src, kind, from_x, from_y)
 	if not (dmg > 0):

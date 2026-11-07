@@ -1,6 +1,6 @@
 extends SceneTree
 ## Versión 3D del combate: el héroe no avanza al atacar, el golpe no corta el ataque del enemigo,
-## el empujón es pequeño, el enemigo que te golpea queda marcado (ataco) y revivir no aparta a nadie.
+## el empujón es pequeño, el enemigo acaba golpeando y revivir no aparta a nadie.
 ## godot --headless --path . -s tests/test_combate.gd
 var fallos := 0
 func ok(c: bool, q: String) -> void:
@@ -40,10 +40,11 @@ func _init() -> void:
 	ok(e.hp < e.max_hp, "el golpe le hace daño")
 	ok(e.act == "wind" or e.act == "strike", "el golpe no le corta el ataque (act=%s)" % e.act)
 	ok(JS.hypot(e.x - ex0, e.y - ey0) < 12, "empujón pequeño (%.1f px)" % JS.hypot(e.x - ex0, e.y - ey0))
-	# acaba golpeando al héroe y queda marcado
+	# acaba golpeando al héroe
+	var hp0: float = p.hp
 	for i in 120:
 		sim.step(1.0 / 60, Sim.Inp.new())
-	ok(e.ataco, "el enemigo que te golpea queda marcado")
+	ok(p.hp < hp0, "el enemigo acaba golpeando al héroe")
 	# morir y revivir: no aparta a los enemigos
 	p.hp = 0
 	p.dead = true
