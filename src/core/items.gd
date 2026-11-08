@@ -34,6 +34,8 @@ const RI_BASE := {
 	"archer": {"sword": "Arco", "helm": "Capucha", "shield": "Carcaj", "chest": "Jubón", "gloves": "Brazales", "boots": "Botas"},
 	"dl": {"helm": "Corona", "chest": "Túnica", "gloves": "Guanteletes", "belt": "Fajín", "boots": "Botas"},
 	"mage": {"chest": "Abrigo", "belt": "Cinturón", "legs": "Pantalones", "gloves": "Guantes", "boots": "Zapatos"}}
+## clases con set de armadura visible: sus piezas básicas, mágicas y doradas se llaman como el set
+const RI_SET := {"knight": "del Caballero Oscuro"}
 const RI_MAG := ["del alba", "de la marea", "del cuervo", "de escarcha", "del lobo", "de brasas", "del peregrino", "de la niebla", "del zorro", "de la tormenta"]
 const RI_DOR := ["del rey caído", "del juramento", "de la llama eterna", "del último asedio", "de la corona", "del verdugo", "de los siete sellos", "del gran maestre"]
 const RI_LEG := {
@@ -149,7 +151,8 @@ static func make_gear(rng: RandomNumberGenerator, q: int, cls: String, s: String
 	if s == "":
 		s = _pick(rng, C.slots)
 	var name: String = RI_BASE[cls][s]
-	if q == 1: name += " " + _pick(rng, RI_MAG)
+	if RI_SET.has(cls) and q < 3: name += " " + RI_SET[cls]   # el set que se ve puesto (Armadura3D)
+	elif q == 1: name += " " + _pick(rng, RI_MAG)
 	elif q == 2: name += " " + _pick(rng, RI_DOR)
 	elif q == 3: name = RI_LEG[cls][s]
 	var bonus := {}

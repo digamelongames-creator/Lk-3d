@@ -20,7 +20,8 @@ Responde en español.
 - Kit de la mazmorra: `python3 tools/blender/kit_mazmorra.py assets/kit/kit_mazmorra.glb` (módulo bpy: `pip install bpy`).
 - Monstruos: `python3 tools/blender/monstruos_glb.py <SPRITE_FACTORY> assets/monstruos [id…]`.
 - Armas en la mano: Diego las coloca a ojo con `colocar_arma.bat` (en la raíz de SPRITE_FACTORY, con `tools/agarre/{colocar_arma,agarre,monstruos_glb}.py`): panel «Agarre» de Blender, guarda `agarres_3d` en la ficha (matriz respecto al hueso de la mano, en metros). El conversor los usa y deja `agarre_<mano>_<tipo>` en el .glb; los del esqueleto valen para todos los de Mixamo que no tengan los suyos.
-- Armadura: `xvfb-run -a godot --path . -s res://tools/vitrina_armadura.gd -- --shot=/tmp/v.png [--cerca=0..3] [--anim=walk]` (el héroe con las 4 calidades y las piezas del suelo; para ajustar `Armadura3D.AJUSTE`).
+- Sets de armadura: `python3 tools/blender/armadura_set.py tools/armaduras/caballero_oscuro.glb assets/armaduras/caballero_oscuro` (reglas de corte en `SETS`; colocación en `Armadura3D.AJUSTE`). Cada recurso nuevo se apunta en `docs/LICENCIAS.md`.
+- Armadura: `xvfb-run -a godot --path . -s res://tools/vitrina_armadura.gd -- --shot=/tmp/v.png [--cerca=0..3] [--anim=walk] [--fantasma]` (el héroe con las 4 calidades y las piezas del suelo; para ajustar `Armadura3D.AJUSTE`).
 - Sala de prueba: `scenes/sala_prueba.tscn` (`--heroe=… --anim=… --zoom=… --centro=x,z`).
 - Paquetes de fuera (Poly Haven, Sketchfab): `python3 tools/blender/props_glb.py <carpeta con lo que pasó Diego> assets/props [paquete…]` → `Props3D.crear(paquete, pieza)`. Autores y licencias en `docs/CREDITOS_Y_LICENCIAS.md` y `assets/creditos.json` (los dos al día).
 - Piso de prueba: el juego arranca en él (`PisoPrueba`, sin enemigos). Adornos por propósito de sala: `Repartidor.PROPOSITOS`.

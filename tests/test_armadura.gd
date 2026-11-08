@@ -44,10 +44,19 @@ func _init() -> void:
 	sim.loot = [l3]
 	sim.try_pickup(l3)
 	ok(p.eq.boots == null, "no se pone lo de otra clase")
-	# piezas 3D provisionales: una por hueco, con aura solo si no es básica
+	# Set del Caballero Oscuro: todas las piezas existen, con aura solo si no es básica
+	var basica0 := Items.make_gear(sim.rng, 0, "knight", "helm")
+	ok(basica0.name == "Yelmo del Caballero Oscuro", "nombre del set (%s)" % basica0.name)
+	ok(not Armadura3D.tiene(Items.make_gear(sim.rng, 1, "mage", "boots")), "las otras clases no llevan el set")
 	for s in Armadura3D.huecos():
-		var basica := Armadura3D.pieza(Armadura3D.PIEZAS[s][0].archivo, Items.make_gear(sim.rng, 0, "knight", s))
-		var magica := Armadura3D.pieza(Armadura3D.PIEZAS[s][0].archivo, Items.make_gear(sim.rng, 3, "knight", s))
+		for d in Armadura3D.PIEZAS[s]:
+			ok(ResourceLoader.exists(Armadura3D.CARPETA + d.archivo + ".gltf"), "existe %s" % d.archivo)
+			ok(Armadura3D.centro(d.archivo) != Vector3.ZERO, "centro de %s" % d.archivo)
+		var bas := Items.make_gear(sim.rng, 0, "knight", s)
+		var leg := Items.make_gear(sim.rng, 3, "knight", s)
+		ok(Armadura3D.tiene(bas), "%s: se ve con el set" % s)
+		var basica := Armadura3D.pieza(Armadura3D.PIEZAS[s][0].archivo, Armadura3D.PIEZAS[s][0].hueso, bas)
+		var magica := Armadura3D.pieza(Armadura3D.PIEZAS[s][0].archivo, Armadura3D.PIEZAS[s][0].hueso, leg)
 		var mb: Array = basica.find_children("*", "MeshInstance3D", true, false)
 		var mm: Array = magica.find_children("*", "MeshInstance3D", true, false)
 		ok(mb.size() > 0, "%s: tiene malla" % s)
@@ -55,10 +64,15 @@ func _init() -> void:
 		ok(mm.all(func(m): return m.material_overlay is ShaderMaterial), "%s legendaria: con aura" % s)
 		ok(magica.find_children("*", "CPUParticles3D", true, false).size() == 1, "%s legendaria: con chispas" % s)
 		var suelo := Armadura3D.suelta(Items.make_gear(sim.rng, 1, "knight", s))
-		ok(suelo != null, "%s: pieza para el suelo" % s)
+		ok(suelo != null and suelo.get_child_count() == Armadura3D.PIEZAS[s].size() + 0, "%s: en el suelo, todas sus piezas" % s)
 		basica.free()
 		magica.free()
 		suelo.free()
+	for par in [["sword", "RightHand"], ["shield", "LeftHand"]]:
+		var a := Armadura3D.arma(Items.make_gear(sim.rng, 2, "knight", par[0]), par[1])
+		ok(a != null and a.find_children("*", "MeshInstance3D", true, false).size() > 0, "arma del set: %s" % par[0])
+		if a != null:
+			a.free()
 	Armadura3D.limpiar()
 	print("todo bien" if fails == 0 else "%d fallos" % fails)
 	quit(1 if fails else 0)

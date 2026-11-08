@@ -279,7 +279,11 @@ func _vestir() -> void:
 	var arma = eq.get("sword")
 	var guantes = eq.get("gloves")
 	var agarre := Modelo3D.agarre() if _modelo_heroe != null else {}
-	if arma != null and not agarre.is_empty():
+	var arma_set := Armadura3D.arma(arma, "RightHand") if _modelo_heroe != null else null
+	if arma_set != null:   # la espada del Set del Caballero Oscuro
+		_mano_der.add_child(arma_set)
+		_armadura.append(arma_set)
+	elif arma != null and not agarre.is_empty():
 		# la espada de la fábrica, cogida como la coge el esqueleto; brilla con el color de su calidad
 		_mano_der.add_child(_arma_modelo(agarre, arma))
 	elif arma != null:
@@ -293,7 +297,10 @@ func _vestir() -> void:
 	if izq != null:
 		var tipo := "espada" if izq.slot == "sword" else "escudo"
 		var ag := Modelo3D.agarre("esqueleto", "off_hand", tipo) if _modelo_heroe != null else {}
-		if not ag.is_empty():
+		var izq_set := Armadura3D.arma(izq, "LeftHand") if _modelo_heroe != null else null
+		if izq_set != null:   # escudo (o segunda espada) del Set del Caballero Oscuro
+			_mano_izq.add_child(izq_set)
+		elif not ag.is_empty():
 			_mano_izq.add_child(_arma_modelo(ag, izq))
 		elif tipo == "escudo":
 			_mano_izq.add_child(_escudo(izq))

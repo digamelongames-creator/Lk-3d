@@ -1,18 +1,20 @@
 extends SceneTree
 ## Vitrina de la armadura: el héroe con las piezas de cada calidad (básico, mágico, dorado, legendario),
 ## de frente y de lado, y la fila de piezas sueltas del suelo. Para ajustar Armadura3D.AJUSTE.
-## Uso: xvfb-run -a godot --path . -s res://tools/vitrina_armadura.gd -- --shot=/tmp/vitrina.png [--anim=walk] [--cerca=0..3]
+## Uso: xvfb-run -a godot --path . -s res://tools/vitrina_armadura.gd -- --shot=/tmp/vitrina.png [--anim=walk] [--cerca=0..3] [--fantasma]
 
 var _shot := "/tmp/vitrina.png"
 var _anim := "idle"
 var _f := 0
 var _cx := 0.0
 var _dist := 8.5
+var _fantasma := false
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--shot="): _shot = a.get_slice("=", 1)
 		elif a.begins_with("--anim="): _anim = a.get_slice("=", 1)
+		elif a == "--fantasma": _fantasma = true   # el cuerpo semitransparente, para ver dónde cae cada pieza
 		elif a.begins_with("--cerca="):   # --cerca=0..3: acerca la cámara a esa calidad
 			_cx = -4.7 + int(a.get_slice("=", 1)) * 3.0
 			_dist = 2.6
@@ -48,11 +50,25 @@ func _initialize() -> void:
 			m.rotation_degrees.y = 180 if lado == 0 else 90
 			w.add_child(m)
 			m.reproducir(_anim)
+			if _fantasma:
+				for mi in m.find_children("*", "MeshInstance3D", true, false):
+					if true:
+						var fm := StandardMaterial3D.new()
+						fm.albedo_color = Color(1, 1, 1, .25)
+						fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+						mi.material_override = fm
 			Armadura3D.vestir(m, eq)
+			for par in [["sword", "RightHand"], ["shield", "LeftHand"]]:
+				var a := Armadura3D.arma(Items.make_gear(rng, q, "knight", par[0]), par[1])
+				if a != null:
+					m.enganche(par[1]).add_child(a)
+			for a in m.find_children("arma_*", "MeshInstance3D", true, false):
+				a.visible = false
+
 		var i := 0
-		for s in Armadura3D.huecos():
+		for s in Armadura3D.huecos() + ["sword", "shield"]:
 			var n := Armadura3D.suelta(Items.make_gear(rng, q, "knight", s))
-			n.position = Vector3(-5.6 + q * 3.0 + i * .5, .05, 2.2)
+			n.position = Vector3(-5.8 + q * 3.0 + i * .42, .0, 2.2)
 			w.add_child(n)
 			i += 1
 	var cam := Camera3D.new()
