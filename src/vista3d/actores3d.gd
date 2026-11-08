@@ -55,7 +55,7 @@ func nuevo_piso() -> void:
 		add_child(heroe)
 	_firma_equipo = ""
 	for c in sim.chests:
-		var n := _caja(Vector3(1.0, .7, .7), Color(.4, .25, .1), Color(.9, .7, .2))
+		var n := _cofre()
 		n.position = MazmorraGridMap.a3d(c.x, c.y - 12)
 		add_child(n)
 		_cofres.append(n)
@@ -112,7 +112,16 @@ func _actualizar_botin() -> void:
 
 func _nueva_pieza_suelo(it: Dictionary) -> Node3D:
 	var n: Node3D = null
-	if it.get("gear", false):
+	# en el piso de prueba, las armas salen con su modelo del Weapon set, tumbadas en el suelo
+	if it.get("gear", false) and sim.L.has("prueba"):
+		var arma := _arma_de(it)
+		var m: MeshInstance3D = Props3D.crear("armas", arma) if arma != "" else null
+		if m != null:
+			n = Node3D.new()
+			m.rotation.x = -PI / 2
+			n.add_child(m)
+			n.set_meta("weapon_set", arma)
+	if n == null and it.get("gear", false):
 		n = Armadura3D.suelta(it)
 		if n == null and it.slot == "shield":
 			n = Node3D.new()
@@ -440,6 +449,40 @@ func _capsula(r: float, h: float, c: Color) -> MeshInstance3D:
 	cm.material = m
 	mi.mesh = cm
 	return mi
+
+## cofre de Poly Haven (cuerpo + tapa en su bisagra); si no está el paquete, la caja provisional.
+## La tapa va en get_child(1) (se abre girándola en x, ver actualizar()).
+func _cofre() -> Node3D:
+	var cuerpo := Props3D.crear("polyhaven", "cofre")
+	var tapa := Props3D.crear("polyhaven", "cofre_tapa")
+	if cuerpo == null or tapa == null:
+		return _caja(Vector3(1.0, .7, .7), Color(.4, .25, .1), Color(.9, .7, .2))
+	var raiz := Node3D.new()
+	raiz.add_child(cuerpo)
+	var bisagra := Node3D.new()
+	bisagra.position = BISAGRA_COFRE
+	bisagra.add_child(tapa)
+	raiz.add_child(bisagra)
+	raiz.scale = Vector3.ONE * 1.25
+	return raiz
+
+## dónde va la bisagra de la tapa respecto al origen del cofre (lo imprime tools/blender/props_glb.py)
+const BISAGRA_COFRE := Vector3(0, .418, -.261)
+
+## qué modelo del Weapon set le va a un objeto ("" si ninguno)
+static func _arma_de(it: Dictionary) -> String:
+	if not it.get("gear", false):
+		return ""
+	var n := String(it.get("name", "")).to_lower()
+	for par in [["hacha", "hacha"], ["martillo", "martillo"], ["maza", "garrote"], ["garrote", "garrote"], ["daga", "daga"], ["lanza", "lanza"], ["guadaña", "guadana"]]:
+		if n.contains(par[0]):
+			return par[1]
+	var cls := String(it.get("cls", ""))
+	if it.slot == "shield" and cls != "archer":
+		return "escudo"
+	if it.slot == "sword" and cls != "archer":
+		return "espada"
+	return ""
 
 ## caja con color; si brillo no es blanco, emite un poco (objetos mágicos, oro)
 func _caja(t: Vector3, c: Color, brillo: Color = Color.WHITE) -> Node3D:

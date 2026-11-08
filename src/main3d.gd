@@ -5,6 +5,8 @@ extends Node3D
 ## Opciones de línea de órdenes (después de --):
 ##   --clase=knight|dk|archer|mage|dl   --piso=N   --semilla=texto   --bot   --shot=/tmp/x.png,frames
 ##   --inclinacion=33   --giro=45   --perspectiva
+##   --prueba=N (piso de prueba N; es como arranca)   --partida (partida normal, sin piso de prueba)
+##   --sala=N (en el piso de prueba, empieza en la sala N: 0 pasillo, 1–5 paquetes, 6–9 propósitos)
 
 var sim := Sim.new()
 var fx := Fx3D.new()
@@ -19,6 +21,9 @@ var clase := "knight"
 var _muerte: Control   # panel «Has caído» con Revivir y Nueva partida
 var opciones_camara: Array = []
 var heroe_id := "esqueleto"   # modelo del héroe (--heroe=… para probar otro)
+var prueba := 1   # el juego arranca en el piso de prueba 1 (PisoPrueba); 0 = partida normal
+var _creditos: Creditos
+var _sala := -1   # pruebas: --sala=N pone al héroe en la sala N del piso de prueba (0 = pasillo)
 
 
 var _bot: Bot = null
@@ -47,11 +52,18 @@ func _ready() -> void:
 	var semilla := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--clase="): clase = a.get_slice("=", 1)
-		elif a.begins_with("--piso="): piso = int(a.get_slice("=", 1))
+		elif a.begins_with("--piso="):
+			piso = int(a.get_slice("=", 1))
+			prueba = 0
+		elif a.begins_with("--prueba="): prueba = maxi(1, int(a.get_slice("=", 1)))
+		elif a == "--partida": prueba = 0
+		elif a.begins_with("--sala="): _sala = int(a.get_slice("=", 1))
 		elif a.begins_with("--semilla="): semilla = a.get_slice("=", 1)
 		elif a == "--bot": _bot = Bot.new()
 		elif a.begins_with("--heroe="): heroe_id = a.get_slice("=", 1)
-		elif a.begins_with("--junto="): _junto = a.get_slice("=", 1)
+		elif a.begins_with("--junto="):
+			_junto = a.get_slice("=", 1)
+			prueba = 0
 		elif a.begins_with("--equipo="): _equipo = int(a.get_slice("=", 1))
 		elif a == "--morir": _morir = true   # pruebas: el héroe cae al empezar (panel de muerte)
 		elif a.begins_with("--inclinacion=") or a.begins_with("--giro=") or a.begins_with("--zoom=") or a == "--perspectiva": opciones_camara.append(a)
@@ -92,6 +104,10 @@ func _ready() -> void:
 	personaje.closed.connect(func(): if state == "char": _set_state("play"))
 	_muerte = _panel_muerte()
 	ui.add_child(_muerte)
+	_creditos = Creditos.new()
+	_creditos.visible = false
+	_creditos.cerrado.connect(func(): if state == "creditos": state = "play")
+	ui.add_child(_creditos)
 	# indicador del zoom (aparece al cambiarlo y se apaga solo)
 	_zoom_label = Label.new()
 	_zoom_label.add_theme_font_override("font", Fonts.px(700))
@@ -106,8 +122,11 @@ func _ready() -> void:
 	_zoom_label.modulate.a = 0
 	ui.add_child(_zoom_label)
 	sim.new_game(piso, semilla, clase)
-	_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
-	fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
+	if prueba > 0:
+		_entrar_prueba(prueba)
+	else:
+		_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
+		fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
 	if _junto != "":
 		for e in sim.enemies:
 			if e.mon == _junto:
@@ -139,6 +158,23 @@ func _entrar(L: Dictionary) -> void:
 	actores.nuevo_piso()
 	_camara(1.0)
 
+## piso de prueba: el mapa hecho a mano, sin enemigos, con los kits y adornos montados encima
+func _entrar_prueba(n: int) -> void:
+	var L := PisoPrueba.generar(n)
+	_entrar(L)
+	sim.enemies.clear()
+	sim.cleared = true   # sin el aviso de «Mazmorra despejada» al empezar
+	PisoPrueba.amueblar(sim.L, mazmorra)
+	PisoPrueba.botin(sim)
+	var salas: Array = sim.L.salas_prueba
+	if _sala >= 0 and _sala < salas.size():
+		var s: Dictionary = salas[_sala]
+		sim.p.x = (s.x + 4.5) * DungeonGen.TS
+		sim.p.y = (s.y + s.h / 2.0) * DungeonGen.TS
+		sim.unstick(sim.p)
+		_camara(1.0)
+	fx.banner("Sin enemigos · F1: créditos", PisoPrueba.nombre(n))
+
 func _bajar() -> void:
 	sim.score += sim.wave * 25
 	sim.p.inv = 0
@@ -156,6 +192,8 @@ func _process(dt: float) -> void:
 	if state == "play":
 		var inp := _read_input() if _bot == null else _bot.play(sim)
 		var r := sim.step(dt, inp)
+		if prueba > 0:
+			sim.enemies.clear()   # el piso de prueba no tiene enemigos (ni los que aparecen por el camino)
 		if r == "descend":
 			_bajar()
 		elif r == "over":
@@ -251,6 +289,13 @@ func _nueva_partida() -> void:
 	fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
 	state = "play"
 
+## los créditos (autores y licencias de assets/creditos.json): al final del juego y, de momento, con F1
+func mostrar_creditos(si: bool = true) -> void:
+	_creditos.visible = si
+	state = "creditos" if si else "play"
+	if si:
+		_creditos.empezar()
+
 func _set_state(s: String) -> void:
 	state = s
 	if s == "inv":
@@ -295,6 +340,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev.is_action_pressed("lk_fullscreen"):
 		var w := get_window()
 		w.mode = Window.MODE_WINDOWED if w.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
+		return
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F1 and state in ["play", "creditos"]:
+		mostrar_creditos(state == "play")
+		get_viewport().set_input_as_handled()
 		return
 	if state != "play" or sim.p == null:
 		return
@@ -363,6 +412,7 @@ func _read_input() -> Sim.Inp:
 ## al salir, soltar las cachés estáticas antes de que Godot apague el servidor gráfico
 func _exit_tree() -> void:
 	KitMazmorra.limpiar()
+	Props3D.limpiar()
 	Modelo3D.limpiar()
 	Armadura3D.limpiar()
 	MazmorraGridMap.limpiar()

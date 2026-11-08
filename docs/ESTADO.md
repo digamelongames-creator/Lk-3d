@@ -1,6 +1,10 @@
-# Estado · 7 nov 2026
+# Estado · 8 nov 2026
 
 ## Hecho
+- **Piso de prueba 1** (`PisoPrueba`): el juego arranca ahí (`--partida` para jugar normal, `--prueba=N`, `--sala=N`). Sin enemigos. Arriba hay una sala por paquete (Poly Haven, Modular Dungeon Kit, Low Poly, Gótico y Ruinas); las de los kits llevan sus propios muros, suelos y columnas. Abajo hay una sala por propósito (almacén, guardia, tesoro y cueva). Cada sala tiene una luz suave y su nombre encima de la entrada. Prueba: `tests/test_piso_prueba.gd`.
+- **Repartidor** de adornos según el propósito de la sala (`Repartidor.PROPOSITOS`: pared, esquina, centro, colgado y libre; sólido = DECOR). Lo que va pegado a la pared prefiere las paredes que ve la cámara (norte y oeste).
+- **Paquetes de fuera** pasados por `tools/blender/props_glb.py` a `assets/props/*.glb` (escala del juego, origen abajo, menos polígonos y texturas WebP de 1024 px como mucho). `Props3D` da cada pieza por su nombre. Low Poly y Gótico se visten con el ladrillo de Poly Haven. El cofre del tesoro es el de Poly Haven y la tapa se abre. Las armas del botín salen con su modelo del Weapon set, tumbadas en el suelo.
+- **Créditos** (`Creditos`, desde `assets/creditos.json`): al final del juego y, de momento, con F1. Licencias para Steam: `docs/CREDITOS_Y_LICENCIAS.md`. Ojo: falta confirmar el plan de Tripo de los personajes.
 - Espada del esqueleto colocada por Diego con el panel (8 nov) y `esqueleto.glb` reconvertido con sus 6 animaciones.
 - Agarres de armas: `colocar_arma.bat` abre Blender con el personaje y el panel «Agarre» (mano, espada o escudo, arma, animación, espejar, guardar). Se guarda en la ficha (`agarres_3d`) como matriz respecto al hueso; comprobado de punta a punta (panel → conversor → Godot, menos de 5 mm). La espada actual del héroe venía mal de la conversión antigua (`offset` + `length_m` con una malla en diagonal): se arregla al colocarla con el panel y reconvertir.
 - Mano izquierda: escudo, segunda espada o nada. Caballero y caballero oscuro pueden poner una espada en el hueco del escudo: +15% de daño (`Items.DOS_ESPADAS_DMG`) y sin bloqueo. Prueba: `tests/test_dos_espadas.gd`. La espada izquierda sale reflejando la derecha si no se ha colocado aparte.
@@ -31,6 +35,8 @@
 - Muerte de enemigos (8 nov): sin empujón, caen donde mueren (`Sim.kill_enemy` y el tramo `dying` de `_update_enemies`). La animación de muerte de Mixamo sigue moviendo la cadera unos 50 cm al caer (Diego decidió no anclarla).
 
 ## Falta
+- Decidir con el piso de prueba qué estilo se queda (realista o dibujado) y pasar el Repartidor a las salas del generador.
+- Pasar los adornos colgados del low poly (antorcha) a origen «atrás» si se usan fuera de la prueba.
 - Colocar con el panel el escudo y, si se quiere, la espada izquierda del esqueleto (ahora sale reflejada de la derecha).
 - Modelos de armadura de Diego (en `C:\\SPRITE_FACTORY\\armaduras\\`) y ajustarlos a los huesos. Espadas y escudos nuevos, en otro chat.
 - Pasar los demonios a sus pisos de verdad (2–4) cuando acabe la prueba.

@@ -22,14 +22,16 @@ Responde en español.
 - Armas en la mano: Diego las coloca a ojo con `colocar_arma.bat` (en la raíz de SPRITE_FACTORY, con `tools/agarre/{colocar_arma,agarre,monstruos_glb}.py`): panel «Agarre» de Blender, guarda `agarres_3d` en la ficha (matriz respecto al hueso de la mano, en metros). El conversor los usa y deja `agarre_<mano>_<tipo>` en el .glb; los del esqueleto valen para todos los de Mixamo que no tengan los suyos.
 - Armadura: `xvfb-run -a godot --path . -s res://tools/vitrina_armadura.gd -- --shot=/tmp/v.png [--cerca=0..3] [--anim=walk]` (el héroe con las 4 calidades y las piezas del suelo; para ajustar `Armadura3D.AJUSTE`).
 - Sala de prueba: `scenes/sala_prueba.tscn` (`--heroe=… --anim=… --zoom=… --centro=x,z`).
+- Paquetes de fuera (Poly Haven, Sketchfab): `python3 tools/blender/props_glb.py <carpeta con lo que pasó Diego> assets/props [paquete…]` → `Props3D.crear(paquete, pieza)`. Autores y licencias en `docs/CREDITOS_Y_LICENCIAS.md` y `assets/creditos.json` (los dos al día).
+- Piso de prueba: el juego arranca en él (`PisoPrueba`, sin enemigos). Adornos por propósito de sala: `Repartidor.PROPOSITOS`.
 
 ## Ejecutar y probar
 - Espacio de trabajo nuevo: `bash tools/preparar_entorno.sh` (Godot 4.7.2, Vulkan por software y bpy). Diego ha autorizado instalar Godot en cualquier chat de este proyecto.
 - Godot 4.7.2, renderizador Forward+.
 - Importar: `godot --headless --path . --editor --quit`.
-- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` `tests/test_demonios.gd`, `tests/test_zoom.gd`, `tests/test_combate.gd` `tests/test_dos_espadas.gd` y `tests/test_armadura.gd` (deben decir «todo bien»).
+- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` `tests/test_demonios.gd`, `tests/test_zoom.gd`, `tests/test_combate.gd` `tests/test_dos_espadas.gd`, `tests/test_armadura.gd` y `tests/test_piso_prueba.gd` (deben decir «todo bien»).
 - Captura: `xvfb-run -a godot --path . -- --bot --shot=/tmp/x.png,200` (sin GPU: `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`).
-- Opciones: `--clase=knight|dk|archer|mage|dl --piso=N --semilla=… --heroe=… --junto=<monstruo> --equipo=0..3 --morir --zoom=… --giro=… --inclinacion=… --perspectiva --bot`.
-- El juego arranca en pantalla completa; F11 cambia a ventana. Rueda o +/− para el zoom (7–20 m).
+- Opciones: `--partida` (sin piso de prueba) `--prueba=N --sala=N` `--clase=knight|dk|archer|mage|dl --piso=N --semilla=… --heroe=… --junto=<monstruo> --equipo=0..3 --morir --zoom=… --giro=… --inclinacion=… --perspectiva --bot`.
+- El juego arranca en pantalla completa; F11 cambia a ventana; F1 créditos. Rueda o +/− para el zoom (7–20 m).
 - Todo lo estático que guarde recursos (texturas, mallas, traducciones) se suelta en `_exit_tree` de la escena principal; si no, Godot se cuelga al cerrar.
 - Repositorio: github.com/digamelongames-creator/Lk-3d (rama `main`). Cada entrega se sube ahí y además se pasa el zip.

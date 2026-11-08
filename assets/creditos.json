@@ -1,0 +1,60 @@
+{
+	"_nota": "Fuente de la pantalla de créditos (src/ui/creditos.gd). La explicación completa, con lo que permite cada licencia, está en docs/CREDITOS_Y_LICENCIAS.md. Si se añade un recurso de fuera, va aquí y allí.",
+	"secciones": [
+		{
+			"titulo": "Last Knight 3D",
+			"lineas": ["Un juego de Diego", "Hecho con Godot Engine"]
+		},
+		{
+			"titulo": "Modelos 3D",
+			"lineas": [
+				"Modular Dungeon Kit · HenryBoadle · CC BY 4.0",
+				"Weapon set · rudolfs · CC BY 4.0",
+				"Ancient Ruins Pack · Toni García Vilche · CC BY 4.0",
+				"Free Modular Low Poly Dungeon Pack · RgsDev · CC BY 4.0",
+				"Gothic Interior Kit (Mid-Poly) · Zver 3D · CC BY 4.0",
+				"Modelos y texturas de Poly Haven (polyhaven.com) · CC0",
+				"Personajes generados con Tripo AI y animados con Adobe Mixamo"
+			]
+		},
+		{
+			"titulo": "Fuentes",
+			"lineas": ["Cinzel · © 2020 The Cinzel Project Authors · SIL Open Font License 1.1", "Pixelify Sans · © 2021 The Pixelify Sans Project Authors · SIL Open Font License 1.1"]
+		},
+		{
+			"titulo": "Motor",
+			"lineas": ["Godot Engine · godotengine.org · Licencia MIT", "© 2014-present Godot Engine contributors", "© 2007-2014 Juan Linietsky, Ariel Manzur"]
+		},
+		{
+			"titulo": "Cambios",
+			"lineas": ["Los modelos CC BY se han adaptado al juego: escala, centro, menos polígonos, texturas más pequeñas y, en Low Poly y Gothic, texturas nuevas."]
+		},
+		{
+			"titulo": "Gracias por jugar",
+			"lineas": []
+		}
+	],
+	"recursos": [
+		{"nombre": "Modular Dungeon Kit", "autor": "HenryBoadle", "licencia": "CC-BY-4.0", "venta": true, "atribucion": true, "origen": "https://sketchfab.com/3d-models/modular-dungeon-kit-ecbeefd3212f447ba2f10f1986ad5769", "archivo": "assets/props/dungeon_kit.glb"},
+		{"nombre": "Weapon set", "autor": "rudolfs", "licencia": "CC-BY-4.0", "venta": true, "atribucion": true, "origen": "https://sketchfab.com/3d-models/weapon-set-cb2e607fc7734e6fbf84211b6a65912f", "archivo": "assets/props/armas.glb"},
+		{"nombre": "Ancient Ruins Pack", "autor": "Toni García Vilche (zul_gv)", "licencia": "CC-BY-4.0", "venta": true, "atribucion": true, "origen": "https://sketchfab.com/3d-models/ancient-ruins-pack-4dad3b80562842f88d6568c5e1c469c2", "archivo": "assets/props/ruinas.glb"},
+		{"nombre": "Free Modular Low Poly Dungeon Pack", "autor": "RgsDev", "licencia": "CC-BY-4.0", "venta": true, "atribucion": true, "origen": "https://sketchfab.com/3d-models/free-modular-low-poly-dungeon-pack-31f2e88017574702bb2c1c1e286dc747", "archivo": "assets/props/low_poly.glb"},
+		{"nombre": "Gothic Interior Kit (Mid-Poly)", "autor": "Zver 3D", "licencia": "CC-BY-4.0", "venta": true, "atribucion": true, "origen": "https://sketchfab.com/3d-models/gothic-interior-kit-mid-poly-cd988423f3ff4cec8193cb1abfa11b8f", "archivo": "assets/props/gotico.glb"},
+		{"nombre": "Treasure Chest", "autor": "Poly Haven", "licencia": "CC0", "venta": true, "atribucion": false, "origen": "https://polyhaven.com/a/treasure_chest", "archivo": "assets/props/polyhaven.glb"},
+		{"nombre": "Lion Head", "autor": "Poly Haven", "licencia": "CC0", "venta": true, "atribucion": false, "origen": "https://polyhaven.com/a/lion_head", "archivo": "assets/props/polyhaven.glb"},
+		{"nombre": "Wooden Crate 01", "autor": "Poly Haven", "licencia": "CC0", "venta": true, "atribucion": false, "origen": "https://polyhaven.com/a/wooden_crate_01", "archivo": "assets/props/polyhaven.glb"},
+		{"nombre": "Wooden Chair 01", "autor": "Poly Haven", "licencia": "CC0", "venta": true, "atribucion": false, "origen": "https://polyhaven.com/a/WoodenChair_01", "archivo": "assets/props/polyhaven.glb"},
+		{"nombre": "Rock Moss Set 02", "autor": "Poly Haven", "licencia": "CC0", "venta": true, "atribucion": false, "origen": "https://polyhaven.com/a/rock_moss_set_02", "archivo": "assets/props/polyhaven.glb"},
+		{"nombre": "Rock Face 02", "autor": "Poly Haven", "licencia": "CC0", "venta": true, "atribucion": false, "origen": "https://polyhaven.com/a/rock_face_02", "archivo": "assets/props/polyhaven.glb"},
+		{"nombre": "Namaqualand Stones 01", "autor": "Poly Haven", "licencia": "CC0", "venta": true, "atribucion": false, "origen": "https://polyhaven.com/a/namaqualand_stones_01", "archivo": "assets/props/polyhaven.glb"},
+		{"nombre": "Dandelion 01", "autor": "Poly Haven", "licencia": "CC0", "venta": true, "atribucion": false, "origen": "https://polyhaven.com/a/dandelion_01", "archivo": "assets/props/polyhaven.glb"},
+		{"nombre": "Patterned Brick Wall", "autor": "Poly Haven", "licencia": "CC0", "venta": true, "atribucion": false, "origen": "https://polyhaven.com/a/patterned_brick_wall", "archivo": "assets/texturas/polyhaven/ladrillo_*.jpg"},
+		{"nombre": "Cinzel", "autor": "The Cinzel Project Authors", "licencia": "OFL-1.1", "venta": true, "atribucion": true, "origen": "https://github.com/NDISCOVER/Cinzel", "archivo": "assets/fonts/Cinzel-*.woff2"},
+		{"nombre": "Pixelify Sans", "autor": "The Pixelify Sans Project Authors", "licencia": "OFL-1.1", "venta": true, "atribucion": true, "origen": "https://github.com/eifetx/Pixelify-Sans", "archivo": "assets/fonts/PixelifySans-*.woff2"},
+		{"nombre": "Godot Engine", "autor": "Godot Engine contributors", "licencia": "MIT", "venta": true, "atribucion": true, "origen": "https://godotengine.org/license", "archivo": "(motor)"},
+		{"nombre": "Personajes (esqueleto, Bufona, demonios, Prueba2)", "autor": "Diego con Tripo AI + Adobe Mixamo", "licencia": "Términos de Tripo y de Mixamo", "venta": null, "atribucion": false, "origen": "https://www.tripo3d.ai/terms · https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html", "archivo": "assets/monstruos/*.glb", "pendiente": "Confirmar con qué plan de Tripo se generaron: con el gratuito no se pueden vender."},
+		{"nombre": "Kit de la mazmorra (muros, suelos, antorchas…)", "autor": "Hecho por script (tools/blender/kit_mazmorra.py)", "licencia": "Propio", "venta": true, "atribucion": false, "origen": "-", "archivo": "assets/kit/kit_mazmorra.glb"},
+		{"nombre": "Texturas Pared_1, Suelo1, Suelo_2", "autor": "Por confirmar", "licencia": "Por confirmar", "venta": null, "atribucion": null, "origen": "Por confirmar", "archivo": "assets/texturas/muros, assets/texturas/suelos", "pendiente": "Origen desconocido."},
+		{"nombre": "Gráficos 2D de Last Knight (iconos, sprites, cofres, retratos)", "autor": "Por confirmar", "licencia": "Por confirmar", "venta": null, "atribucion": null, "origen": "Repositorio last-knight", "archivo": "assets/web/img, assets/web/gen", "pendiente": "Origen desconocido; la interfaz usa los iconos."}
+	]
+}

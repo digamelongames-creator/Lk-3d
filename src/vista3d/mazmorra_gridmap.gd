@@ -18,6 +18,10 @@ var esquinas: Array[GridMap] = []   # columnas de esquina: 0 suroeste, 1 sureste
 const DIRS := [Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0)]
 const ESQ := [Vector2i(-1, 1), Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, -1)]
 const GIROS := [0.0, PI / 2, PI, -PI / 2]
+## máscara L.a_mano (ver PisoPrueba): lo que no pone el GridMap porque va montado a mano
+const A_MANO_MURO := 1
+const A_MANO_SUELO := 2
+const A_MANO_OBJETO := 4
 var _G: PackedByteArray
 var adornos: Node3D
 var luces: Array[OmniLight3D] = []
@@ -64,6 +68,8 @@ func construir(L: Dictionary) -> void:
 	var G: PackedByteArray = L.grid
 	_G = G
 	var sala: PackedInt32Array = L.get("room_of", PackedInt32Array())
+	# casillas montadas a mano (pisos de prueba con kits de fuera): bit 1 sin muro, 2 sin suelo, 4 sin objeto
+	var mano: PackedByteArray = L.get("a_mano", PackedByteArray())
 	var i_sala := KitMazmorra.id("suelo_sala")
 	var i_arco := KitMazmorra.id("arco")
 	var pieza := {
@@ -80,19 +86,22 @@ func construir(L: Dictionary) -> void:
 		for cx in W:
 			var t := G[cy * W + cx]
 			var celda := Vector3i(cx, 0, cy)
+			var m := mano[cy * W + cx] if mano.size() > 0 else 0
 			if t == DungeonGen.ROCK:
+				if m & A_MANO_MURO:
+					continue
 				if _junto_a_suelo(G, cx, cy):
 					_muro(cx, cy)
 				continue
 			if t == DungeonGen.ABISMO:
 				continue
 			# todo lo que no es roca ni vacío lleva suelo debajo (también agua, puertas, tumbas…)
-			if t != DungeonGen.WATER:
+			if t != DungeonGen.WATER and not (m & A_MANO_SUELO):
 				var en_sala := sala.size() > 0 and sala[cy * W + cx] >= 0
 				suelo.set_cell_item(celda, i_sala if en_sala and i_sala >= 0 else KitMazmorra.variante("suelo", cx, cy), _giro_azar(cy, cx))
 			if t == DungeonGen.DOOR and i_arco >= 0:
 				muros.set_cell_item(celda, i_arco, _orientacion_arco(G, cx, cy))
-			elif pieza.has(t) and pieza[t] >= 0:
+			elif pieza.has(t) and pieza[t] >= 0 and not (m & A_MANO_OBJETO):
 				objetos.set_cell_item(celda, pieza[t])
 	_antorchas(L)
 	_decorador(L)
@@ -208,6 +217,12 @@ func poner_antorcha(celda: Vector2i, cara: Vector2i, corre: float = 0.0) -> void
 	var llama := a.transform * Vector3(0, .45, .3)   # la copa de la antorcha (ver kit_mazmorra.py)
 	_fuego(llama, .13)
 	var luz := _luz(llama + Vector3(-cara.x, 0, -cara.y) * .5, Color(1, .62, .36), 2.8, 9.0)
+	_llamas.append([luz, luz.light_energy, randf() * 10])
+
+## fuego con luz que parpadea (braseros y antorchas de los kits de fuera)
+func fuego_y_luz(p: Vector3, tam: float, energia: float = 2.8, rango: float = 9.0) -> void:
+	_fuego(p, tam)
+	var luz := _luz(p + Vector3(0, .4, 0), Color(1, .62, .36), energia, rango)
 	_llamas.append([luz, luz.light_energy, randf() * 10])
 
 ## pieza suelta de pie en el suelo (brasero, barril, caja…) en un punto en metros

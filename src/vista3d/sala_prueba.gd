@@ -275,6 +275,7 @@ func _process(dt: float) -> void:
 ## al salir, soltar las cachés estáticas antes de que Godot apague el servidor gráfico
 func _exit_tree() -> void:
 	KitMazmorra.limpiar()
+	Props3D.limpiar()
 	Modelo3D.limpiar()
 	MazmorraGridMap.limpiar()
 	Atlas.limpiar()
