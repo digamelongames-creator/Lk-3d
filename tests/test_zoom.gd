@@ -10,6 +10,8 @@ func _init() -> void:
 	var main: Node = load("res://scenes/main3d.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
+	main.menu.empezar.emit("knight")   # el zoom es de la partida, no de la pantalla de inicio
+	await process_frame
 	var cam: CamaraIso = main.camara
 	var z0 := cam.zoom
 	var rueda := InputEventMouseButton.new()

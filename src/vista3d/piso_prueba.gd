@@ -1,6 +1,6 @@
 class_name PisoPrueba
 ## Pisos de prueba: mapas hechos a mano para ver en el juego los paquetes de modelos de fuera,
-## sin enemigos. El juego arranca en el piso de prueba 1 (main3d.gd, --prueba=N; --partida para jugar normal).
+## sin enemigos. Se entra con el botón «Piso de prueba» de la pantalla de inicio (o --prueba=N).
 ##
 ## Piso de prueba 1: un pasillo largo de este a oeste con
 ##   · arriba, una sala por paquete: Poly Haven, Modular Dungeon Kit, Low Poly, Gótico y Ruinas.

@@ -1,5 +1,5 @@
 extends SceneTree
-## El juego arranca en el piso de prueba 1: sin enemigos, todas las salas se alcanzan desde el inicio,
+## «Piso de prueba» del menú lleva al piso de prueba 1: sin enemigos, todas las salas se alcanzan desde el inicio,
 ## las piezas de los paquetes existen, el cofre se abre y hay armas con modelo en el suelo.
 ## godot --headless --path . -s tests/test_piso_prueba.gd
 var fallos := 0
@@ -25,8 +25,10 @@ func _init() -> void:
 	var main: Node = load("res://scenes/main3d.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
+	main.menu.piso_prueba.emit()   # el botón «Piso de prueba» de la pantalla de inicio
+	await process_frame
 	var sim: Sim = main.sim
-	ok(main.prueba == 1, "arranca en el piso de prueba 1")
+	ok(main.prueba == 1, "entra en el piso de prueba 1")
 	ok(sim.enemies.is_empty(), "sin enemigos (%d)" % sim.enemies.size())
 	var L: Dictionary = sim.L
 	var salas: Array = L.salas_prueba

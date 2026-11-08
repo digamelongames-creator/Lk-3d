@@ -7,6 +7,9 @@ extends Node3D
 ##   --inclinacion=33   --giro=45   --perspectiva
 ##   --prueba=N (piso de prueba N; es como arranca)   --partida (partida normal, sin piso de prueba)
 ##   --sala=N (en el piso de prueba, empieza en la sala N: 0 pasillo, 1–5 paquetes, 6–9 propósitos)
+##   --menu (abre la pantalla de inicio aunque haya otras opciones; --menu=opciones|clase|pausa para las capturas)
+## Sin opciones arranca en la pantalla de inicio (MenuInicio). Las opciones que empiezan una partida
+## (--partida, --prueba, --piso, --junto, --sala, --equipo, --morir, --bot, --clase) se la saltan.
 
 var sim := Sim.new()
 var fx := Fx3D.new()
@@ -21,7 +24,14 @@ var clase := "knight"
 var _muerte: Control   # panel «Has caído» con Revivir y Nueva partida
 var opciones_camara: Array = []
 var heroe_id := "esqueleto"   # modelo del héroe (--heroe=… para probar otro)
-var prueba := 1   # el juego arranca en el piso de prueba 1 (PisoPrueba); 0 = partida normal
+var prueba := 0   # piso de prueba N (PisoPrueba); 0 = partida normal
+var _directo := false   # alguna opción de arranque empieza la partida sin pasar por el menú
+var _menu_pagina := ""  # --menu=…: página del menú con la que se abre (capturas)
+var menu: MenuInicio
+var entorno: WorldEnvironment
+var _antes_creditos := "play"   # a qué estado vuelven los créditos al cerrarse
+var _luz_menu: OmniLight3D   # luz cálida sobre el héroe en el fondo del menú
+const GIRO := 45.0
 var _creditos: Creditos
 var _sala := -1   # pruebas: --sala=N pone al héroe en la sala N del piso de prueba (0 = pasillo)
 
@@ -47,31 +57,57 @@ func _ready() -> void:
 	Idioma.iniciar()
 	Atlas.load_all()   # iconos de objetos, pociones y runas para la interfaz
 	_setup_input()
+	Opciones.cargar()
+	Opciones.aplicar_pantalla(get_window())
 	clase = "knight"
 	var piso := 1
 	var semilla := ""
+	var con_menu := false
 	for a in OS.get_cmdline_user_args():
-		if a.begins_with("--clase="): clase = a.get_slice("=", 1)
+		if a.begins_with("--clase="):
+			clase = a.get_slice("=", 1)
+			_directo = true
 		elif a.begins_with("--piso="):
 			piso = int(a.get_slice("=", 1))
 			prueba = 0
-		elif a.begins_with("--prueba="): prueba = maxi(1, int(a.get_slice("=", 1)))
-		elif a == "--partida": prueba = 0
-		elif a.begins_with("--sala="): _sala = int(a.get_slice("=", 1))
+			_directo = true
+		elif a.begins_with("--prueba="):
+			prueba = maxi(1, int(a.get_slice("=", 1)))
+			_directo = true
+		elif a == "--partida":
+			prueba = 0
+			_directo = true
+		elif a.begins_with("--sala="):
+			_sala = int(a.get_slice("=", 1))
+			if prueba == 0: prueba = 1
+			_directo = true
 		elif a.begins_with("--semilla="): semilla = a.get_slice("=", 1)
-		elif a == "--bot": _bot = Bot.new()
+		elif a == "--bot":
+			_bot = Bot.new()
+			_directo = true
 		elif a.begins_with("--heroe="): heroe_id = a.get_slice("=", 1)
 		elif a.begins_with("--junto="):
 			_junto = a.get_slice("=", 1)
 			prueba = 0
-		elif a.begins_with("--equipo="): _equipo = int(a.get_slice("=", 1))
-		elif a == "--morir": _morir = true   # pruebas: el héroe cae al empezar (panel de muerte)
+			_directo = true
+		elif a.begins_with("--equipo="):
+			_equipo = int(a.get_slice("=", 1))
+			_directo = true
+		elif a == "--morir":   # pruebas: el héroe cae al empezar (panel de muerte)
+			_morir = true
+			_directo = true
+		elif a == "--menu" or a.begins_with("--menu="):
+			con_menu = true
+			_menu_pagina = a.get_slice("=", 1) if "=" in a else ""
 		elif a.begins_with("--inclinacion=") or a.begins_with("--giro=") or a.begins_with("--zoom=") or a == "--perspectiva": opciones_camara.append(a)
 		elif a.begins_with("--shot="):
 			var p := a.get_slice("=", 1).split(",")
 			_shot_path = p[0]
 			_shot_frames = int(p[1]) if p.size() > 1 else 60
-	CamaraIso.ambiente(self)
+	if con_menu:
+		_directo = false
+	entorno = CamaraIso.ambiente(self)
+	Opciones.aplicar_grafico(entorno, get_viewport())
 	mazmorra = MazmorraGridMap.new()
 	add_child(mazmorra)
 	actores = Actores3D.new()
@@ -82,6 +118,7 @@ func _ready() -> void:
 	fx.sim = sim
 	sim.fx = fx
 	camara = CamaraIso.new()
+	camara.zoom = Opciones.v("zoom")
 	for a in opciones_camara:
 		if a.begins_with("--inclinacion="): camara.inclinacion = deg_to_rad(float(a.get_slice("=", 1)))
 		elif a.begins_with("--giro="): camara.giro = deg_to_rad(float(a.get_slice("=", 1)))
@@ -106,7 +143,7 @@ func _ready() -> void:
 	ui.add_child(_muerte)
 	_creditos = Creditos.new()
 	_creditos.visible = false
-	_creditos.cerrado.connect(func(): if state == "creditos": state = "play")
+	_creditos.cerrado.connect(func(): if state == "creditos": mostrar_creditos(false))
 	ui.add_child(_creditos)
 	# indicador del zoom (aparece al cambiarlo y se apaga solo)
 	_zoom_label = Label.new()
@@ -121,6 +158,34 @@ func _ready() -> void:
 	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_zoom_label.modulate.a = 0
 	ui.add_child(_zoom_label)
+	menu = MenuInicio.new()
+	menu.visible = false
+	menu.empezar.connect(func(c: String): _empezar(c, 0))
+	menu.piso_prueba.connect(func(): _empezar("knight", 1))
+	menu.creditos.connect(func(): mostrar_creditos(true))
+	menu.salir.connect(func(): get_tree().quit())
+	menu.continuar.connect(_continuar)
+	menu.volver_menu.connect(_ir_menu)
+	menu.opciones_cambiadas.connect(_opciones_cambiadas)
+	ui.add_child(menu)
+	_luz_menu = OmniLight3D.new()
+	_luz_menu.light_color = Color(1, .62, .32)
+	_luz_menu.light_energy = 3.2
+	_luz_menu.omni_range = 7.0
+	_luz_menu.omni_attenuation = 1.4
+	_luz_menu.shadow_enabled = true
+	_luz_menu.visible = false
+	add_child(_luz_menu)
+	ui.move_child(_creditos, -1)   # los créditos, por encima del menú
+	if not _directo:
+		_ir_menu()
+		if _menu_pagina == "pausa":
+			pass   # en _process: empieza la partida y luego pausa, como al pulsar los botones
+		elif _menu_pagina == "opciones":
+			menu._abrir_opciones()
+		elif _menu_pagina != "":
+			menu.mostrar(_menu_pagina)
+		return
 	sim.new_game(piso, semilla, clase)
 	if prueba > 0:
 		_entrar_prueba(prueba)
@@ -189,6 +254,11 @@ func _bajar() -> void:
 func _process(dt: float) -> void:
 	_frame += 1
 	dt = minf(dt, .033)
+	if _menu_pagina == "pausa":
+		if _frame == 20: _empezar("knight", 0)
+		elif _frame == 60: _pausa()
+	if state in ["menu", "pausa"] and menu.pagina != "pausa" and not (menu.pagina == "opciones" and state == "pausa"):
+		camara.giro += dt * .07   # el fondo del menú: la cámara da vueltas despacio alrededor del héroe
 	if state == "play":
 		var inp := _read_input() if _bot == null else _bot.play(sim)
 		var r := sim.step(dt, inp)
@@ -220,7 +290,14 @@ func _camara(dt: float) -> void:
 	if sim.p == null:
 		return
 	camara.temblor = fx.temblor
-	camara.seguir(MazmorraGridMap.a3d(sim.p.x, sim.p.y) + Vector3(0, 1, 0), dt)
+	var mira := MazmorraGridMap.a3d(sim.p.x, sim.p.y) + Vector3(0, 1, 0)
+	if state == "menu":
+		# en el inicio el héroe va a la derecha de la pantalla (el menú ocupa la izquierda)
+		var a := camara.hacia_camara()
+		mira += Vector3(-a.y, 0, a.x) * camara.zoom * .3
+		camara.seguir(mira, dt, false)
+		return
+	camara.seguir(mira, dt)
 
 ## el punto del suelo bajo el ratón, en px de la simulación
 func _raton_en_suelo() -> Vector2:
@@ -254,27 +331,9 @@ func _panel_muerte() -> Control:
 	titulo.add_theme_color_override("font_outline_color", Color.BLACK)
 	titulo.add_theme_constant_override("outline_size", 8)
 	caja.add_child(titulo)
-	caja.add_child(_boton("Revivir", _revivir))
-	caja.add_child(_boton("Nueva partida", _nueva_partida))
+	caja.add_child(MenuInicio.boton("Revivir", _revivir))
+	caja.add_child(MenuInicio.boton("Volver al menú", _ir_menu))
 	return raiz
-
-func _boton(texto: String, accion: Callable) -> Button:
-	var b := Button.new()
-	b.text = texto
-	b.custom_minimum_size = Vector2(0, 48)
-	b.add_theme_font_override("font", Fonts.gothic(700))
-	b.add_theme_font_size_override("font_size", 22)
-	b.add_theme_color_override("font_color", Color8(233, 207, 138))
-	b.add_theme_color_override("font_hover_color", Color(1, .9, .6))
-	for estado in ["normal", "hover", "pressed", "focus"]:
-		var st := StyleBoxFlat.new()
-		st.bg_color = Color(.12, .06, .04, .95) if estado == "normal" else Color(.25, .1, .05, .95)
-		st.border_color = Color8(150, 110, 50) if estado != "hover" else Color8(230, 180, 90)
-		st.set_border_width_all(2)
-		st.set_corner_radius_all(3)
-		b.add_theme_stylebox_override(estado, st)
-	b.pressed.connect(accion)
-	return b
 
 ## se levanta en el sitio con media vida (Sim.revive), sin apartar a los enemigos
 func _revivir() -> void:
@@ -282,17 +341,67 @@ func _revivir() -> void:
 	_muerte.visible = false
 	state = "play"
 
-func _nueva_partida() -> void:
+# ======================================================================
+#  menú de inicio y pausa
+# ======================================================================
+## la pantalla de inicio: de fondo, un piso 1 fijo sin enemigos con el héroe quieto y la cámara girando
+func _ir_menu() -> void:
 	_muerte.visible = false
+	_set_state("menu")
+	hud.big_map = false
+	prueba = 0
+	sim.new_game(1, "menu", "knight")
+	_entrar(DungeonGen.gen_level("menu-fondo", 1))
+	sim.enemies.clear()
+	sim.loot.clear()
+	sim.cleared = true
+	fx.banner_t = 0
+	camara.zoom = 8.0
+	camara.aplicar()
+	_camara(1.0)
+	_luz_menu.position = MazmorraGridMap.a3d(sim.p.x, sim.p.y) + Vector3(1.2, 2.6, 1.0)
+	_luz_menu.visible = true
+	hud.visible = false
+	menu.mostrar("inicio")
+
+## empieza una partida (n = 0) o el piso de prueba n con la clase elegida
+func _empezar(c: String, n: int) -> void:
+	clase = c
+	prueba = n
+	menu.visible = false
+	_luz_menu.visible = false
+	hud.visible = true
+	camara.giro = deg_to_rad(GIRO)
+	camara.zoom = Opciones.v("zoom")
+	camara.aplicar()
 	sim.new_game(1, "", clase)
-	_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
-	fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
+	if n > 0:
+		_entrar_prueba(n)
+	else:
+		_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
+		fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
 	state = "play"
 
-## los créditos (autores y licencias de assets/creditos.json): al final del juego y, de momento, con F1
+func _pausa() -> void:
+	_set_state("pausa")
+	hud.big_map = false
+	menu.mostrar("pausa")
+
+func _continuar() -> void:
+	menu.visible = false
+	state = "play"
+
+func _opciones_cambiadas() -> void:
+	Opciones.aplicar_pantalla(get_window())
+	Opciones.aplicar_grafico(entorno, get_viewport())
+
+## los créditos (autores y licencias de assets/creditos.json): desde el menú, al final del juego y con F1
 func mostrar_creditos(si: bool = true) -> void:
+	if si and state != "creditos":
+		_antes_creditos = state
 	_creditos.visible = si
-	state = "creditos" if si else "play"
+	state = "creditos" if si else _antes_creditos
+	menu.visible = not si and state in ["menu", "pausa"]
 	if si:
 		_creditos.empezar()
 
@@ -338,14 +447,20 @@ func _setup_input() -> void:
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if ev.is_action_pressed("lk_fullscreen"):
-		var w := get_window()
-		w.mode = Window.MODE_WINDOWED if w.mode == Window.MODE_FULLSCREEN else Window.MODE_FULLSCREEN
+		Opciones.poner("pantalla_completa", not Opciones.v("pantalla_completa"))
+		Opciones.aplicar_pantalla(get_window())
+		if menu.pagina == "opciones":
+			menu._refrescar_opciones()
 		return
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F1 and state in ["play", "creditos"]:
 		mostrar_creditos(state == "play")
 		get_viewport().set_input_as_handled()
 		return
 	if state != "play" or sim.p == null:
+		return
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_ESCAPE:
+		_pausa()
+		get_viewport().set_input_as_handled()
 		return
 	# zoom: rueda del ratón o + y −, entre ZOOM_MIN y ZOOM_MAX metros de alto en pantalla
 	var dz := 0.0
