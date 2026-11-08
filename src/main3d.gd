@@ -108,6 +108,8 @@ func _ready() -> void:
 		_directo = false
 	entorno = CamaraIso.ambiente(self)
 	Opciones.aplicar_grafico(entorno, get_viewport())
+	Opciones.aplicar_sonido()
+	sim.vel_mov = Opciones.vel_mov()
 	mazmorra = MazmorraGridMap.new()
 	add_child(mazmorra)
 	actores = Actores3D.new()
@@ -402,6 +404,8 @@ func _continuar() -> void:
 func _opciones_cambiadas() -> void:
 	Opciones.aplicar_pantalla(get_window())
 	Opciones.aplicar_grafico(entorno, get_viewport())
+	Opciones.aplicar_sonido()
+	sim.vel_mov = Opciones.vel_mov()
 
 ## los créditos (autores y licencias de assets/creditos.json): desde el menú, al final del juego y con F1
 func mostrar_creditos(si: bool = true) -> void:

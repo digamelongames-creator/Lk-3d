@@ -3,7 +3,7 @@ extends Control
 ## Pantalla de inicio y menú de pausa (main3d.gd).
 ##   inicio: Nueva partida (elige la clase), Piso de prueba, Opciones, Créditos y Salir.
 ##   pausa (Esc en la partida): Continuar, Opciones y Volver al menú.
-##   opciones: pantalla completa, zoom por defecto, brillo, sombras, niebla y postprocesado (Opciones).
+##   opciones: pantalla completa, zoom por defecto, brillo, sonido, velocidad al andar, sombras, niebla y postprocesado (Opciones).
 ## El fondo es la mazmorra 3D que monta main3d.gd detrás; aquí solo va el viñeteado y los paneles.
 
 signal empezar(clase: String)
@@ -57,12 +57,14 @@ void fragment() {
 		["Nueva partida", func(): mostrar("clase")],
 		["Piso de prueba", func(): piso_prueba.emit()],
 		["Opciones", func(): _abrir_opciones()],
+		[_txt_sonido(), func(): _cambiar_sonido()],
 		["Créditos", func(): creditos.emit()],
 		["Salir", func(): salir.emit()],
 	])
 	_paginas.pausa = _columna([
 		["Continuar", func(): continuar.emit()],
 		["Opciones", func(): _abrir_opciones()],
+		[_txt_sonido(), func(): _cambiar_sonido()],
 		["Volver al menú", func(): volver_menu.emit()],
 	], "Pausa")
 	_paginas.clase = _pagina_clase()
@@ -85,6 +87,8 @@ void fragment() {
 ## inicio, clase, opciones o pausa
 func mostrar(p: String) -> void:
 	pagina = p
+	for b in _botones_sonido:
+		b.text = _txt_sonido()
 	for k in _paginas:
 		_paginas[k].visible = k == p
 	var en_pausa := p == "pausa" or (p == "opciones" and _de == "pausa")
@@ -177,8 +181,22 @@ func _columna(botones: Array, titulo: String = "") -> Control:
 	if titulo != "":
 		caja.add_child(_cabecera(titulo))
 	for b in botones:
-		caja.add_child(boton(b[0], b[1]))
+		var bt := boton(b[0], b[1])
+		if b[0] == _txt_sonido():
+			_botones_sonido.append(bt)
+		caja.add_child(bt)
 	return caja
+
+## botón «Sonido: sí / no» del inicio y de la pausa (es la misma opción que la casilla de Opciones)
+var _botones_sonido: Array[Button] = []
+
+func _txt_sonido() -> String:
+	return "Sonido: sí" if Opciones.v("sonido") else "Sonido: no"
+
+func _cambiar_sonido() -> void:
+	Opciones.poner("sonido", not Opciones.v("sonido"))
+	_refrescar_opciones()
+	opciones_cambiadas.emit()
 
 func _cabecera(texto: String) -> Label:
 	var l := Label.new()
@@ -239,7 +257,7 @@ func _pagina_opciones() -> Control:
 	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.offset_left = -260
 	panel.offset_right = 260
-	panel.offset_top = -200
+	panel.offset_top = -260
 	panel.grow_vertical = Control.GROW_DIRECTION_END
 	var st := StyleBoxFlat.new()
 	st.bg_color = Color(.07, .04, .03, .93)
@@ -255,6 +273,8 @@ func _pagina_opciones() -> Control:
 	_ctl.pantalla_completa = _casilla(caja, "Pantalla completa (F11)", "pantalla_completa")
 	_ctl.zoom = _barra(caja, "Zoom al empezar", "zoom", 7, 20, " m")
 	_ctl.brillo = _barra(caja, "Brillo", "brillo", 60, 160, " %")
+	_ctl.sonido = _casilla(caja, "Sonido", "sonido")
+	_ctl.velocidad = _barra(caja, "Velocidad al andar", "velocidad", 30, 100, " %")
 	caja.add_child(_subtitulo("Calidad gráfica"))
 	_ctl.sombras = _casilla(caja, "Sombras", "sombras")
 	_ctl.niebla = _casilla(caja, "Niebla", "niebla")
@@ -321,6 +341,8 @@ func _barra(caja: Container, texto: String, k: String, a: int, b: int, unidad: S
 
 ## pone los controles con lo guardado (sin disparar cambios)
 func _refrescar_opciones() -> void:
+	for b in _botones_sonido:
+		b.text = _txt_sonido()
 	for k in _ctl:
 		var c = _ctl[k]
 		if c is CheckButton:

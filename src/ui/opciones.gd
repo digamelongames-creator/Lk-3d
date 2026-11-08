@@ -1,6 +1,6 @@
 class_name Opciones
 extends RefCounted
-## Opciones del jugador: pantalla, zoom por defecto, brillo y calidad gráfica.
+## Opciones del jugador: pantalla, zoom por defecto, brillo, calidad gráfica, sonido y velocidad de movimiento.
 ## Se guardan en user://opciones.cfg y se aplican al arrancar y cada vez que se cambian (MenuInicio).
 
 const RUTA := "user://opciones.cfg"
@@ -11,6 +11,8 @@ const DEFECTO := {
 	"sombras": true,     # sombras de antorchas, braseros y la luz del héroe
 	"niebla": true,      # niebla volumétrica
 	"postprocesado": true,  # resplandor y oclusión ambiental (SSAO)
+	"sonido": true,      # false: el bus principal en silencio
+	"velocidad": 100,    # % de la velocidad de andar del héroe y de los enemigos (banco de pruebas, 30–100)
 }
 const EXPOSICION := 1.2   # la de CamaraIso.ambiente con brillo 100 %
 const ATLAS_SOMBRAS := 4096
@@ -26,6 +28,7 @@ static func cargar() -> void:
 		valores[k] = cf.get_value("opciones", k, DEFECTO[k])
 	valores.zoom = clampi(int(valores.zoom), 7, 20)
 	valores.brillo = clampi(int(valores.brillo), 60, 160)
+	valores.velocidad = clampi(int(valores.velocidad), 30, 100)
 
 static func guardar() -> void:
 	var cf := ConfigFile.new()
@@ -61,3 +64,11 @@ static func aplicar_grafico(we: WorldEnvironment, vp: Viewport) -> void:
 		e.ssao_enabled = v("postprocesado")
 	if vp != null:
 		vp.positional_shadow_atlas_size = ATLAS_SOMBRAS if v("sombras") else 0
+
+## sonido sí o no: silencia el bus principal (lo que suena por Fx3D y cualquier otro)
+static func aplicar_sonido() -> void:
+	AudioServer.set_bus_mute(0, not v("sonido"))
+
+## factor de velocidad de andar para la simulación (Sim.vel_mov)
+static func vel_mov() -> float:
+	return float(v("velocidad")) / 100.0

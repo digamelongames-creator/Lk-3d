@@ -520,12 +520,12 @@ func _actualizar_enemigos(dt: float) -> void:
 			m.reproducir("attack", t_golpe / maxf(.12, e.wind_t), .08, true)
 		elif e.act == "wind" or e.act == "strike":
 			pass
-		elif vel > .4:
+		elif vel > .15:
 			# andar o correr con los pasos al ritmo del desplazamiento (los clips de Mixamo avanzan ~1,4 y ~3,5 m/s)
 			if vel > 2.4:
 				m.reproducir("run", clampf(vel / 3.5, .6, 1.8))
 			else:
-				m.reproducir("walk", clampf(vel / 1.4, .6, 1.8))
+				m.reproducir("walk", clampf(vel / 1.4, .25, 1.8))
 		else:
 			m.reproducir("idle")
 		d.act = e.act
@@ -568,7 +568,7 @@ func _animar_heroe(p: Ent.Hero) -> void:
 		elif m.actual == "hurt" and not m.terminada():
 			pass
 		elif p.roll_t > 0 or corre:
-			m.reproducir("run", 1.3 if p.roll_t > 0 else 1.0)
+			m.reproducir("run", 1.3 if p.roll_t > 0 else maxf(.3, sim.vel_mov))   # los pasos al ritmo de «Velocidad al andar»
 		else:
 			m.reproducir("idle")
 			_combo_antes = -2

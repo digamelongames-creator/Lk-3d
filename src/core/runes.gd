@@ -674,7 +674,7 @@ func e_slow(e: Ent.Enemy) -> float:
 	var k := sim.arbol.e_slow(e)
 	if e.rn_slow_t > 0:
 		k *= .7
-	return k * sim.cls.slow(e)
+	return k * sim.cls.slow(e) * sim.vel_mov   # vel_mov: Opciones «Velocidad al andar»
 
 # ---------- cada paso ----------
 func tick(dt: float) -> void:

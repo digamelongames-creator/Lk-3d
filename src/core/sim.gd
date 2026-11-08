@@ -76,6 +76,9 @@ var t := 0.0
 var score := 0
 var kills := 0
 var hitstop := 0.0
+## velocidad de andar del héroe y de los enemigos (Opciones «Velocidad al andar», 0,3–1; banco de pruebas):
+## solo el andar; ataques, voltereta, cargas y proyectiles no cambian
+var vel_mov := 1.0
 var phase := "fight"
 var fade := 0.0
 var over := false
@@ -1525,11 +1528,11 @@ func _update_hero(dt: float, inp: Inp) -> void:
 		if p.pool_t > 0: slow = skp("pool", "spd") if p.pool_fast else 1.0
 		elif p.spin_t > 0: slow = 1.0 if has("d_whirl_a") else .55
 		elif p.blocking: slow = .4
-		elif p.seq != null: slow = .45
-		elif p.ar_t > 0: slow = 0.0 if p.cls == "archer" else .6
+		elif p.seq != null: slow = 0.0   # quieto mientras dura el tajo (decidido por Diego, 8 nov)
+		elif p.ar_t > 0: slow = 0.0
 		elif p.cast_t > 0: slow = .85
 		if en_escalera(p.x, p.y): slow *= ESC_LENTO
-		mv(p, mx * p.st.spd * slow * dt, my * p.st.spd * slow * dt)
+		mv(p, mx * p.st.spd * slow * vel_mov * dt, my * p.st.spd * slow * vel_mov * dt)
 		if p.moving and p.seq == null and not p.blocking and not (p.cast_t > 0) and not (p.shot_t > 0) and not (p.ar_t > 0):
 			if absf(mx) > .1:
 				p.flip = mx < 0
@@ -1893,6 +1896,13 @@ func drop_gold(x: float, y: float, amt: float, manual: bool) -> void:
 	gold.append({"x": gx, "y": gy, "amt": JS.roundi(amt), "bob": rnd() * 6, "manual": manual})
 
 # ---------------- daño al héroe ----------------
+## enemigo básico: ni élite, ni jefe, ni campeón, ni demonio u otro monstruo con ficha (los esqueletos sí son básicos)
+func _basico(src) -> bool:
+	if not (src is Ent.Enemy):
+		return false
+	var e: Ent.Enemy = src
+	return not e.rare and not e.elite and not e.jefe and e.boss == "" and e.type != "champ" and (e.mon == "" or e.mon == "esqueleto")
+
 func hurt_player(dmg: float, from_x: float, from_y: float, src, kind: String = "") -> String:
 	if p.inv > 0 or p.roll_t > 0 or p.dead or p.pool_t > 0:
 		return ""
@@ -1921,7 +1931,6 @@ func hurt_player(dmg: float, from_x: float, from_y: float, src, kind: String = "
 		p.hp = maxf(0, p.hp - red)
 		p.block_hit_t = .18
 		fx.shake(2 * Ritmo.VIBRA_DANO)
-		hitstop = .04
 		var a := atan2(p.y - from_y, p.x - from_x)
 		mv(p, cos(a) * 4, sin(a) * 4)
 		fx.burst(p.x - cos(a) * 6, p.y, 18, ["#fffbe8", "#ffd25a", "#f08a24"], 8, 90)
@@ -1944,12 +1953,13 @@ func hurt_player(dmg: float, from_x: float, from_y: float, src, kind: String = "
 		src.dealt += minf(dmg, p.hp)
 	p.hp = maxf(0, p.hp - dmg)
 	p.hurt_t = .18
-	p.seq = null
+	# el golpe recibido no corta el tajo ni congela el juego (decidido por Diego, 8 nov)
 	p.chain = 0
 	fx.shake(6 * Ritmo.VIBRA_DANO)
-	hitstop = .07
 	var a := atan2(p.y - from_y, p.x - from_x)
-	mv(p, cos(a) * 8, sin(a) * 8)
+	# los enemigos básicos no te mueven; élites, jefes y demonios siguen empujando un poco
+	if not _basico(src):
+		mv(p, cos(a) * 8, sin(a) * 8)
 	fx.bleed(p.x, p.y, 16, a, 24, 120)
 	fx.text(p.x, p.y - 40, "-" + str(int(dmg)), COL_RECIBIDO, 14)
 	fx.sonido(&"herido", p.x, p.y)
@@ -2367,7 +2377,7 @@ func _update_enemies(dt: float) -> void:
 		if e.flee_t > 0:   # «Grito de guerra»
 			e.flee_t -= dt
 			e.act = ""
-			mv(e, -dx / d * e.spd * dt, -dy / d * e.spd * dt)
+			mv(e, -dx / d * e.spd * vel_mov * dt, -dy / d * e.spd * vel_mov * dt)
 			e.moving = true
 			e.walk_t += dt
 			e.face = atan2(-dy, -dx)
@@ -3964,7 +3974,8 @@ func _se_openings(k: int) -> Variant:
 func _se_place() -> bool:
 	var ks := []
 	for k in L.rooms.size():
-		if k == L.start_room or k == L.end_room or (L.fount != null and k == L.fount.room):
+		# nunca en la sala del reto: las rejas y las puertas selladas se pisaban y no se podía salir
+		if k == L.start_room or k == L.end_room or (L.fount != null and k == L.fount.room) or k == int(reto.get("room", -1)):
 			continue
 		var gold_room := false
 		for c in L.chests:

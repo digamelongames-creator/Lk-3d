@@ -62,8 +62,9 @@ func banner(top: String, main: String) -> void:
 	banner_main = main
 	banner_t = 1.6
 
-func shake(v: float) -> void:
-	temblor = minf(1.0, temblor + v * .08)
+## sin temblor de cámara (decidido por Diego, 8 nov): la simulación lo sigue pidiendo y aquí se ignora
+func shake(_v: float) -> void:
+	pass
 
 func pool(x: float, y: float, r: float) -> void:
 	_charco(MazmorraGridMap.a3d(x, y), r * MazmorraGridMap.PX_M)
