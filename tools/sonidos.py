@@ -196,6 +196,38 @@ def escalera_cerrada():
     return norm(paso(zum, "lowpass", 900) * env(d, .01, 5), .6)
 
 
+def botin():
+    d = .8
+    soplo = paso(ruido(d), "bandpass", [600, 3000]) * env(d, .005, 7) * .6
+    monedas = np.zeros(int(SR * d))
+    for k in range(7):
+        i = int(SR * (.03 + k * .07 + rng.uniform(0, .03)))
+        c = oro(k % 2) * .5
+        monedas[i:i + len(c)] += c[:len(monedas) - i]
+    golpe = seno(110, .3, 60) * env(.3, .002, 14)
+    return norm(mezcla(soplo, monedas, golpe))
+
+
+def legendario():
+    d = 2.2
+    t = t_(d)
+    notas = [(523.3, 0), (659.3, .09), (784, .18), (1046.5, .27)]
+    out = np.zeros(int(SR * d))
+    for f, ini in notas:
+        i = int(SR * ini)
+        dd = d - ini
+        n = (seno(f, dd) + seno(f * 2.01, dd) * .35 + seno(f * 3.02, dd) * .12) * env(dd, .003, 2.2)
+        out[i:i + len(n)] += n
+    brillo = paso(ruido(d), "highpass", 6000) * np.exp(-t * 3) * .15
+    return norm(mezcla(out, brillo))
+
+
+def dorado():
+    d = 1.0
+    out = mezcla(*[seno(f, d) * env(d, .003, 4 + i) * a for i, (f, a) in enumerate([(784, 1), (1175, .6), (1568, .3)])])
+    return norm(out, .6)
+
+
 SONIDOS = {
     "impacto_1": lambda: impacto(0), "impacto_2": lambda: impacto(1), "impacto_3": lambda: impacto(2),
     "critico": critico,
@@ -206,6 +238,7 @@ SONIDOS = {
     "explosion": explosion, "onda": onda, "carga": carga, "invocar": invocar,
     "jefe": jefe, "jefe_muere": jefe_muere, "elite": elite,
     "escudo_roto": escudo_roto, "escalera_cerrada": escalera_cerrada,
+    "botin": botin, "legendario": legendario, "dorado": dorado,
 }
 
 

@@ -228,6 +228,8 @@ func _draw() -> void:
 	draw_rect(Rect2(0, H - 9, W, 1), C_PANEL_LINE)
 	draw_rect(Rect2(0, H - 8, W * xf, 4), Color8(184, 155, 255))
 	draw_rect(Rect2(0, H - 4, W * xf, 4), Color8(106, 68, 216))
+	# ---- pieza del suelo a tus pies: comparada con lo que llevas puesto ----
+	_tip_suelo(W, ky - 44, font5)
 	# ---- aviso de «Usar» ----
 	if show_hint != "":
 		Fonts.outlined(self, font, Vector2(W / 2, ky - 18), show_hint, 15, ViewFx.col("#ffd25a"), 1, 4, Color.BLACK)
@@ -272,3 +274,32 @@ func _draw_big_map(W: float, H: float) -> void:
 		if not e.dying:
 			left += 1
 	Fonts.outlined(self, Fonts.px(500), Vector2(W / 2, y0 + mh + 26), ("Escalera a la vista" if seen else "Escalera sin descubrir") + " · quedan %d · M cierra" % left, 16, C_MUTED)
+
+
+## ventanita encima del aviso de «Usar» con la pieza más cercana del suelo y sus flechas (Comparar)
+func _tip_suelo(W: float, abajo: float, f: Font) -> void:
+	var l = sim.nearest_loot()
+	if l == null or not l.item.get("gear", false):
+		return
+	var it: Dictionary = l.item
+	var p := sim.p
+	var own: bool = it.cls == p.cls_key()
+	var lineas := [[String(it.name), ViewFx.col(Items.RQ_C[clampi(int(it.q), 0, 3)]), 15],
+		["%s · %s" % [Items.slot_name(it.cls, it.slot), Items.RQ_N[clampi(int(it.q), 0, 3)]] + ("" if own else " · solo " + Items.CLS_N[it.cls]), C_MUTED, 12]]
+	var cur = p.eq.get(it.slot) if own else null
+	for x in Comparar.lineas(it, cur, 13):
+		lineas.append(x)
+	if own and cur != null:
+		lineas.append(["Comparado con " + String(cur.name), C_MUTED, 11])
+	var w := 300.0
+	var h := 10.0
+	for x in lineas:
+		h += x[2] + 5
+	var r := Rect2(W / 2 - w / 2, abajo - h, w, h)
+	draw_rect(r, Color(14 / 255.0, 10 / 255.0, 8 / 255.0, .88))
+	draw_rect(r, Color8(138, 106, 60), false, 1)
+	var y := r.position.y + 6
+	for x in lineas:
+		y += x[2]
+		Fonts.outlined(self, f, Vector2(W / 2, y), x[0], x[2], x[1], 1, 3, Color.BLACK)
+		y += 5

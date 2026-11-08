@@ -1117,7 +1117,7 @@ func try_open_chest(c: Dictionary) -> void:
 	if c.get("boss", false):
 		items.append(Items.rune_item(rune_roll(4, true)))
 		items.append(Items.rune_item(rune_roll(4, true)))
-	_fan(c.x, c.y, items, 1 if rnd() < CL.potion else 0)
+	_fan(c.x, c.y, items, 1 if rnd() < CL.potion else 0, true)
 	drop_gold(c.x, c.y + 4, (CL.gold[0] + rnd() * (CL.gold[1] - CL.gold[0])) * (1 + wave * .1), false)
 	fx.burst(c.x, c.y, 12, ["#fff3c0", Items.RQ_C[c.best]], 10, 70)
 	fx.text(c.x, c.y - 34, CHEST_N[c.kind], Items.RQ_C[c.best], 10, false, 1.2, false, false)
@@ -1139,18 +1139,26 @@ func _chest_tick(dt: float) -> void:
 		var f = l.get("fly")
 		if f == null:
 			continue
-		f.ft += dt / .55
+		f.ft += dt / float(f.get("dur", .55))
 		if f.ft < 0:
 			continue
 		var k := minf(1, f.ft)
+		# en el plano va en línea recta; la altura (alto, en px) la usa la vista 3D para el arco
 		l.x = f.x0 + (f.tx - f.x0) * k
-		l.y = f.y0 + (f.ty - f.y0) * k - sin(PI * k) * 26
+		l.y = f.y0 + (f.ty - f.y0) * k
+		l.alto = sin(PI * k) * float(f.get("h", 26.0))
 		if k >= 1:
 			l.x = f.tx
 			l.y = f.ty
+			l.alto = 0.0
 			l.fly = null
 			l.land_t = t
-			fx.burst(l.x, l.y, 4, ["#e8e2d0", Items.RQ_C[l.item.q]], 4, 30)
+			var q := int(l.item.get("q", 0))
+			fx.burst(l.x, l.y, 4, ["#e8e2d0", Items.RQ_C[clampi(q, 0, 3)]], 4 + q * 4, 30 + q * 15)
+			if l.item.get("gear", false) and q == 3:
+				fx.sonido(&"legendario", l.x, l.y)
+			elif l.item.get("gear", false) and q == 2:
+				fx.sonido(&"dorado", l.x, l.y)
 
 # ---------- qué cae ----------
 ## rango de runa: entre los permitidos en este piso, por pesos
@@ -1213,6 +1221,11 @@ func roll_drops(e: Ent.Enemy) -> void:
 	if e.mimic:
 		ids.append_array([rune_roll(2, false), rune_roll(1, false)])
 		gear.append(2)
+	elif e.jefe:   # jefe del piso: tres piezas buenas (una legendaria a veces) y dos runas, además de su cofre
+		ids.append_array([rune_roll(3, true), rune_roll(2, true)])
+		gear.append(3 if rnd() < .35 else 2)
+		gear.append(2)
+		gear.append(2 if rnd() < .5 else 1)
 	elif e.type == "champ" or e.boss != "":
 		ids.append_array([rune_roll(3, true), rune_roll(2, true)])
 		for i in 2:
@@ -1239,7 +1252,7 @@ func roll_drops(e: Ent.Enemy) -> void:
 		items.append(_gear_drop(q))
 	for id in ids:
 		items.append(Items.rune_item(id))
-	_fan(e.x, e.y, items, 0)
+	_fan(e.x, e.y, items, 0, e.rare or e.jefe or e.mimic or e.type == "champ" or e.boss != "")
 
 ## un sitio donde se pueda recoger: fuera de la fuente y sin muebles ni paredes;
 ## con origen, además, sin paredes entre el origen y el sitio (que no salte a otra sala)
@@ -1267,12 +1280,20 @@ func safe_spot(x: float, y: float, from: Variant = null) -> Vector2:
 	return Vector2(p.x, p.y)
 
 ## todo sale en abanico desde (x, y): objetos, runas y pociones
-func _fan(x: float, y: float, items: Array, potions: int) -> void:
+## explota: élites, jefes y cofres; el botín sale disparado en todas direcciones, más lejos y más alto
+func _fan(x: float, y: float, items: Array, potions: int, explota := false) -> void:
 	var n := items.size() + potions
 	var k := 0
+	var giro := rnd() * TAU
+	if explota and items.size():
+		fx.burst(x, y, 20, ["#fff3c0", "#ffd25a", "#ffffff"], 26, 160)
+		fx.sonido(&"botin", x, y)
 	for item in items:
 		var a := PI * (.18 + .64 * (float(k) / (n - 1) if n > 1 else .5)) + (rnd() - .5) * .2
 		var r := 24 + rnd() * 12
+		if explota:
+			a = giro + TAU * float(k) / maxf(1, items.size()) + (rnd() - .5) * .5
+			r = 40 + rnd() * 34
 		k += 1
 		var tx := x + cos(a) * r
 		var ty := y + 8 + sin(a) * r * .7
@@ -1282,7 +1303,8 @@ func _fan(x: float, y: float, items: Array, potions: int) -> void:
 			ty += 4
 			s += 1
 		var v := safe_spot(tx, ty, Vector2(x, y))
-		loot.append({"x": x, "y": y - 8, "item": item, "bob": rnd() * 6, "fly": {"x0": x, "y0": y - 8, "tx": v.x, "ty": v.y, "ft": -k * .12}})
+		var f := {"x0": x, "y0": y - 8, "tx": v.x, "ty": v.y, "ft": -k * (.06 if explota else .12), "h": 70.0 if explota else 26.0, "dur": .8 if explota else .55}
+		loot.append({"x": x, "y": y - 8, "item": item, "bob": rnd() * 6, "fly": f, "alto": 0.0})
 		if item.has("rune"):
 			var rr := Items.rune(item.rune)
 			if int(rr.t) >= 4:

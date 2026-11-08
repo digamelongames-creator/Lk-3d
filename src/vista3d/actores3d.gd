@@ -107,8 +107,15 @@ func _actualizar_botin() -> void:
 			add_child(n)
 			_botin_nodos[k] = n
 		var flota: bool = n.get_meta("caja", false)
-		n.position = MazmorraGridMap.a3d(l.x, l.y, 6 if flota else 2) + Vector3(0, (.15 if flota else .06) * sin(_t * 3 + l.bob), 0)
-		n.rotation.y = _t * (1.5 if flota else .6)
+		var vuela: bool = l.get("fly") != null
+		n.position = MazmorraGridMap.a3d(l.x, l.y, (6 if flota else 2) + float(l.get("alto", 0.0))) + Vector3(0, (.15 if flota else .06) * sin(_t * 3 + l.bob), 0)
+		n.rotation.y = _t * (9.0 if vuela else (1.5 if flota else .6))
+		var haz: Node3D = n.get_meta("haz", null)
+		if haz != null:
+			haz.visible = not vuela
+			if not vuela:
+				haz.scale.x = 1.0 + .12 * sin(_t * 4 + l.bob)
+				haz.scale.z = haz.scale.x
 	for k in _botin_nodos.keys():
 		if not vistos.has(k):
 			_botin_nodos[k].queue_free()
@@ -147,6 +154,16 @@ func _nueva_pieza_suelo(it: Dictionary) -> Node3D:
 		n.set_meta("caja", true)
 	# los objetos mágicos o mejores dan un poco de luz de su color en el suelo
 	var q := clampi(int(it.get("q", 0)), 0, 3)
+	if it.get("gear", false) and q >= 2:
+		# la pieza puede ir tumbada (girada): el haz va aparte, siempre vertical
+		var envol := Node3D.new()
+		envol.add_child(n)
+		for mk in n.get_meta_list():
+			envol.set_meta(mk, n.get_meta(mk))
+		n = envol
+		var haz := _haz(Color(Items.RQ_C[q]), q == 3)
+		n.add_child(haz)
+		n.set_meta("haz", haz)
 	if it.get("gear", false) and q > 0:
 		var luz := OmniLight3D.new()
 		luz.light_color = Color(Items.RQ_C[q])
@@ -155,6 +172,60 @@ func _nueva_pieza_suelo(it: Dictionary) -> Node3D:
 		luz.position.y = .4
 		n.add_child(luz)
 	return n
+
+## haz de luz vertical sobre el botín: fuerte en los legendarios y más suave en los dorados
+## (es redondo, así que da igual que gire con la pieza)
+func _haz(c: Color, fuerte: bool) -> Node3D:
+	var raiz := Node3D.new()
+	var alto := 6.5 if fuerte else 3.5
+	for capa in 2:   # núcleo estrecho y halo ancho
+		var mi := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = (.09 if capa == 0 else .32) * (1.0 if fuerte else .75)
+		cm.bottom_radius = cm.top_radius * 1.3
+		cm.height = alto
+		cm.radial_segments = 16
+		cm.cap_top = false
+		cm.cap_bottom = false
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.no_depth_test = false
+		m.albedo_texture = _degradado_haz()
+		m.texture_repeat = false   # si no, el borde de arriba toma el color del de abajo y sale un aro
+		var k := (1.0 if capa == 0 else .45) * (1.0 if fuerte else .55)
+		m.albedo_color = Color(c.r * k + (.4 if capa == 0 else 0.0), c.g * k + (.4 if capa == 0 else 0.0), c.b * k + (.4 if capa == 0 else 0.0), 1)
+		cm.material = m
+		mi.mesh = cm
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.position.y = alto / 2
+		raiz.add_child(mi)
+	var luz := OmniLight3D.new()
+	luz.light_color = c
+	luz.light_energy = 2.5 if fuerte else 1.2
+	luz.omni_range = 4.0 if fuerte else 2.5
+	luz.position.y = .8
+	raiz.add_child(luz)
+	return raiz
+
+var _tex_haz: Texture2D
+## de abajo (lleno) a arriba (nada); en el CylinderMesh la v = 0 es la boca de arriba
+func _degradado_haz() -> Texture2D:
+	if _tex_haz == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 0))
+		g.set_color(1, Color(1, 1, 1, 1))
+		g.add_point(.6, Color(1, 1, 1, .3))
+		var t := GradientTexture2D.new()
+		t.gradient = g
+		t.fill_from = Vector2(0, 0)
+		t.fill_to = Vector2(0, 1)
+		t.width = 4
+		t.height = 128
+		_tex_haz = t
+	return _tex_haz
 
 ## enemigos: se crean al aparecer; al morir se quedan tumbados un rato y se hunden en el suelo
 func _actualizar_enemigos(dt: float) -> void:

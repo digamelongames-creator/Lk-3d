@@ -971,39 +971,19 @@ func _gear_tip(it: Dictionary, is_eq: bool) -> Array:
 	var bt := Items.base_txt(k_, it.slot)
 	if bt != "":
 		out.append([bt, C_TXT, 11])
-	for a in it.bonus:
-		out.append([Items.stat_txt(a, it.bonus[a]), ViewFx.col("#9fd0ff"), 11])
-	var n: int = it.socks.size()
-	var used: int = it.socks.filter(func(x): return x != null).size()
-	out.append([("Engarces: %d de %d" % [used, n]) if n else "Sin engarces", C_MUT, 10])
+	# cada estadística con su flecha comparada con lo que llevas puesto (si es de tu clase y no es lo puesto)
+	var cur = p.eq.get(it.slot) if own and not is_eq else null
+	if cur != null:
+		out.append(["Comparado con " + String(cur.name) + ":", C_MUT, 10])
+	out.append_array(Comparar.lineas(it, cur))
 	for id in it.socks:
 		if id != null:
 			var r := Items.rune(id)
 			out.append([String(r.n) + " · " + String(r.e), ViewFx.col(Items.RN_TC[int(r.t)]), 10])
 	if is_eq:
 		out.append(["Puesto · clic derecho para quitártelo", C_MUT, 10])
-	elif own:
-		var cur = p.eq.get(it.slot)
-		if cur == null:
-			out.append(["El hueco está libre: equípalo con clic derecho.", C_MUT, 10])
-		else:
-			out.append(["Comparado con " + String(cur.name) + ":", C_MUT, 10])
-			var any := false
-			var ks := {}
-			for a in it.bonus: ks[a] = true
-			for a in cur.bonus: ks[a] = true
-			for a in ks:
-				var d: int = it.bonus.get(a, 0) - cur.bonus.get(a, 0)
-				if d == 0:
-					continue
-				any = true
-				out.append([("▲ +" if d > 0 else "▼ −") + str(absi(d)) + " " + Items.STAT_NM[a], ViewFx.col("#8fe08a") if d > 0 else ViewFx.col("#ff7a60"), 10])
-			var ds: int = n - cur.socks.size()
-			if ds:
-				any = true
-				out.append([("▲ +" if ds > 0 else "▼ −") + str(absi(ds)) + (" engarce" if absi(ds) == 1 else " engarces"), ViewFx.col("#8fe08a") if ds > 0 else ViewFx.col("#ff7a60"), 10])
-			if not any:
-				out.append(["Mismas bonificaciones.", C_MUT, 10])
+	elif own and cur == null:
+		out.append(["El hueco está libre: equípalo con clic derecho.", C_MUT, 10])
 	return out
 
 func _draw_tip(lines: Array) -> void:

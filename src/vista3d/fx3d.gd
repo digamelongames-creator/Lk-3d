@@ -118,7 +118,7 @@ var _voz := 0
 const VOCES := 16
 const VOLUMEN := {"impacto": -4.0, "critico": -2.0, "muerte_enemigo": -5.0, "oro": -10.0, "herido": -3.0, "bloqueo": -4.0,
 	"explosion": 0.0, "onda": 0.0, "jefe": -1.0, "jefe_muere": 0.0, "invocar": -5.0, "carga": -6.0, "elite": -4.0,
-	"escudo_roto": -4.0, "escalera_cerrada": -6.0}
+	"escudo_roto": -4.0, "escalera_cerrada": -6.0, "botin": -3.0, "legendario": 0.0, "dorado": -5.0}
 
 func sonido(id: StringName, x: float, y: float) -> void:
 	if raiz == null or not raiz.is_inside_tree():
