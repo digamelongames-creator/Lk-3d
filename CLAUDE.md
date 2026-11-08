@@ -26,14 +26,15 @@ Responde en español.
 - Paquetes de fuera (Poly Haven, Sketchfab): `python3 tools/blender/props_glb.py <carpeta con lo que pasó Diego> assets/props [paquete…]` → `Props3D.crear(paquete, pieza)`. Autores y licencias en `docs/CREDITOS_Y_LICENCIAS.md` y `assets/creditos.json` (los dos al día).
 - Pantalla de inicio (`MenuInicio`): el juego arranca en ella. Nueva partida (con elección de clase), Piso de prueba, Opciones, Créditos y Salir; de fondo, un piso 1 fijo sin enemigos con la cámara girando. Esc en la partida abre la pausa (Continuar, Opciones, Volver al menú). Opciones guardadas en `user://opciones.cfg` (`Opciones`).
 - Piso de prueba: se entra desde el menú (`PisoPrueba`, sin enemigos). Adornos por propósito de sala: `Repartidor.PROPOSITOS`.
+- Sonidos: `python3 tools/sonidos.py assets/sonidos` (sintetizados; `Fx3D.sonido` elige entre las tomas `_1`, `_2`…). Efectos de golpe: `xvfb-run -a godot --path . -s res://tools/vitrina_sangre.gd -- --shot=/tmp/s.png`.
 
 ## Ejecutar y probar
 - Espacio de trabajo nuevo: `bash tools/preparar_entorno.sh` (Godot 4.7.2, Vulkan por software y bpy). Diego ha autorizado instalar Godot en cualquier chat de este proyecto.
 - Godot 4.7.2, renderizador Forward+.
 - Importar: `godot --headless --path . --editor --quit`.
-- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` `tests/test_demonios.gd`, `tests/test_zoom.gd`, `tests/test_combate.gd` `tests/test_dos_espadas.gd`, `tests/test_armadura.gd`, `tests/test_piso_prueba.gd` y `tests/test_menu.gd` (deben decir «todo bien»).
+- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` `tests/test_demonios.gd`, `tests/test_zoom.gd`, `tests/test_combate.gd` `tests/test_dos_espadas.gd`, `tests/test_armadura.gd`, `tests/test_piso_prueba.gd`, `tests/test_menu.gd` y `tests/test_grupos.gd` (deben decir «todo bien»).
 - Captura: `xvfb-run -a godot --path . -- --bot --shot=/tmp/x.png,200` (sin GPU: `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`).
-- Opciones (las que empiezan partida se saltan el menú): `--partida` `--prueba=N --sala=N` `--menu[=clase|opciones|pausa]` (capturas del menú) `--clase=knight|dk|archer|mage|dl --piso=N --semilla=… --heroe=… --junto=<monstruo> --equipo=0..3 --morir --zoom=… --giro=… --inclinacion=… --perspectiva --bot`.
+- Opciones (las que empiezan partida se saltan el menú): `--partida` `--prueba=N --sala=N` `--menu[=clase|opciones|pausa]` (capturas del menú) `--clase=knight|dk|archer|mage|dl --piso=N --semilla=… --heroe=… --junto=<monstruo>|jefe|elite --equipo=0..3 --morir --zoom=… --giro=… --inclinacion=… --perspectiva --bot`.
 - El juego arranca en pantalla completa (o como diga Opciones); F11 cambia a ventana y se guarda; F1 créditos; Esc pausa. Rueda o +/− para el zoom (7–20 m).
 - Todo lo estático que guarde recursos (texturas, mallas, traducciones) se suelta en `_exit_tree` de la escena principal; si no, Godot se cuelga al cerrar.
 - Repositorio: github.com/digamelongames-creator/Lk-3d (rama `main`). Cada entrega se sube ahí y además se pasa el zip.

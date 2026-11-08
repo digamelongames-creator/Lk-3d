@@ -27,5 +27,9 @@ func corpse_raised(c: Dictionary) -> void: pass
 func hud() -> void: pass
 ## un sonido en (x, y): tajo1–3, impacto, bloqueo, herido, muerte_enemigo, oro… (ver assets/audio/sonidos.json)
 func sonido(id: StringName, x: float, y: float) -> void: pass
+## aviso en el suelo de un golpe que va a caer (explosión de élite, onda del jefe): círculo de radio r px que se llena en t s
+func aviso(x: float, y: float, r: float, t: float, col: String) -> void: pass
+## esquirlas al golpear algo que no sangra: "hueso" (esqueletos) o "brasas" (demonios)
+func esquirlas(x: float, y: float, z: float, ang: float, n: int, spd: float, tipo: String) -> void: pass
 ## el Charco de sangre absorbe la sangre del suelo bajo (x, y)
 func blood_suck(x: float, y: float, r: float) -> void: pass

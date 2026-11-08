@@ -116,15 +116,26 @@ func _draw() -> void:
 		if mult > 1:
 			Fonts.outlined(self, font5, Vector2(W - 12, 246), "puntos x%d" % mult, 19, ViewFx.col("#e8a33a"), 2)
 	# ---- vida del campeón a la vista (arriba en el centro) ----
+	# el jefe del piso tiene prioridad; después campeones, jefes de sala y élites
+	var arriba: Ent.Enemy = null
 	for e in sim.enemies:
-		if (e.type == "champ" or e.boss != "") and not e.dying and e.state != "idle" and e.los and JS.hypot(e.x - p.x, e.y - p.y) < 118 * 1.15:
-			var cw := 320.0
-			var cx := W / 2 - cw / 2 - 80
-			Fonts.outlined(self, font, Vector2(cx + cw / 2, 30), e.title, 19, ViewFx.col("#ff9a3a"), 1, 3, Color.BLACK)
-			draw_rect(Rect2(cx - 2, 38, cw + 4, 8), ViewFx.col("#0a0607"))
-			draw_rect(Rect2(cx, 40, cw, 4), ViewFx.col("#26090d"))
-			draw_rect(Rect2(cx, 40, maxf(0, cw * e.hp / e.max_hp), 4), ViewFx.col("#6a0d1a"))
-			break
+		if (e.jefe or e.type == "champ" or e.boss != "" or e.rare) and not e.dying and e.state != "idle" and e.los and JS.hypot(e.x - p.x, e.y - p.y) < (260.0 if e.jefe else 118 * 1.15):
+			if arriba == null or (e.jefe and not arriba.jefe):
+				arriba = e
+	if arriba != null:
+		var e := arriba
+		var cw := 420.0 if e.jefe else 320.0
+		var bh := 8.0 if e.jefe else 4.0
+		var cx := W / 2 - cw / 2 - 80
+		Fonts.outlined(self, font, Vector2(cx + cw / 2, 30), e.title, 22 if e.jefe else 19, ViewFx.col("#ff5a3a" if e.jefe else "#ff9a3a"), 1, 3, Color.BLACK)
+		draw_rect(Rect2(cx - 2, 38, cw + 4, bh + 4), ViewFx.col("#0a0607"))
+		draw_rect(Rect2(cx, 40, cw, bh), ViewFx.col("#26090d"))
+		draw_rect(Rect2(cx, 40, maxf(0, cw * e.hp / e.max_hp), bh), ViewFx.col("#a01020" if e.jefe else "#6a0d1a"))
+		if e.escudo_max > 0 and e.escudo > 0:
+			draw_rect(Rect2(cx, 40 + bh - 2, cw * e.escudo / e.escudo_max, 2), ViewFx.col("#7cc4ff"))
+		var sub: String = "Jefe del piso" if e.jefe else (Sim.PODER_N.get(e.poder, "") if e.poder != "" else "")
+		if sub != "":
+			Fonts.outlined(self, font5, Vector2(cx + cw / 2, 40 + bh + 18), sub, 14, ViewFx.col("#d8c8a8"), 1, 3, Color.BLACK)
 	# ---- minimapa (arriba a la derecha) ----
 	var s := 3.6
 	var mw := DungeonGen.GW * s

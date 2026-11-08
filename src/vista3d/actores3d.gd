@@ -54,11 +54,11 @@ func nuevo_piso() -> void:
 		heroe = _nuevo_heroe()
 		add_child(heroe)
 	_firma_equipo = ""
-	for c in sim.chests:
-		var n := _cofre()
-		n.position = MazmorraGridMap.a3d(c.x, c.y - 12)
-		add_child(n)
-		_cofres.append(n)
+	_sincronizar_cofres()
+	if is_instance_valid(_sello):
+		_sello.queue_free()
+	_sello = _sello_escalera()
+	add_child(_sello)
 	for d in sim.doors:
 		var n := Node3D.new()
 		for ci in d.cells:   # índice de casilla: cy * GW + cx
@@ -85,6 +85,10 @@ func actualizar(dt: float) -> void:
 	_reserva(_oro, sim.gold.size(), func(): return _caja(Vector3(.3, .08, .3), Color(1, .8, .2), Color(1, .7, .1)))
 	for i in sim.gold.size():
 		_oro[i].position = MazmorraGridMap.a3d(sim.gold[i].x, sim.gold[i].y, 2)
+	_sincronizar_cofres()
+	_sello.visible = sim.jefe_vivo() != null
+	if _sello.visible:
+		_sello.rotation.y = _t * .6
 	for i in mini(_cofres.size(), sim.chests.size()):
 		_cofres[i].get_child(1).rotation.x = -1.2 if sim.chests[i].open else 0.0
 	for i in mini(_puertas.size(), sim.doors.size()):
@@ -165,6 +169,20 @@ func _actualizar_enemigos(dt: float) -> void:
 			_enemigos[k] = d
 		vistos[k] = true
 		var n: Node3D = d.n
+		# lejos del héroe y sin despertar: ni se ve ni se anima (hay muchos enemigos por piso)
+		var lejos: bool = e.state == "idle" and Vector2(e.x - sim.p.x, e.y - sim.p.y).length() * MazmorraGridMap.PX_M > LEJOS_M
+		if lejos != d.get("lejos", false):
+			d.lejos = lejos
+			n.visible = not lejos
+			n.process_mode = Node.PROCESS_MODE_DISABLED if lejos else Node.PROCESS_MODE_INHERIT
+		if lejos:
+			continue
+		if d.has("escudo"):
+			d.escudo.visible = e.escudo > 0 and not (e.dying > 0)
+			if d.escudo.visible:
+				d.escudo.scale = Vector3.ONE * (1.0 + sin(_t * 6) * .03)
+		if d.has("aura"):
+			d.aura.visible = not (e.dying > 0) and not e.dead
 		var antes: Vector3 = n.position
 		n.position = MazmorraGridMap.a3d(e.x, e.y, e.bz)
 		n.rotation.y = lerp_angle(n.rotation.y, _giro(e.face), minf(1, dt * 12))
@@ -418,14 +436,144 @@ func _nuevo_heroe() -> Node3D:
 func _nuevo_enemigo(e: Ent.Enemy) -> Dictionary:
 	var id: String = e.mon if e.mon != "" else MODELO_HUMANOS
 	var m := Modelo3D.crear(id, TINTE_ENEMIGO if id == heroe_id else Color.WHITE)
+	var d := {}
 	if m != null:
 		var raiz := Node3D.new()
 		raiz.add_child(m)
+		if e.jefe:
+			m.scale = Vector3.ONE * ESCALA_JEFE
+		elif e.rare:
+			m.scale = Vector3.ONE * ESCALA_ELITE
 		add_child(raiz)
-		return {"n": raiz, "m": m}
-	var n := _capsula_enemigo(e)
-	add_child(n)
-	return {"n": n, "m": null}
+		d = {"n": raiz, "m": m}
+	else:
+		var n := _capsula_enemigo(e)
+		add_child(n)
+		d = {"n": n, "m": null}
+	if e.jefe or (e.rare and e.poder != ""):
+		_marcar_elite(e, d)
+	return d
+
+const LEJOS_M := 32.0
+const ESCALA_ELITE := 1.22
+const ESCALA_JEFE := 1.6
+## color del aura según el poder de la élite (el jefe, rojo)
+const COL_PODER := {"rapido": Color(1, .85, .25), "escudo": Color(.45, .75, 1), "explota": Color(1, .45, .1), "invoca": Color(.7, .35, 1)}
+
+## élites y jefe: aro de luz en el suelo, luz de su color, nombre encima y, con escudo, una burbuja
+func _marcar_elite(e: Ent.Enemy, d: Dictionary) -> void:
+	var c: Color = Color(1, .15, .1) if e.jefe else COL_PODER.get(e.poder, Color(1, .6, .1))
+	var k := ESCALA_JEFE if e.jefe else ESCALA_ELITE
+	var aura := Node3D.new()
+	var aro := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = .55 * k
+	tm.outer_radius = .68 * k
+	tm.rings = 40
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(c.r, c.g, c.b, .55)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.emission_enabled = true
+	mat.emission = c
+	mat.emission_energy_multiplier = 2.5
+	tm.material = mat
+	aro.mesh = tm
+	aro.scale = Vector3(1, .04, 1)
+	aro.position.y = .05
+	aura.add_child(aro)
+	var luz := OmniLight3D.new()
+	luz.light_color = c
+	luz.light_energy = 2.2 if e.jefe else 1.3
+	luz.omni_range = 4.5 if e.jefe else 3.0
+	luz.position.y = 1.2
+	aura.add_child(luz)
+	var l := Label3D.new()
+	l.text = e.title
+	l.modulate = c.lightened(.35)
+	l.outline_modulate = Color.BLACK
+	l.outline_size = 8
+	l.font_size = 40 if e.jefe else 30
+	l.pixel_size = .005
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.position.y = 2.3 * k + (.6 if e.jefe else 0.0)
+	aura.add_child(l)
+	d.n.add_child(aura)
+	d.aura = aura
+	if e.escudo_max > 0:
+		var b := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = .9 * k
+		sm.height = 2.3 * k
+		var bm := StandardMaterial3D.new()
+		bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		bm.albedo_color = Color(.5, .8, 1, .16)
+		bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		bm.rim_enabled = true
+		bm.cull_mode = BaseMaterial3D.CULL_DISABLED
+		sm.material = bm
+		b.mesh = sm
+		b.position.y = 1.0 * k
+		d.n.add_child(b)
+		d.escudo = b
+
+## cofres: uno por cada cofre de la simulación (el jefe deja el suyo al morir, más grande)
+func _sincronizar_cofres() -> void:
+	while _cofres.size() < sim.chests.size():
+		var c: Dictionary = sim.chests[_cofres.size()]
+		var n := _cofre()
+		n.position = MazmorraGridMap.a3d(c.x, c.y - 12)
+		if c.get("grande", false):
+			n.scale *= 1.6
+		add_child(n)
+		_cofres.append(n)
+
+## sello rojo sobre la escalera mientras el jefe del piso siga vivo
+var _sello: Node3D
+func _sello_escalera() -> Node3D:
+	var n := Node3D.new()
+	if sim.L.is_empty() or not sim.L.has("stairs_px"):
+		return n
+	n.position = MazmorraGridMap.a3d(sim.L.stairs_px.x, sim.L.stairs_px.y) + Vector3(0, .1, 0)
+	var c := Color(1, .12, .06)
+	for i in 2:
+		var aro := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 1.0 + i * .35
+		tm.outer_radius = 1.1 + i * .35
+		tm.rings = 48
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.albedo_color = c
+		m.emission_enabled = true
+		m.emission = c
+		m.emission_energy_multiplier = 3
+		tm.material = m
+		aro.mesh = tm
+		aro.scale = Vector3(1, .04, 1)
+		n.add_child(aro)
+	var col := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 1.0
+	cm.bottom_radius = 1.1
+	cm.height = 2.4
+	var cmat := StandardMaterial3D.new()
+	cmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	cmat.albedo_color = Color(1, .1, .05, .12)
+	cmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	cmat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	cm.material = cmat
+	col.mesh = cm
+	col.position.y = 1.2
+	n.add_child(col)
+	var luz := OmniLight3D.new()
+	luz.light_color = c
+	luz.light_energy = 2.0
+	luz.omni_range = 5
+	luz.position.y = 1.5
+	n.add_child(luz)
+	return n
 
 func _capsula_enemigo(e: Ent.Enemy) -> Node3D:
 	var n := Node3D.new()

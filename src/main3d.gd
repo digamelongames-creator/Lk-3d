@@ -43,7 +43,7 @@ var _zoom_label: Label
 var _zoom_t := 0.0
 var _morir := false
 var _equipo := -1  # pruebas: --equipo=0..3 pone casco, peto, guantes, cinturón y botas de esa calidad y suelta una de cada calidad al lado
-var _junto := ""   # pruebas: --junto=demonCaptain pone al héroe al lado de ese monstruo
+var _junto := ""   # pruebas: --junto=demonCaptain pone al héroe al lado de ese monstruo (también jefe o elite)
 var _shot_path := ""
 var _shot_frames := 0
 var _frame := 0
@@ -191,10 +191,10 @@ func _ready() -> void:
 		_entrar_prueba(prueba)
 	else:
 		_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
-		fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
+		fx.banner("Derrota al jefe y baja por la escalera", "Oleada %d" % sim.wave)
 	if _junto != "":
 		for e in sim.enemies:
-			if e.mon == _junto:
+			if e.mon == _junto or (_junto == "jefe" and e.jefe) or (_junto == "elite" and e.rare and e.poder != "" and not e.jefe):
 				for k in 16:
 					var q := Vector2(e.x, e.y) + Vector2.from_angle(k * TAU / 16) * 110
 					if sim.fits(q.x, q.y, 8):
@@ -245,7 +245,7 @@ func _bajar() -> void:
 	sim.p.inv = 0
 	sim.wave += 1
 	_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
-	fx.banner("Un campeón guarda la escalera" if sim.wave % 5 == 0 else "Busca la escalera para bajar", "Oleada %d" % sim.wave)
+	fx.banner("Derrota al jefe y baja por la escalera", "Oleada %d" % sim.wave)
 	Guardado.guardar(sim)
 
 # ======================================================================
@@ -379,7 +379,7 @@ func _empezar(c: String, n: int) -> void:
 		_entrar_prueba(n)
 	else:
 		_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
-		fx.banner("Busca la escalera para bajar", "Oleada %d" % sim.wave)
+		fx.banner("Derrota al jefe y baja por la escalera", "Oleada %d" % sim.wave)
 	state = "play"
 
 func _pausa() -> void:

@@ -188,6 +188,17 @@ class Enemy extends RefCounted:
 	var seed := 0.0
 	var tang := 1.0
 	var rare := false
+	# élites y jefes de la vista 3D (Sim._dar_poder, Sim._jefe_piso)
+	var poder := ""              # "rapido", "escudo", "explota", "invoca"
+	var escudo := 0.0            # vida del escudo de daño
+	var escudo_max := 0.0
+	var escudo_t := 0.0          # tiempo sin recibir golpes (a los 5 s se recarga)
+	var invoca_t := 0.0
+	var invocador: Object = null # quién lo ha invocado
+	var jefe := false            # jefe del piso: guarda la escalera
+	var jefe_visto := false
+	var jefe_mitad := false      # ya llamó a sus siervos (al 50 % de vida)
+	var onda_t := 0.0
 	var am := 1.0
 	var dealt := 0.0
 	var los := false

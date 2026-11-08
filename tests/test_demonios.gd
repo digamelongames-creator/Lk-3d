@@ -1,6 +1,5 @@
 extends SceneTree
-## Piso 1 de prueba: los cuatro demonios salen cada uno en su sala (4 minidemonios juntos)
-## y el salto del capitán demonio daña y aturde 2 s al héroe.
+## Los demonios salen en los pisos 1–5, cada tipo en su sala, y el salto del capitán demonio daña y aturde 2 s al héroe.
 ## godot --headless --path . -s tests/test_demonios.gd
 
 var fallos := 0
@@ -11,25 +10,29 @@ func ok(c: bool, que: String) -> void:
 		print("FALLO ", que)
 
 func _init() -> void:
-	for semilla in ["a", "b", "c"]:
-		var sim := Sim.new()
-		sim.new_game(1, "demonios-" + semilla, "knight")
-		sim.enter_level(DungeonGen.gen_level(sim.level_seed(1), 1))
-		var salas := {}
-		var cuenta := {}
-		for e in sim.enemies:
-			if e.mon in ["miniDemon", "middleDemon", "demonCaptain", "firedemon"]:
-				cuenta[e.mon] = cuenta.get(e.mon, 0) + 1
-				var k: int = sim.room_at_px(e.x, e.y)
-				if not salas.has(e.mon):
-					salas[e.mon] = k
-		ok(cuenta.get("miniDemon", 0) >= 3, semilla + ": minidemonios en grupo (%d)" % cuenta.get("miniDemon", 0))
-		for id in ["middleDemon", "demonCaptain", "firedemon"]:
-			ok(cuenta.get(id, 0) == 1, semilla + ": un " + id)
-		var distintas := {}
-		for id in salas:
-			distintas[salas[id]] = true
-		ok(distintas.size() == salas.size(), semilla + ": cada demonio en su sala " + str(salas))
+	# los demonios salen en los pisos 1–5, mezclados con el resto (decidido por Diego, 8 nov); nunca dos en la misma sala
+	var vistos := {}
+	for w in range(1, 8):
+		for semilla in ["a", "b", "c", "d"]:
+			var sim := Sim.new()
+			sim.new_game(w, "demonios-" + semilla, "knight")
+			sim.enter_level(DungeonGen.gen_level(sim.level_seed(w), w))
+			var salas := {}
+			for e in sim.enemies:
+				if e.mon in ["miniDemon", "middleDemon", "demonCaptain", "firedemon"] and not e.jefe and e.invocador == null:
+					vistos[e.mon + str(w)] = true
+					var k: int = sim.room_at_px(e.x, e.y)
+					if salas.has(k) and salas[k] != e.mon:
+						ok(false, "piso %d %s: dos demonios distintos en la sala %d" % [w, semilla, k])
+					salas[k] = e.mon
+				if w > 5:
+					ok(not (e.mon in ["miniDemon", "middleDemon", "demonCaptain", "firedemon"]) or e.jefe, "piso %d: sin demonios" % w)
+	for id in ["miniDemon", "middleDemon", "demonCaptain", "firedemon"]:
+		var n := 0
+		for w in range(1, 6):
+			if vistos.has(id + str(w)):
+				n += 1
+		ok(n >= 2, id + " sale en varios pisos del 1 al 5 (%d)" % n)
 	# el salto: el capitán junto al héroe, sin más enemigos
 	var sim := Sim.new()
 	sim.new_game(1, "salto", "knight")

@@ -214,6 +214,7 @@ func enter_level(level: Dictionary) -> void:
 	mon_haz = []
 	mon_orbs = []
 	boss_fx = []
+	bombas = []
 	cls.reset()
 	banner = null
 	blood_mask.fill(0)
@@ -528,7 +529,7 @@ func _caida_heroe(dt: float) -> void:
 	p.hurt_t = .18
 	p.chain = 0
 	fx.shake(6 * Ritmo.VIBRA_DANO)
-	fx.text(p.x, p.y - 40, "-" + str(int(dmg)), "#ff5a46", 12)
+	fx.text(p.x, p.y - 40, "-" + str(int(dmg)), COL_RECIBIDO, 14)
 	fx.text(p.x, p.y - 54, "¡Al abismo!", "#c9c5bb", 9)
 	fx.hud()
 	arbol.last_stand(p)
@@ -823,6 +824,7 @@ func make_rare(e: Ent.Enemy) -> void:
 			free.append(n)
 	var pool: Array = free if free.size() else KNIGHTS
 	e.title = pool[int(rnd() * pool.size())]
+	_dar_poder(e)
 
 func _rand_cell_in(r: Dictionary, tries: int = 40) -> Variant:
 	for i in tries:
@@ -855,15 +857,23 @@ func _populate() -> void:
 		var r: Dictionary = L.rooms[k]
 		if k == L.start_room:
 			continue
-		var n := (1 if rnd() < .4 else 2) + mini(2, int(floorf((w - 1) / 4.0)))
+		# grupos de 5–10 por sala (más cuanto más hondo), de humanos, de esqueletos o mezclados
+		var n := mini(GRUPO_MAX, GRUPO_MIN + int(rnd() * 3) + mini(3, (w - 1) >> 1))
 		if L.fount != null and k == L.fount.room:
-			n = maxi(0, n - 2)
+			n = maxi(0, n - 3)
 		if k == L.end_room:
-			n += 2
+			n = mini(GRUPO_MAX, n + 2)
+		var mezcla := rnd()   # < .45 humanos, < .8 esqueletos, si no, mitad y mitad
+		var grupo: Array[Ent.Enemy] = []
 		for i in n:
 			var c = _rand_cell_in(r)
-			if c != null and dist[c.cy * DungeonGen.GW + c.cx] > 8:
-				spawn_enemy(enemy_type_for(w), c.x, c.y)
+			if c == null or dist[c.cy * DungeonGen.GW + c.cx] <= 8:
+				continue
+			var hueso := mezcla >= .45 and (mezcla < .8 or i % 2 == 0)
+			grupo.append(mon_spawn("esqueleto", c.x, c.y) if hueso else spawn_enemy(enemy_type_for(w), c.x, c.y))
+		# a veces el grupo lo lleva una élite
+		if grupo.size() and rnd() < minf(.5, .2 + .04 * w):
+			_hacer_elite(grupo[int(rnd() * grupo.size())])
 	# patrullas en los pasillos
 	var cor := []
 	for i in DungeonGen.GW * DungeonGen.GH:
@@ -933,8 +943,10 @@ func _populate() -> void:
 		e.ambush_hit = true
 	_hh_elites(w)
 	_mon_populate(w)
-	# cada 5 pisos, un campeón guarda la escalera
-	if w % 5 == 0:
+	# cada 5 pisos, un campeón guarda la escalera (y es el jefe del piso); los demás pisos, un monstruo
+	if w % 5 != 0:
+		_jefe_piso(w)
+	else:
 		var r: Dictionary = L.rooms[L.end_room]
 		var st: Dictionary = L.stairs_px
 		var rcx: float = (r.x + r.w / 2.0) * TS
@@ -947,7 +959,7 @@ func _populate() -> void:
 		if tile_at(cell_of(o.x), cell_of(o.y)) == DungeonGen.DOWN:
 			o.y += 48
 		unstick(o, 8)
-		spawn_enemy("champ", o.x, o.y)
+		_hacer_jefe(spawn_enemy("champ", o.x, o.y), "")
 
 ## cofres y su guardián dorado (los del Soul Eater los guarda él), puertas, oro y llaves
 func _chests_init() -> void:
@@ -1366,7 +1378,13 @@ func step(dt: float, inp: Inp) -> String:
 	t += dt
 	if phase == "fight":
 		if not p.dead and tile_at(cell_of(p.x), cell_of(p.y - 3)) == DungeonGen.DOWN:
-			begin_descend()
+			if jefe_vivo() == null:
+				begin_descend()
+			elif t - _aviso_escalera_t > 2.0:
+				_aviso_escalera_t = t
+				var j := jefe_vivo()
+				fx.text(p.x, p.y - 60, j.title + " guarda la escalera", "#ff5a3a", 12, false, 1.6, true, false)
+				fx.sonido(&"escalera_cerrada", p.x, p.y)
 	elif phase == "descend":
 		fade += dt / .7
 		if fade >= 1:
@@ -1397,6 +1415,7 @@ func step(dt: float, inp: Inp) -> String:
 	_hh_update(dt)
 	_mon_update(dt)
 	_mon_empuje(dt)
+	_poderes_tick(dt)
 	_update_projs(dt)
 	_update_marks(dt)
 	var alive := []
@@ -1669,6 +1688,7 @@ func _do_hit() -> void:
 	var a3 := p.combo_step == 2   # el tercer tajo (el vertical)
 	var carne := 0   # golpes que no paró un escudo
 	var verd: bool = a3 and not p.dk and not p.dl and skill_on_id("verdugo")
+	var hubo_crit := false
 	for e in enemies.duplicate():
 		if e.dying:
 			continue
@@ -1704,7 +1724,10 @@ func _do_hit() -> void:
 		p.dmg_dealt += dmg
 		e.flash = .07
 		leech(dmg)
-		fx.text(e.x, e.y - 40, (str(dmg) + "!") if crit else str(dmg), "#ff3a2a" if crit else "#d8282e", 15 if crit else 11, crit)
+		if dmg > 0:
+			fx.text(e.x, e.y - 40, (str(dmg) + "!") if crit else str(dmg), COL_CRIT if crit else COL_GOLPE, 18 if crit else 11, crit)
+		if crit:
+			hubo_crit = true
 		if not e.armor and not blk:
 			_interrumpe(e, .16)
 		if rp and p.st.parryStun > 0:
@@ -1717,10 +1740,11 @@ func _do_hit() -> void:
 		var kb: float = (25.0 if e.armor else 100.0) * A.kb * p.st.kb / (3.0 if e.rare else 1.0) * (.15 if blk else 1.0) * EMPUJE
 		e.vx += cos(p.face) * kb
 		e.vy += sin(p.face) * kb
-		fx.bleed(e.x, e.y, 16, p.face, 46 if crit else 26, 150)
-		fx.bleed(e.x, e.y, 14, p.face + PI, 12 if crit else 6, 50, 1.4)
-		for i in (18 if crit else 9):
-			fx.stain(e.x + (rnd() - .5) * 18, e.y + (rnd() - .5) * 5, BLOOD[i % 4], 2 if rnd() < .5 else 1)
+		_herida(e, p.face, 46 if crit else 26, 150)
+		_herida(e, p.face + PI, 12 if crit else 6, 50, 1.4, 14)
+		if herir_de(e) == "sangre":
+			for i in (18 if crit else 9):
+				fx.stain(e.x + (rnd() - .5) * 18, e.y + (rnd() - .5) * 5, BLOOD[i % 4], 2 if rnd() < .5 else 1)
 		if e.hp <= 0:
 			kill_enemy(e, p.face)
 	if hits:
@@ -1731,7 +1755,9 @@ func _do_hit() -> void:
 		hitstop = maxf(hitstop, .04)
 		fx.shake(3)
 		fx.hud()
-		if not a3 and carne > 0:
+		if hubo_crit:
+			fx.sonido(&"critico", p.x + cos(p.face) * 20, p.y + sin(p.face) * 20)
+		elif carne > 0:
 			fx.sonido(&"impacto", p.x + cos(p.face) * 20, p.y + sin(p.face) * 20)
 
 ## daño de las habilidades del Caballero de la Muerte y de sus muertos alzados
@@ -1751,7 +1777,7 @@ func dk_damage(e: Ent.Enemy, dmg: float, ang: float, small: bool, col: String = 
 	var k: float = (10.0 if small else 45.0) * p.st.kb / (3.0 if e.rare else 1.0) * EMPUJE
 	e.vx += cos(ang) * k
 	e.vy += sin(ang) * k
-	fx.bleed(e.x, e.y, 16, ang, 8 if small else 20, 110)
+	_herida(e, ang, 8 if small else 20, 110)
 	if e.state == "idle":
 		wake(e)
 	if e.hp <= 0:
@@ -1788,9 +1814,10 @@ func kill_enemy(e: Ent.Enemy, ang: float) -> void:
 	kk[kill_kind(e)] = int(kk.get(kill_kind(e), 0)) + 1
 	stats["kills"] = kk
 	score += e.score * mult
-	fx.bleed(e.x, e.y, 16, ang, 70 + (40 if champ else 0), 200, .6)
-	fx.bleed(e.x, e.y, 16, ang + PI, 22, 70, 1.4)
-	fx.bleed(e.x, e.y, 22, -PI / 2, 20, 90, 1.6)
+	_herida(e, ang, 70 + (40 if champ else 0), 200, .6)
+	_herida(e, ang + PI, 22, 70, 1.4)
+	_herida(e, -PI / 2, 20, 90, 1.6, 22)
+	_muere_poder(e)
 	hitstop = maxf(hitstop, .15 if champ else .06)
 	fx.shake((10 if champ else 5) * Ritmo.VIBRA_MATAR)
 	fx.text(e.x, e.y - 52, "+%d pts" % (e.score * mult), "#ffd25a" if mult > 1 else "#e8a33a", 9)
@@ -1905,7 +1932,7 @@ func hurt_player(dmg: float, from_x: float, from_y: float, src, kind: String = "
 	var a := atan2(p.y - from_y, p.x - from_x)
 	mv(p, cos(a) * 8, sin(a) * 8)
 	fx.bleed(p.x, p.y, 16, a, 24, 120)
-	fx.text(p.x, p.y - 40, "-" + str(int(dmg)), "#ff5a46", 12)
+	fx.text(p.x, p.y - 40, "-" + str(int(dmg)), COL_RECIBIDO, 14)
 	fx.sonido(&"herido", p.x, p.y)
 	fx.hud()
 	arbol.last_stand(p)
@@ -2097,7 +2124,7 @@ func _update_dk(dt: float) -> void:
 				e.hp -= dmg
 				p.dmg_dealt += dmg
 				e.flash = .07
-				fx.text(e.x, e.y - 40, (str(dmg) + "!") if crit else str(dmg), "#ff3a2a" if crit else "#d8282e", 15 if crit else 11, crit)
+				fx.text(e.x, e.y - 40, (str(dmg) + "!") if crit else str(dmg), COL_CRIT if crit else COL_GOLPE, 18 if crit else 11, crit)
 				if not e.armor:
 					_interrumpe(e, .16)
 				var k: float = (-110.0 if has("d_whirl_b") else 75 * p.st.kb / (3.0 if e.rare else 1.0)) * EMPUJE
@@ -2236,8 +2263,14 @@ func wake(e: Ent.Enemy) -> void:
 	e.cool = .25 + rnd() * .3
 	e.wake_t = 0
 	e.burst_t = .5
-	if e.type == "champ":
+	if e.jefe:
+		fx.banner("El jefe del piso despierta", e.title)
+		fx.sonido(&"jefe", e.x, e.y)
+	elif e.type == "champ":
 		fx.banner("Un campeón te cierra el paso", e.title)
+	elif e.rare and e.poder != "":
+		fx.banner("¡Élite! · " + PODER_N[e.poder], e.title)
+		fx.sonido(&"elite", e.x, e.y)
 	elif e.rare:
 		fx.banner(("¡Cuidado! Un %s legendario" % HH_TITLE[e.hero]) if e.hero != "" else "¡Cuidado! Un caballero legendario", e.title)
 	for o in enemies:
@@ -2899,10 +2932,8 @@ func _hh_pick(w: int) -> String:
 	return ""
 
 func _hh_elites(w: int) -> void:
-	if w < 2:
-		return
-	# pisos 2–5: como mucho uno, y la mitad de las veces ninguno; después, 1 o 2
-	var n := (1 if rnd() < .5 else 0) if w <= 5 else 1 + (1 if rnd() < minf(.6, .15 + .08 * w) else 0)
+	# desde el piso 1 (decidido por Diego): uno en los pisos 1–2, uno o dos hasta el 5 y después dos o tres
+	var n := 1 if w <= 2 else (1 + (1 if rnd() < .5 else 0) if w <= 5 else 2 + (1 if rnd() < minf(.6, .15 + .05 * w) else 0))
 	var rooms := []
 	for k in L.rooms.size():
 		var r: Dictionary = L.rooms[k]
@@ -2937,6 +2968,7 @@ func _hh_elite(e: Ent.Enemy, used: Dictionary) -> void:
 	var pool: Array = names if names.size() else all
 	e.title = pool[int(rnd() * (names.size() if names.size() else 4))]
 	used[e.title] = true
+	_dar_poder(e)
 
 ## movimiento compartido (separación, fuente, inercia)
 func _hh_move(e: Ent.Enemy, vx: float, vy: float, dt: float, mult: float) -> void:
@@ -4410,6 +4442,17 @@ func _boss_death(e: Ent.Enemy) -> void:
 
 ## lo que cambia el daño que recibe un enemigo (rnHit de la web, sin runas): Expuesto, jefe en el aire, aturdido, curándose
 func dmg_mod(e: Ent.Enemy, dmg: float) -> float:
+	e.escudo_t = 0.0
+	if e.escudo > 0 and dmg > 0:
+		var ab := minf(e.escudo, dmg)
+		e.escudo -= ab
+		dmg -= ab
+		if e.escudo <= 0:
+			fx.burst(e.x, e.y, 30, ["#bfe4ff", "#6ab4ff", "#ffffff"], 18, 110)
+			fx.sonido(&"escudo_roto", e.x, e.y)
+		if dmg <= 0:
+			fx.text(e.x, e.y - 52, "escudo", "#7cc4ff", 9)
+			return 0.0
 	if e.cs == "tired":
 		dmg = JS.round(dmg * 1.5)
 	if e.boss != "":
@@ -4686,3 +4729,216 @@ func can_interact() -> bool:
 		if g.manual and JS.hypot(g.x - p.x, g.y - p.y) < GOLD_R:
 			return true
 	return false
+
+
+# ======================================================================
+#  élites con poder, jefe del piso y escalera cerrada (vista 3D, 8 nov 2026)
+# ======================================================================
+const GRUPO_MIN := 5
+const GRUPO_MAX := 10
+const COL_GOLPE := "#f4ead8"     # daño normal
+const COL_CRIT := "#ffc83a"      # crítico: grande y amarillo
+const COL_RECIBIDO := "#ff2a1a"  # lo que recibe el héroe
+const PODERES := ["rapido", "escudo", "explota", "invoca"]
+const PODER_N := {"rapido": "Veloz", "escudo": "Escudo de daño", "explota": "Explota al morir", "invoca": "Invocador"}
+## monstruo que hace de jefe en cada piso (los que tienen modelo 3D), por orden; el piso 5, 10… es el campeón
+const JEFES := [
+	{"id": "demonCaptain", "n": "Gorvath, Señor del Abismo", "siervo": "miniDemon"},
+	{"id": "esqueleto", "n": "El Rey Osario", "siervo": "esqueleto"},
+	{"id": "middleDemon", "n": "Mórgal el Devorador", "siervo": "miniDemon"},
+	{"id": "firedemon", "n": "Ignaroth, la Llama Viva", "siervo": "miniDemon"},
+	{"id": "bufona", "n": "La Bufona Loca", "siervo": "esqueleto"},
+]
+const JEFE_VIDA := 7.0
+const JEFE_DANO := 1.4
+const ONDA_R := 95.0       # px
+const ONDA_AVISO := .9     # s
+const EXPLOTA_R := 70.0
+const EXPLOTA_AVISO := 1.0
+var bombas: Array = []     # golpes en área con aviso: {x, y, r, t, dmg, own, col, snd}
+var _aviso_escalera_t := -9.0
+
+## el jefe del piso que sigue vivo (o null)
+func jefe_vivo() -> Ent.Enemy:
+	for e in enemies:
+		if e.jefe and not e.dying and not e.dead:
+			return e
+	return null
+
+## qué sale al golpear: "sangre", "hueso" o "brasas" (según la ficha del monstruo)
+func herir_de(e: Ent.Enemy) -> String:
+	if e.mon == "":
+		return "sangre"
+	var M := mon_def(e)
+	if M.get("herir", "") == "hueso":
+		return "hueso"
+	if (M.get("parts", []) as Array).has("brasas"):
+		return "brasas"
+	return "sangre"
+
+func _herida(e: Ent.Enemy, ang: float, n: int, spd: float, spread: float = .9, z: float = 16) -> void:
+	var h := herir_de(e)
+	if h == "sangre":
+		fx.bleed(e.x, e.y, z, ang, n, spd, spread)
+	else:
+		fx.esquirlas(e.x, e.y, z, ang, n, spd, h)
+
+## élite de un grupo: más grande, más vida y daño, nombre y un poder al azar
+func _hacer_elite(e: Ent.Enemy) -> void:
+	e.rare = true
+	e.elite = true
+	e.hp = JS.roundi(e.hp * 2.5); e.max_hp = e.hp; e.ghost = e.hp
+	e.dmg = JS.roundi(e.dmg * 1.5)
+	e.score *= 5
+	e.xp = JS.roundi(e.xp * 3)
+	if e.mon != "":
+		e.title = e.name
+	else:
+		var used := {}
+		for o in enemies:
+			if o.rare and o != e:
+				used[o.title] = true
+		var free := KNIGHTS.filter(func(nm): return not used.has(nm))
+		var pool: Array = free if free.size() else KNIGHTS
+		e.title = pool[int(rnd() * pool.size())]
+	_dar_poder(e)
+
+func _dar_poder(e: Ent.Enemy) -> void:
+	e.poder = PODERES[int(rnd() * PODERES.size())]
+	match e.poder:
+		"rapido":
+			e.spd *= 1.45
+			e.wind_t /= 1.25
+			e.am *= 1.25
+		"escudo":
+			e.escudo_max = e.max_hp * .35
+			e.escudo = e.escudo_max
+		"invoca":
+			e.invoca_t = 2.5
+
+func _hacer_jefe(e: Ent.Enemy, nombre: String) -> void:
+	e.jefe = true
+	e.rare = true
+	if nombre != "":
+		e.title = nombre
+	e.hp = JS.roundi(e.hp * JEFE_VIDA); e.max_hp = e.hp; e.ghost = e.hp
+	e.dmg = JS.roundi(e.dmg * JEFE_DANO)
+	e.score *= 8
+	e.xp = JS.roundi(e.xp * 6)
+	e.onda_t = 3.0
+	e.guard_cd = INF   # no se cubre: se le pega
+
+## jefe del piso: el monstruo de JEFES que toca, delante de la escalera
+func _jefe_piso(w: int) -> void:
+	var J: Dictionary = JEFES[(w - 1) % JEFES.size()]
+	var st: Dictionary = L.stairs_px
+	var r: Dictionary = L.rooms[L.end_room]
+	var rcx: float = (r.x + r.w / 2.0) * TS
+	var rcy: float = (r.y + r.h / 2.0) * TS
+	var dd := maxf(1.0, JS.hypot(rcx - st.x, rcy - st.y))
+	var o := {"x": st.x + (rcx - st.x) / dd * 60, "y": st.y + (rcy - st.y) / dd * 60 + 10}
+	if tile_at(cell_of(o.x), cell_of(o.y)) == DungeonGen.DOWN:
+		o.y += 48
+	unstick(o, 12)
+	var e := mon_spawn(J.id, o.x, o.y)
+	_hacer_jefe(e, J.n)
+
+func _siervo_de(e: Ent.Enemy) -> String:
+	for J in JEFES:
+		if J.id == e.mon:
+			return J.siervo
+	return "esqueleto"
+
+func _invocar(e: Ent.Enemy, id: String, n: int) -> void:
+	for i in n:
+		var a := rnd() * TAU
+		var o := {"x": e.x + cos(a) * 34, "y": e.y + sin(a) * 26}
+		unstick(o, 8)
+		if not fits(o.x, o.y, 8):
+			continue
+		var s := mon_spawn(id, o.x, o.y)
+		s.invocador = e
+		s.xp = JS.roundi(s.xp * .3)
+		s.score = JS.roundi(s.score * .3)
+		s.state = "chase"
+		s.cool = .4 + rnd() * .3
+		fx.burst(o.x, o.y, 6, ["#c890ff", "#7a3aff", "#2a1040"], 14, 60)
+	fx.sonido(&"invocar", e.x, e.y)
+
+func _siervos_vivos(e: Ent.Enemy) -> int:
+	var n := 0
+	for o in enemies:
+		if o.invocador == e and not o.dying:
+			n += 1
+	return n
+
+## lo que hacen cada fotograma las élites con poder y el jefe, y los golpes en área con aviso
+func _poderes_tick(dt: float) -> void:
+	for e in enemies:
+		if e.dying or e.dead:
+			continue
+		if e.escudo_max > 0:
+			e.escudo_t += dt
+			if e.escudo_t > 5.0 and e.escudo < e.escudo_max:
+				if e.escudo <= 0:
+					fx.text(e.x, e.y - 60, "escudo", "#7cc4ff", 10)
+				e.escudo = e.escudo_max
+		if e.state == "idle":
+			continue
+		if e.poder == "invoca":
+			e.invoca_t -= dt
+			if e.invoca_t <= 0:
+				e.invoca_t = 7.0
+				if _siervos_vivos(e) < 6:
+					_invocar(e, "esqueleto", 2)
+		if e.jefe:
+			if not e.jefe_mitad and e.hp < e.max_hp * .5:
+				e.jefe_mitad = true
+				fx.banner(e.title + " llama a sus siervos", "")
+				_invocar(e, _siervo_de(e), 4)
+			e.onda_t -= dt
+			if e.onda_t <= 0 and JS.hypot(e.x - p.x, e.y - p.y) < 220:
+				e.onda_t = 6.5
+				e.cool = maxf(e.cool, ONDA_AVISO + .3)   # tarda en volver a atacar mientras carga la onda
+				fx.aviso(e.x, e.y, ONDA_R, ONDA_AVISO, "#ff3a1a")
+				fx.sonido(&"carga", e.x, e.y)
+				bombas.append({"x": e.x, "y": e.y, "r": ONDA_R, "t": ONDA_AVISO, "dmg": e.dmg * 1.6, "own": e, "col": ["#fff0c0", "#ff7a2a", "#ff2a10"], "snd": &"onda"})
+	for i in range(bombas.size() - 1, -1, -1):
+		var b: Dictionary = bombas[i]
+		b.t -= dt
+		if b.t > 0:
+			continue
+		bombas.remove_at(i)
+		fx.burst(b.x, b.y, 10, b.col, 40, 220)
+		fx.shake(10)
+		fx.sonido(b.snd, b.x, b.y)
+		if not p.dead and JS.hypot(p.x - b.x, p.y - b.y) < b.r:
+			var src = b.own if is_instance_valid(b.own) and not b.own.dead else null
+			hurt_player(b.dmg, b.x, b.y, src, "area")
+		# la explosión también hace daño a los enemigos de alrededor
+		if b.own == null:
+			for o in enemies.duplicate():
+				if not o.dying and JS.hypot(o.x - b.x, o.y - b.y) < b.r:
+					o.hp -= b.dmg * .5
+					if o.hp <= 0:
+						kill_enemy(o, atan2(o.y - b.y, o.x - b.x))
+
+## al morir: la élite inestable deja una explosión con aviso; el jefe, el cofre grande y la escalera libre
+func _muere_poder(e: Ent.Enemy) -> void:
+	if e.poder == "explota":
+		fx.aviso(e.x, e.y, EXPLOTA_R, EXPLOTA_AVISO, "#ff8a1a")
+		fx.sonido(&"carga", e.x, e.y)
+		bombas.append({"x": e.x, "y": e.y, "r": EXPLOTA_R, "t": EXPLOTA_AVISO, "dmg": e.dmg * 2.0, "own": null, "col": ["#fff0a0", "#ffa020", "#ff4a10", "#3a2414"], "snd": &"explosion"})
+	if e.jefe:
+		fx.banner(e.title + " ha caído", "La escalera está libre")
+		fx.sonido(&"jefe_muere", e.x, e.y)
+		hitstop = maxf(hitstop, .25)
+		fx.shake(14)
+		var o := {"x": e.x, "y": e.y + 20}
+		unstick(o, 12)
+		chests.append({"cx": cell_of(o.x), "cy": cell_of(o.y), "kind": "gold", "boss": true, "grande": true, "room": null, "se": false, "x": o.x, "y": o.y, "open": false, "open_t": 0.0, "best": 0, "guards": [], "msg_t": -9.0})
+		fx.burst(o.x, o.y - 10, 24, ["#ffffff", "#ffd25a", "#c8d4ec"], 30, 110)
+		# los siervos que queden se deshacen
+		for s in enemies.duplicate():
+			if s.invocador == e and not s.dying:
+				kill_enemy(s, 0.0)
