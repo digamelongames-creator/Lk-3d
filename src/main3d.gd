@@ -192,7 +192,15 @@ func _ready() -> void:
 	else:
 		_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
 		fx.banner("Derrota al jefe y baja por la escalera", "Oleada %d" % sim.wave)
-	if _junto != "":
+	if _junto == "reto" and not sim.reto.is_empty():   # pruebas: dentro de la sala del reto (empieza solo)
+		var R: Dictionary = sim.L.rooms[sim.reto.room]
+		sim.p.x = (R.x + R.w / 2.0) * DungeonGen.TS
+		sim.p.y = (R.y + R.h / 2.0) * DungeonGen.TS + 8
+	elif _junto == "trampa" and sim.trampas.size():   # pruebas: al lado de una trampa
+		sim.p.x = sim.trampas[0].x
+		sim.p.y = sim.trampas[0].y
+		sim.unstick(sim.p)
+	elif _junto != "":
 		for e in sim.enemies:
 			if e.mon == _junto or (_junto == "jefe" and e.jefe) or (_junto == "elite" and e.rare and e.poder != "" and not e.jefe):
 				for k in 16:

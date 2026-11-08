@@ -30,8 +30,13 @@ var _botin_nodos := {}     # id del objeto del suelo → Node3D
 var _enemigos := {}        # id del objeto → Node3D
 var _botin: Array[Node3D] = []
 var _oro: Array[Node3D] = []
-var _cofres: Array[Node3D] = []
+var _cofres := {}           # id de vista del cofre (c.vid) → Node3D
+var _vid := 0
 var _puertas: Array[Node3D] = []
+var _rompibles: Array[Node3D] = []
+var _trampas: Array[Node3D] = []
+var _rejas: Array[Node3D] = []
+var _firma_rejas := -1
 var _t := 0.0
 
 const COL_CLASE := {"knight": Color(.55, .6, .75), "dk": Color(.25, .22, .3), "archer": Color(.3, .5, .3), "mage": Color(.6, .25, .15), "dl": Color(.35, .1, .4)}
@@ -39,9 +44,15 @@ const COL_CLASE := {"knight": Color(.55, .6, .75), "dk": Color(.25, .22, .3), "a
 func nuevo_piso() -> void:
 	for d in _enemigos.values():
 		d.n.queue_free()
-	for d in [_botin, _oro, _cofres, _puertas]:
+	for d in [_botin, _oro, _puertas, _rompibles, _trampas, _rejas]:
 		for n in d:
 			n.queue_free()
+	for n in _cofres.values():
+		n.queue_free()
+	_rompibles.clear()
+	_trampas.clear()
+	_rejas.clear()
+	_firma_rejas = -1
 	_enemigos.clear()
 	for n in _botin_nodos.values():
 		n.queue_free()
@@ -55,6 +66,17 @@ func nuevo_piso() -> void:
 		add_child(heroe)
 	_firma_equipo = ""
 	_sincronizar_cofres()
+	for r in sim.rompibles:
+		var n := _rompible(r.kind)
+		n.position = MazmorraGridMap.a3d(r.x, r.y - 6)
+		n.rotation.y = r.giro
+		add_child(n)
+		_rompibles.append(n)
+	for tr in sim.trampas:
+		var n := _trampa(tr.kind)
+		n.position = Vector3((tr.cx + .5) * 2.0, 0, (tr.cy + .5) * 2.0)
+		add_child(n)
+		_trampas.append(n)
 	if is_instance_valid(_sello):
 		_sello.queue_free()
 	_sello = _sello_escalera()
@@ -89,8 +111,15 @@ func actualizar(dt: float) -> void:
 	_sello.visible = sim.jefe_vivo() != null
 	if _sello.visible:
 		_sello.rotation.y = _t * .6
-	for i in mini(_cofres.size(), sim.chests.size()):
-		_cofres[i].get_child(1).rotation.x = -1.2 if sim.chests[i].open else 0.0
+	for c in sim.chests:
+		var nc: Node3D = _cofres.get(c.get("vid", -1))
+		if nc != null and nc.get_child_count() > 1:
+			nc.get_child(1).rotation.x = -1.2 if c.open else 0.0
+	for i in mini(_rompibles.size(), sim.rompibles.size()):
+		_rompibles[i].visible = not sim.rompibles[i].roto
+	for i in mini(_trampas.size(), sim.trampas.size()):
+		_animar_trampa(_trampas[i], sim.trampas[i])
+	_actualizar_rejas()
 	for i in mini(_puertas.size(), sim.doors.size()):
 		_puertas[i].visible = not sim.doors[i].open
 
@@ -110,7 +139,7 @@ func _actualizar_botin() -> void:
 		var vuela: bool = l.get("fly") != null
 		n.position = MazmorraGridMap.a3d(l.x, l.y, (6 if flota else 2) + float(l.get("alto", 0.0))) + Vector3(0, (.15 if flota else .06) * sin(_t * 3 + l.bob), 0)
 		n.rotation.y = _t * (9.0 if vuela else (1.5 if flota else .6))
-		var haz: Node3D = n.get_meta("haz", null)
+		var haz: Node3D = n.get_meta("haz") if n.has_meta("haz") else null
 		if haz != null:
 			haz.visible = not vuela
 			if not vuela:
@@ -172,6 +201,209 @@ func _nueva_pieza_suelo(it: Dictionary) -> Node3D:
 		luz.position.y = .4
 		n.add_child(luz)
 	return n
+
+## mímico: da saltitos al moverse y abre y cierra la tapa (rápido al atacar); al morir, se queda abierto y se hunde
+func _animar_mimico(d: Dictionary, e: Ent.Enemy, dt: float) -> void:
+	var cofre: Node3D = d.mimico
+	var tapa: Node3D = cofre.get_child(1) if cofre.get_child_count() > 1 else null
+	if e.dead or e.dying > 0:
+		d.muerto = d.get("muerto", 0.0) + dt
+		if tapa != null:
+			tapa.rotation.x = -1.4
+		cofre.rotation.z = lerpf(cofre.rotation.z, 1.4, minf(1, dt * 6))
+		return
+	var ataca: bool = e.act == "wind" or e.act == "strike"
+	var t := _t + e.seed
+	if tapa != null:
+		tapa.rotation.x = -(.9 + .5 * sin(t * 26)) if ataca else -(.25 + .2 * absf(sin(t * 5)))
+	cofre.position.y = absf(sin(t * 9)) * (.35 if e.state != "idle" else 0.0)
+
+## rompibles: barril y caja del kit; la urna, de barro, hecha aquí girando un perfil
+func _rompible(kind: String) -> Node3D:
+	var n := Node3D.new()
+	if kind != "urna" and KitMazmorra.tiene(kind):
+		n.add_child(KitMazmorra.pieza(kind))
+		return n
+	if kind == "urna":
+		var mi := MeshInstance3D.new()
+		mi.mesh = _malla_urna()
+		n.add_child(mi)
+		return n
+	n.add_child(_caja(Vector3(.8, .8, .8), Color(.42, .28, .15)))
+	n.get_child(0).position.y = .4
+	return n
+
+var _urna: Mesh
+func _malla_urna() -> Mesh:
+	if _urna != null:
+		return _urna
+	# perfil (radio, altura) de abajo arriba: pie, panza, cuello y boca
+	var perfil := [Vector2(0, 0), Vector2(.17, 0), Vector2(.2, .05), Vector2(.3, .22), Vector2(.34, .38), Vector2(.3, .55),
+		Vector2(.18, .68), Vector2(.14, .76), Vector2(.19, .82), Vector2(.17, .85), Vector2(.12, .8)]
+	var lados := 20
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in perfil.size() - 1:
+		for j in lados:
+			var a0 := TAU * j / lados
+			var a1 := TAU * (j + 1) / lados
+			var p0: Vector2 = perfil[i]
+			var p1: Vector2 = perfil[i + 1]
+			var v00 := Vector3(cos(a0) * p0.x, p0.y, sin(a0) * p0.x)
+			var v01 := Vector3(cos(a1) * p0.x, p0.y, sin(a1) * p0.x)
+			var v10 := Vector3(cos(a0) * p1.x, p1.y, sin(a0) * p1.x)
+			var v11 := Vector3(cos(a1) * p1.x, p1.y, sin(a1) * p1.x)
+			st.add_vertex(v00); st.add_vertex(v10); st.add_vertex(v11)
+			st.add_vertex(v00); st.add_vertex(v11); st.add_vertex(v01)
+	st.generate_normals()
+	var m := st.commit()
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(.58, .32, .2)
+	mat.roughness = .8
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.surface_set_material(0, mat)
+	_urna = m
+	return m
+
+## trampa: losa de hierro con rejilla; los pinchos salen de ella, y la de fuego echa una llamarada
+func _trampa(kind: String) -> Node3D:
+	var n := Node3D.new()
+	var losa := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(1.5, .05, 1.5)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(.42, .38, .34)   # más clara que las losas: se tiene que ver
+	mat.metallic = .5
+	mat.roughness = .45
+	mat.emission_enabled = true
+	mat.emission = Color(1, .35, .05)
+	mat.emission_energy_multiplier = 0.0
+	bm.material = mat
+	losa.mesh = bm
+	losa.position.y = .025
+	n.add_child(losa)
+	# rejilla: barras oscuras encima de la losa
+	for k in 5:
+		var barra := MeshInstance3D.new()
+		var b2 := BoxMesh.new()
+		b2.size = Vector3(1.4, .04, .06)
+		var m2 := StandardMaterial3D.new()
+		m2.albedo_color = Color(.08, .07, .07)
+		b2.material = m2
+		barra.mesh = b2
+		barra.position = Vector3(0, .055, -.56 + k * .28)
+		n.add_child(barra)
+	var activo := Node3D.new()
+	activo.visible = false
+	n.add_child(activo)
+	if kind == "pinchos":
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.0
+		cm.bottom_radius = .06
+		cm.height = .55
+		cm.radial_segments = 6
+		var pm := StandardMaterial3D.new()
+		pm.albedo_color = Color(.7, .7, .72)
+		pm.metallic = .9
+		pm.roughness = .3
+		cm.material = pm
+		for x in 4:
+			for z in 4:
+				var pin := MeshInstance3D.new()
+				pin.mesh = cm
+				pin.position = Vector3(-.5 + x * .33, .27, -.5 + z * .33)
+				activo.add_child(pin)
+	else:
+		var llama := CPUParticles3D.new()
+		llama.amount = 60
+		llama.lifetime = .6
+		llama.direction = Vector3.UP
+		llama.spread = 14
+		llama.initial_velocity_min = 3.0
+		llama.initial_velocity_max = 5.0
+		llama.gravity = Vector3(0, 1.5, 0)
+		llama.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		llama.emission_box_extents = Vector3(.5, .05, .5)
+		llama.scale_amount_min = .6
+		llama.scale_amount_max = 1.4
+		var curva := Curve.new()
+		curva.add_point(Vector2(0, .5))
+		curva.add_point(Vector2(.3, 1))
+		curva.add_point(Vector2(1, 0))
+		llama.scale_amount_curve = curva
+		var sm := SphereMesh.new()
+		sm.radius = .12
+		sm.height = .24
+		sm.radial_segments = 6
+		sm.rings = 3
+		var fm := StandardMaterial3D.new()
+		fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		fm.albedo_color = Color(1, .55, .15)
+		fm.emission_enabled = true
+		fm.emission = Color(1, .45, .1)
+		fm.emission_energy_multiplier = 4
+		sm.material = fm
+		llama.mesh = sm
+		llama.emitting = false
+		activo.add_child(llama)
+		var luz := OmniLight3D.new()
+		luz.light_color = Color(1, .5, .15)
+		luz.light_energy = 3
+		luz.omni_range = 5
+		luz.position.y = 1.2
+		activo.add_child(luz)
+	n.set_meta("losa", mat)
+	n.set_meta("activo", activo)
+	return n
+
+func _animar_trampa(n: Node3D, tr: Dictionary) -> void:
+	var mat: StandardMaterial3D = n.get_meta("losa")
+	var activo: Node3D = n.get_meta("activo")
+	# aviso: la losa se pone al rojo (parpadea) medio segundo antes de dispararse
+	mat.emission_energy_multiplier = (1.5 + sin(_t * 40) * 1.2) if tr.estado == "aviso" else (.6 if tr.estado == "activa" else .12)
+	var on: bool = tr.estado == "activa"
+	activo.visible = on or (tr.kind == "fuego" and tr.estado == "recarga")
+	if tr.kind == "pinchos":
+		activo.visible = on
+	else:
+		var llama: CPUParticles3D = activo.get_child(0)
+		llama.emitting = on
+		(activo.get_child(1) as OmniLight3D).visible = on
+
+## rejas del reto: barras de hierro en cada salida de la sala mientras dura
+func _actualizar_rejas() -> void:
+	var sal: Array = sim.rejas_cerradas()
+	if sal.size() == _firma_rejas:
+		return
+	_firma_rejas = sal.size()
+	for r in _rejas:
+		r.queue_free()
+	_rejas.clear()
+	for i in sal:
+		var n := Node3D.new()
+		n.position = Vector3((i % DungeonGen.GW + .5) * 2.0, 0, (i / DungeonGen.GW + .5) * 2.0)
+		for k in 7:
+			for eje in 2:
+				var barra := MeshInstance3D.new()
+				var cm := CylinderMesh.new()
+				cm.top_radius = .04
+				cm.bottom_radius = .04
+				cm.height = 2.8
+				cm.radial_segments = 6
+				var m := StandardMaterial3D.new()
+				m.albedo_color = Color(.15, .14, .14)
+				m.metallic = .8
+				m.roughness = .45
+				cm.material = m
+				barra.mesh = cm
+				var off := -.9 + k * .3
+				barra.position = Vector3(off if eje == 0 else 0.0, 1.4, 0.0 if eje == 0 else off)
+				n.add_child(barra)
+		add_child(n)
+		_rejas.append(n)
+		# bajan desde arriba
+		n.position.y = 2.8
+		n.create_tween().tween_property(n, "position:y", 0.0, .35).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 
 ## haz de luz vertical sobre el botín: fuerte en los legendarios y más suave en los dorados
 ## (es redondo, así que da igual que gire con la pieza)
@@ -258,6 +490,9 @@ func _actualizar_enemigos(dt: float) -> void:
 		n.position = MazmorraGridMap.a3d(e.x, e.y, e.bz)
 		n.rotation.y = lerp_angle(n.rotation.y, _giro(e.face), minf(1, dt * 12))
 		var m: Modelo3D = d.m
+		if d.has("mimico"):
+			_animar_mimico(d, e, dt)
+			continue
 		if m == null:   # cápsula provisional
 			var golpe: bool = e.act == "strike" or e.act == "wind"
 			n.get_child(0).position.z = -.25 if e.act == "strike" else 0.0
@@ -505,6 +740,18 @@ func _nuevo_heroe() -> Node3D:
 	return n
 
 func _nuevo_enemigo(e: Ent.Enemy) -> Dictionary:
+	if e.mimic:   # el mímico es el propio cofre, que salta y muerde
+		var raiz := Node3D.new()
+		var cofre := _cofre()
+		raiz.add_child(cofre)
+		var ojos := OmniLight3D.new()
+		ojos.light_color = Color(1, .15, .05)
+		ojos.light_energy = 2.0
+		ojos.omni_range = 2.5
+		ojos.position = Vector3(0, .6, -.3)
+		raiz.add_child(ojos)
+		add_child(raiz)
+		return {"n": raiz, "m": null, "mimico": cofre}
 	var id: String = e.mon if e.mon != "" else MODELO_HUMANOS
 	var m := Modelo3D.crear(id, TINTE_ENEMIGO if id == heroe_id else Color.WHITE)
 	var d := {}
@@ -589,16 +836,26 @@ func _marcar_elite(e: Ent.Enemy, d: Dictionary) -> void:
 		d.n.add_child(b)
 		d.escudo = b
 
-## cofres: uno por cada cofre de la simulación (el jefe deja el suyo al morir, más grande)
+## cofres: uno por cada cofre de la simulación, por su id de vista (el jefe y el reto dejan el suyo, más grande;
+## el mímico sale de la lista al morder y su cofre pasa a ser el enemigo)
 func _sincronizar_cofres() -> void:
-	while _cofres.size() < sim.chests.size():
-		var c: Dictionary = sim.chests[_cofres.size()]
-		var n := _cofre()
-		n.position = MazmorraGridMap.a3d(c.x, c.y - 12)
-		if c.get("grande", false):
-			n.scale *= 1.6
-		add_child(n)
-		_cofres.append(n)
+	var hay := {}
+	for c in sim.chests:
+		if not c.has("vid"):
+			_vid += 1
+			c["vid"] = _vid
+		hay[c.vid] = true
+		if not _cofres.has(c.vid):
+			var n := _cofre()
+			n.position = MazmorraGridMap.a3d(c.x, c.y - 12)
+			if c.get("grande", false):
+				n.scale *= 1.6
+			add_child(n)
+			_cofres[c.vid] = n
+	for k in _cofres.keys():
+		if not hay.has(k):
+			_cofres[k].queue_free()
+			_cofres.erase(k)
 
 ## sello rojo sobre la escalera mientras el jefe del piso siga vivo
 var _sello: Node3D

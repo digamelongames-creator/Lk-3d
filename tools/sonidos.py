@@ -228,6 +228,81 @@ def dorado():
     return norm(out, .6)
 
 
+def mimico():
+    d = .7
+    mordisco = mezcla(paso(ruido(.08), "lowpass", 2500) * env(.08, .0005, 50), seno(140, .5, 70) * env(.5, .002, 10))
+    gru = np.tanh(seno(85, d, 60) * (1 + .6 * np.sin(2 * np.pi * 23 * t_(d))) * 3) * env(d, .02, 4) * .5
+    return norm(mezcla(mordisco, gru))
+
+
+def romper_madera(var):
+    d = .45
+    cruj = paso(ruido(d), "bandpass", [300 + var * 100, 2200]) * env(d, .001, 11)
+    golpes = np.zeros(int(SR * d))
+    for k in range(4):
+        i = int(SR * (k * .03 + rng.uniform(0, .02)))
+        g = seno(rng.uniform(180, 320), .12) * env(.12, .001, 30)
+        golpes[i:i + len(g)] += g[:len(golpes) - i]
+    return norm(mezcla(cruj, golpes * .8))
+
+
+def romper_urna():
+    d = .6
+    trozos = np.zeros(int(SR * d))
+    for k in range(9):
+        i = int(SR * (k * .035 + rng.uniform(0, .03)))
+        f = rng.uniform(1400, 3200)
+        g = (seno(f, .1) + paso(ruido(.1), "highpass", 2500) * .6) * env(.1, .0005, 45)
+        trozos[i:i + len(g)] += g[:len(trozos) - i]
+    golpe = paso(ruido(.15), "lowpass", 900) * env(.15, .001, 25)
+    return norm(mezcla(trozos, golpe))
+
+
+def rejas():
+    d = 1.3
+    choque = bloqueo(0) * .8
+    cadena = paso(ruido(d), "bandpass", [1500, 6000]) * (np.abs(np.sin(2 * np.pi * 14 * t_(d))) ** 4) * env(d, .01, 2.5) * .5
+    golpe = seno(55, .8, 35) * env(.8, .002, 6)
+    out = np.zeros(int(SR * d))
+    i = int(SR * .45)
+    out[i:i + len(choque)] += choque[:len(out) - i]
+    return norm(mezcla(cadena, out, np.concatenate([np.zeros(i), golpe])[:len(out)]))
+
+
+def reto():
+    d = 2.0
+    t = t_(d)
+    notas = [(392, 0), (523.3, .14), (659.3, .28), (784, .42)]
+    out = np.zeros(int(SR * d))
+    for f, ini in notas:
+        i = int(SR * ini)
+        dd = d - ini
+        n = np.tanh((seno(f, dd) + seno(f * 2, dd) * .3) * 1.5) * env(dd, .01, 2.5)
+        out[i:i + len(n)] += n
+    return norm(out)
+
+
+def trampa_click():
+    d = .2
+    return norm(mezcla(paso(ruido(.03), "highpass", 2000) * env(.03, .0005, 90), seno(900, d) * env(d, .0005, 30) * .4), .6)
+
+
+def pinchos():
+    d = .4
+    raspa = paso(ruido(d), "bandpass", [2500, 7000]) * env(d, .001, 14)
+    metal = bloqueo(1) * .4
+    return norm(mezcla(raspa, metal[:int(SR * d)]))
+
+
+def fuego():
+    d = 1.3
+    t = t_(d)
+    sobre = np.minimum(1, t / .08) * np.exp(-np.maximum(0, t - .9) * 8)
+    rugido = paso(ruido(d), "lowpass", 1100) * sobre
+    chisp = paso(ruido(d), "highpass", 4000) * (rng.uniform(0, 1, len(t)) > .997) * 3
+    return norm(mezcla(rugido, chisp * .3))
+
+
 SONIDOS = {
     "impacto_1": lambda: impacto(0), "impacto_2": lambda: impacto(1), "impacto_3": lambda: impacto(2),
     "critico": critico,
@@ -239,6 +314,9 @@ SONIDOS = {
     "jefe": jefe, "jefe_muere": jefe_muere, "elite": elite,
     "escudo_roto": escudo_roto, "escalera_cerrada": escalera_cerrada,
     "botin": botin, "legendario": legendario, "dorado": dorado,
+    "mimico": mimico, "romper_madera_1": lambda: romper_madera(0), "romper_madera_2": lambda: romper_madera(1),
+    "romper_urna": romper_urna, "rejas": rejas, "reto": reto, "trampa_click": trampa_click,
+    "pinchos": pinchos, "fuego": fuego,
 }
 
 

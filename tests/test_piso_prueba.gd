@@ -61,7 +61,7 @@ func _init() -> void:
 		if n.has_meta("weapon_set"):
 			con_modelo += 1
 	ok(con_modelo >= 2, "armas del botín con modelo (%d)" % con_modelo)
-	ok(main.actores._cofres.size() == 1 and main.actores._cofres[0].get_child(1).get_child_count() == 1, "cofre con el modelo y la tapa en la bisagra")
+	ok(main.actores._cofres.size() == 1 and main.actores._cofres.values()[0].get_child(1).get_child_count() == 1, "cofre con el modelo y la tapa en la bisagra")
 	var cf: Dictionary = sim.chests[0]
 	sim.p.x = cf.x
 	sim.p.y = cf.y + 12

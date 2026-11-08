@@ -26,6 +26,8 @@ func esquirlas(x: float, y: float, z: float, ang: float, n: int, spd: float, tip
 	var p := MazmorraGridMap.a3d(x, y, z)
 	if tipo == "hueso":
 		_trozos(p, ang, n, spd * MazmorraGridMap.PX_M, _malla_hueso(), 9.8, .7)
+	elif tipo == "madera" or tipo == "barro":
+		_trozos(p, ang, n, spd * MazmorraGridMap.PX_M, _malla_astilla(tipo == "barro"), 9.8, .9)
 	else:
 		_trozos(p, ang, n, spd * MazmorraGridMap.PX_M * .7, _malla_brasa(), 1.5, .9)
 
@@ -118,7 +120,8 @@ var _voz := 0
 const VOCES := 16
 const VOLUMEN := {"impacto": -4.0, "critico": -2.0, "muerte_enemigo": -5.0, "oro": -10.0, "herido": -3.0, "bloqueo": -4.0,
 	"explosion": 0.0, "onda": 0.0, "jefe": -1.0, "jefe_muere": 0.0, "invocar": -5.0, "carga": -6.0, "elite": -4.0,
-	"escudo_roto": -4.0, "escalera_cerrada": -6.0, "botin": -3.0, "legendario": 0.0, "dorado": -5.0}
+	"escudo_roto": -4.0, "escalera_cerrada": -6.0, "botin": -3.0, "legendario": 0.0, "dorado": -5.0,
+	"mimico": -1.0, "romper_madera": -4.0, "romper_urna": -4.0, "rejas": -1.0, "reto": -1.0, "trampa_click": -6.0, "pinchos": -3.0, "fuego": -4.0}
 
 func sonido(id: StringName, x: float, y: float) -> void:
 	if raiz == null or not raiz.is_inside_tree():
@@ -222,6 +225,18 @@ func _malla_hueso() -> Mesh:
 		m.material = mat
 		_hueso = m
 	return _hueso
+
+var _astillas := {}
+func _malla_astilla(barro: bool) -> Mesh:
+	if not _astillas.has(barro):
+		var m := BoxMesh.new()
+		m.size = Vector3(.09, .03, .05) if barro else Vector3(.03, .03, .14)
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(.62, .33, .2) if barro else Color(.45, .3, .16)
+		mat.roughness = .85
+		m.material = mat
+		_astillas[barro] = m
+	return _astillas[barro]
 
 var _brasa: Mesh
 func _malla_brasa() -> Mesh:

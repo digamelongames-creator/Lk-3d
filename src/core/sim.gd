@@ -229,8 +229,10 @@ func enter_level(level: Dictionary) -> void:
 	map_dirty = true
 	pcell = -1
 	cleared = false
+	_elegir_reto()
 	_populate()
 	_chests_init()
+	_mazmorra_init()
 	total = enemies.size()
 	phase = "fight"
 	fade = 1.0
@@ -855,7 +857,7 @@ func _populate() -> void:
 	var corr: PackedByteArray = L.corr
 	for k in L.rooms.size():
 		var r: Dictionary = L.rooms[k]
-		if k == L.start_room:
+		if k == L.start_room or k == int(reto.get("room", -1)):
 			continue
 		# grupos de 5–10 por sala (más cuanto más hondo), de humanos, de esqueletos o mezclados
 		var n := mini(GRUPO_MAX, GRUPO_MIN + int(rnd() * 3) + mini(3, (w - 1) >> 1))
@@ -1078,23 +1080,7 @@ func try_open_chest(c: Dictionary) -> void:
 			p.keys -= 1
 			fx.text(p.x, p.y - 62, "−1 llave", "#e8d8a0", 10, false, 1, false, false)
 	if c.kind == "mimic":   # ¡muerde!
-		c.open = true
-		chests.erase(c)
-		G[c.cy * DungeonGen.GW + c.cx] = DungeonGen.FLOOR
-		map_dirty = true
-		pcell = -1
-		var e := spawn_enemy("slayer", c.x, c.y - 2)
-		e.rare = false
-		e.mimic = true
-		e.title = "Mímico"
-		e.hp *= 2; e.max_hp *= 2; e.ghost *= 2
-		e.dmg = JS.round(e.dmg * 1.3)
-		wake(e)
-		total += 1
-		hurt_player(JS.round(p.st.maxHp * .15), c.x, c.y - 2, e)
-		fx.shake(8)
-		fx.burst(c.x, c.y - 8, 12, ["#7a1a1a", "#d0d0da", "#5a3216"], 16, 80)
-		fx.banner("¡Era un mímico!", "Te ha mordido")
+		_morder(c)
 		return
 	var CL: Dictionary = CHEST_LOOT[c.kind]
 	var n: int = CL.n[0] + int(rnd() * (CL.n[1] - CL.n[0] + 1))
@@ -1105,6 +1091,9 @@ func try_open_chest(c: Dictionary) -> void:
 	quals.reverse()
 	if c.get("boss", false):
 		quals[0] = 3 if rnd() < .5 else 2
+		quals.append(2)
+	if c.get("reto", false):   # premio del reto de oleadas: un legendario seguro
+		quals[0] = 3
 		quals.append(2)
 	c.open = true
 	c.open_t = 0
@@ -1119,6 +1108,9 @@ func try_open_chest(c: Dictionary) -> void:
 		items.append(Items.rune_item(rune_roll(4, true)))
 	_fan(c.x, c.y, items, 1 if rnd() < CL.potion else 0, true)
 	drop_gold(c.x, c.y + 4, (CL.gold[0] + rnd() * (CL.gold[1] - CL.gold[0])) * (1 + wave * .1), false)
+	if c.get("reto", false):   # y mucho oro
+		for i in 5:
+			drop_gold(c.x + (rnd() - .5) * 60, c.y + 8 + rnd() * 24, (60 + rnd() * 40) * (1 + wave * .15), false)
 	fx.burst(c.x, c.y, 12, ["#fff3c0", Items.RQ_C[c.best]], 10, 70)
 	fx.text(c.x, c.y - 34, CHEST_N[c.kind], Items.RQ_C[c.best], 10, false, 1.2, false, false)
 	if c.kind == "cursed":
@@ -1132,9 +1124,11 @@ func try_open_chest(c: Dictionary) -> void:
 
 ## cada paso: tapa abierta y objetos en vuelo
 func _chest_tick(dt: float) -> void:
-	for c in chests:
+	for c in chests.duplicate():
 		if c.open:
 			c.open_t += dt
+		elif c.kind == "mimic" and not p.dead and JS.hypot(c.x - p.x, c.y - p.y) < MIMICO_R:
+			_morder(c)   # al acercarte, no hace falta abrirlo
 	for l in loot:
 		var f = l.get("fly")
 		if f == null:
@@ -1438,6 +1432,8 @@ func step(dt: float, inp: Inp) -> String:
 	_mon_update(dt)
 	_mon_empuje(dt)
 	_poderes_tick(dt)
+	_trampas_tick(dt)
+	_reto_tick(dt)
 	_update_projs(dt)
 	_update_marks(dt)
 	var alive := []
@@ -1769,6 +1765,7 @@ func _do_hit() -> void:
 				fx.stain(e.x + (rnd() - .5) * 18, e.y + (rnd() - .5) * 5, BLOOD[i % 4], 2 if rnd() < .5 else 1)
 		if e.hp <= 0:
 			kill_enemy(e, p.face)
+	_romper_golpe(cx, cy)
 	if hits:
 		stats.hits += hits
 		p.chain += hits
@@ -2959,7 +2956,7 @@ func _hh_elites(w: int) -> void:
 	var rooms := []
 	for k in L.rooms.size():
 		var r: Dictionary = L.rooms[k]
-		if k != L.start_room and not (L.fount != null and k == L.fount.room) and L.dist[r.cy * DungeonGen.GW + r.cx] > 14:
+		if k != L.start_room and not (L.fount != null and k == L.fount.room) and k != int(reto.get("room", -1)) and L.dist[r.cy * DungeonGen.GW + r.cx] > 14:
 			rooms.append(r)
 	var used := {}
 	for o in enemies:
@@ -3341,7 +3338,7 @@ func mon_spawn(id: String, x: float, y: float) -> Ent.Enemy:
 func _rooms_free() -> Array:
 	var ks := []
 	for k in L.rooms.size():
-		if k != L.start_room and not (L.fount != null and k == L.fount.room):
+		if k != L.start_room and not (L.fount != null and k == L.fount.room) and k != int(reto.get("room", -1)):
 			ks.append(k)
 	return ks
 
@@ -4656,6 +4653,9 @@ func interact() -> void:
 	var l = nearest_loot()
 	if l != null:
 		opts.append({"d": JS.hypot(l.x - p.x, l.y - p.y) * .7, "f": func(): try_pickup(l)})
+	var rb = rompible_cerca()
+	if rb != null:
+		opts.append({"d": JS.hypot(rb.x - p.x, rb.y - p.y), "f": func(): _romper(rb)})
 	for dr in doors:
 		if dr.open:
 			continue
@@ -4734,7 +4734,7 @@ func _take_floor_key(k: Dictionary) -> void:
 func can_interact() -> bool:
 	if p.dead:
 		return false
-	if nearest_chest() != null or nearest_loot() != null:
+	if nearest_chest() != null or nearest_loot() != null or rompible_cerca() != null:
 		return true
 	for dr in doors:
 		if not dr.open and JS.hypot(dr.cx - p.x, dr.cy - (p.y - 6)) < DOOR_R:
@@ -4937,6 +4937,7 @@ func _poderes_tick(dt: float) -> void:
 		if not p.dead and JS.hypot(p.x - b.x, p.y - b.y) < b.r:
 			var src = b.own if is_instance_valid(b.own) and not b.own.dead else null
 			hurt_player(b.dmg, b.x, b.y, src, "area")
+		_romper_en(b.x, b.y, b.r)
 		# la explosión también hace daño a los enemigos de alrededor
 		if b.own == null:
 			for o in enemies.duplicate():
@@ -4964,3 +4965,345 @@ func _muere_poder(e: Ent.Enemy) -> void:
 		for s in enemies.duplicate():
 			if s.invocador == e and not s.dying:
 				kill_enemy(s, 0.0)
+
+
+# ======================================================================
+#  mazmorra (tanda 3, 8 nov 2026): rompibles, mímico, reto de oleadas y trampas
+# ======================================================================
+const MIMICO_R := 38.0
+## al acercarse (o al intentar abrirlo), el mímico muerde y se convierte en enemigo
+func _morder(c: Dictionary) -> void:
+	c.open = true
+	chests.erase(c)
+	G[c.cy * DungeonGen.GW + c.cx] = DungeonGen.FLOOR
+	map_dirty = true
+	pcell = -1
+	var e := spawn_enemy("slayer", c.x, c.y - 2)
+	e.rare = false
+	e.mimic = true
+	e.title = "Mímico"
+	e.hp *= 2; e.max_hp *= 2; e.ghost *= 2
+	e.dmg = JS.round(e.dmg * 1.3)
+	wake(e)
+	total += 1
+	hurt_player(JS.round(p.st.maxHp * .15), c.x, c.y - 2, e)
+	fx.shake(8)
+	fx.burst(c.x, c.y - 8, 12, ["#7a1a1a", "#d0d0da", "#5a3216"], 16, 80)
+	fx.banner("¡Era un mímico!", "Te ha mordido")
+	fx.sonido(&"mimico", c.x, c.y)
+
+# ---------- rompibles: barriles, cajas y urnas ----------
+var rompibles: Array = []   # {x, y, kind: barril|caja|urna, roto, giro}
+const ROMPIBLE_R := 20.0
+const ROMPIBLES := ["barril", "caja", "urna"]
+
+func rompible_cerca() -> Variant:
+	var best = null
+	var bd := ROMPIBLE_R + 8
+	for r in rompibles:
+		if r.roto:
+			continue
+		var d := JS.hypot(r.x - p.x, r.y - p.y)
+		if d < bd:
+			bd = d
+			best = r
+	return best
+
+func _romper_golpe(cx: float, cy: float) -> void:
+	for r in rompibles:
+		if r.roto:
+			continue
+		var dx: float = r.x - cx
+		var dy: float = (r.y - 14) - cy
+		var d := JS.hypot(dx, dy)
+		if d > p.st.range + 14:
+			continue
+		var da := atan2(dy, dx) - p.face
+		da = atan2(sin(da), cos(da))
+		if absf(da) < 1.5 or d < 16:
+			_romper(r)
+
+func _romper_en(x: float, y: float, rad: float) -> void:
+	for r in rompibles:
+		if not r.roto and JS.hypot(r.x - x, r.y - y) < rad:
+			_romper(r)
+
+## se rompe: siempre algo de oro, a veces una poción y, rara vez, un esqueleto que salta de dentro
+func _romper(r: Dictionary) -> void:
+	if r.roto:
+		return
+	r.roto = true
+	fx.esquirlas(r.x, r.y, 10, -PI / 2, 18, 110, "barro" if r.kind == "urna" else "madera")
+	fx.sonido(&"romper_urna" if r.kind == "urna" else &"romper_madera", r.x, r.y)
+	drop_gold(r.x, r.y + 4, (2 + rnd() * 6) * (1 + wave * .12), true)
+	var tirada := rnd()
+	if tirada < .06:
+		var e := mon_spawn("esqueleto", r.x, r.y + 2)
+		e.state = "chase"
+		e.cool = .5
+		total += 1
+		fx.text(r.x, r.y - 50, "¡Estaba dentro!", "#ff9a3a", 11, false, 1.2, false, false)
+	elif tirada < .18:
+		var v := safe_spot(r.x + (rnd() - .5) * 20, r.y + 10, Vector2(r.x, r.y))
+		pickups.append({"x": v.x, "y": v.y, "t": 1e9, "bob": rnd() * 6, "no_pick": 0.0})
+
+func _rompibles_init(_w: int) -> void:
+	rompibles = []
+	var dist: PackedInt32Array = L.dist
+	for k in L.rooms.size():
+		if k == L.start_room:
+			continue
+		var r: Dictionary = L.rooms[k]
+		var n := 3 + int(rnd() * 4)
+		var pared := []   # casillas del borde de la sala que tocan muro
+		for cy in range(r.y, r.y + r.h):
+			for cx in range(r.x, r.x + r.w):
+				var i: int = cy * DungeonGen.GW + cx
+				if G[i] != DungeonGen.FLOOR or dist[i] <= 4:
+					continue
+				var junto := false
+				var puerta := false
+				for d4 in DungeonGen.D4:
+					var t2 := tile_at(cx + d4[0], cy + d4[1])
+					if t2 == DungeonGen.DOOR:
+						puerta = true
+					if DungeonGen.is_solid(t2) and t2 != DungeonGen.DOOR:
+						junto = true
+				if junto and not puerta:
+					pared.append(Vector2i(cx, cy))
+		for j in range(pared.size() - 1, 0, -1):
+			var q := int(rnd() * (j + 1))
+			var tmp = pared[j]; pared[j] = pared[q]; pared[q] = tmp
+		var puestos := 0
+		for c in pared:
+			if puestos >= n:
+				break
+			var x: float = (c.x + .5) * TS + (rnd() - .5) * 8
+			var y: float = (c.y + .5) * TS + 8 + (rnd() - .5) * 6
+			if not fits(x, y, 9):
+				continue
+			var cerca := false
+			for o in rompibles:
+				if JS.hypot(o.x - x, o.y - y) < 18:
+					cerca = true
+					break
+			for ch in chests:
+				if JS.hypot(ch.x - x, ch.y - y) < 30:
+					cerca = true
+			if cerca or JS.hypot(x - L.stairs_px.x, y - L.stairs_px.y) < 50:
+				continue
+			# a veces van de dos o tres juntos
+			var kind: String = ROMPIBLES[int(rnd() * 3)]
+			rompibles.append({"x": x, "y": y, "kind": kind, "roto": false, "giro": rnd() * TAU})
+			puestos += 1
+
+# ---------- reto de oleadas: una sala por piso ----------
+var reto := {}   # {room, estado: espera|activo|hecho, ola, t, salidas: [i], viejas: [t]}
+const RETO_OLAS := [6, 9, 12]
+
+func _elegir_reto() -> void:
+	reto = {}
+	if L.has("prueba"):
+		return
+	var mejor := -1
+	var ks := []
+	for k in L.rooms.size():
+		var r: Dictionary = L.rooms[k]
+		if k == L.start_room or k == L.end_room or (L.fount != null and k == L.fount.room):
+			continue
+		if r.w >= 7 and r.h >= 6:
+			ks.append(k)
+	if ks.is_empty():
+		return
+	mejor = ks[int(rnd() * ks.size())]
+	reto = {"room": mejor, "estado": "espera", "ola": 0, "t": 0.0, "salidas": [], "viejas": []}
+
+func _reto_tick(dt: float) -> void:
+	if reto.is_empty() or reto.estado == "hecho" or p.dead:
+		return
+	var r: Dictionary = L.rooms[reto.room]
+	if reto.estado == "espera":
+		var cx := cell_of(p.x)
+		var cy := cell_of(p.y - 3)
+		if cx > r.x and cx < r.x + r.w - 1 and cy > r.y and cy < r.y + r.h - 1:
+			_reto_empezar(r)
+		return
+	# activo: cuando caen todos los de la oleada, la siguiente (o el premio)
+	reto.t += dt
+	var vivos := 0
+	for e in enemies:
+		if e.reto and not e.dying and not e.dead:
+			vivos += 1
+	if vivos == 0 and reto.t > 1.5:
+		if reto.ola < RETO_OLAS.size():
+			_reto_ola(r)
+		else:
+			_reto_fin(r)
+
+func _reto_empezar(r: Dictionary) -> void:
+	reto.estado = "activo"
+	reto.t = 0.0
+	# se cierran las rejas: cada casilla de paso que sale de la sala queda bloqueada
+	var sal := []
+	var viejas := []
+	for cy in range(r.y - 1, r.y + r.h + 1):
+		for cx in range(r.x - 1, r.x + r.w + 1):
+			var borde: bool = cx == r.x - 1 or cy == r.y - 1 or cx == r.x + r.w or cy == r.y + r.h
+			if not borde:
+				continue
+			var t2 := tile_at(cx, cy)
+			if t2 == 0 or (DungeonGen.is_solid(t2) and t2 != DungeonGen.DOOR):
+				continue
+			var i: int = cy * DungeonGen.GW + cx
+			sal.append(i)
+			viejas.append(G[i])
+			G[i] = DungeonGen.PILLAR
+	reto.salidas = sal
+	reto.viejas = viejas
+	pcell = -1
+	map_dirty = true
+	fx.banner("¡Emboscada! Aguanta 3 olas", "Se cierran las rejas")
+	fx.sonido(&"rejas", p.x, p.y)
+	fx.shake(6)
+
+func _reto_ola(r: Dictionary) -> void:
+	var n: int = RETO_OLAS[reto.ola]
+	reto.ola += 1
+	reto.t = 0.0
+	fx.banner("Ola %d de %d" % [reto.ola, RETO_OLAS.size()], "")
+	fx.sonido(&"invocar", p.x, p.y)
+	var hechos: Array[Ent.Enemy] = []
+	for i in n:
+		for intento in 20:
+			var c = _rand_cell_in(r)
+			if c == null or JS.hypot(c.x - p.x, c.y - p.y) < 70:
+				continue
+			var e := mon_spawn("esqueleto", c.x, c.y) if rnd() < .45 else spawn_enemy(enemy_type_for(wave), c.x, c.y)
+			e.reto = true
+			e.state = "chase"
+			e.cool = .6 + rnd() * .6
+			fx.burst(c.x, c.y, 8, ["#5a2a90", "#2a1040", "#c890ff"], 12, 60)
+			hechos.append(e)
+			total += 1
+			break
+	if reto.ola == RETO_OLAS.size() and hechos.size():
+		_hacer_elite(hechos[0])
+		fx.banner("Ola %d de %d" % [reto.ola, RETO_OLAS.size()], "Con " + hechos[0].title)
+
+func _reto_fin(r: Dictionary) -> void:
+	reto.estado = "hecho"
+	var sal: Array = reto.salidas
+	for k in sal.size():
+		G[sal[k]] = reto.viejas[k]
+	pcell = -1
+	map_dirty = true
+	fx.banner("¡Reto superado!", "Ha aparecido un cofre dorado")
+	fx.sonido(&"reto", p.x, p.y)
+	var o := {"x": (r.x + r.w / 2.0) * TS, "y": (r.y + r.h / 2.0) * TS + 10}
+	unstick(o, 12)
+	chests.append({"cx": cell_of(o.x), "cy": cell_of(o.y), "kind": "gold", "reto": true, "grande": true, "room": null, "se": false, "x": o.x, "y": o.y, "open": false, "open_t": 0.0, "best": 0, "guards": [], "msg_t": -9.0})
+	fx.burst(o.x, o.y - 10, 24, ["#ffffff", "#ffd25a", "#c8d4ec"], 30, 110)
+
+## ¿la casilla i es una reja cerrada del reto? (para la vista)
+func rejas_cerradas() -> Array:
+	return reto.get("salidas", []) if not reto.is_empty() and reto.estado == "activo" else []
+
+# ---------- trampas de pinchos y de fuego en los pasillos ----------
+var trampas: Array = []   # {x, y, kind: pinchos|fuego, estado: listo|aviso|activa|recarga, t, tick}
+const TRAMPA_R := 15.0
+const TRAMPA_AVISO := .5
+var _trampa_scan := 0.0
+
+func _trampas_init(w: int) -> void:
+	trampas = []
+	var dist: PackedInt32Array = L.dist
+	var corr: PackedByteArray = L.corr
+	var cand := []
+	for i in DungeonGen.GW * DungeonGen.GH:
+		if corr[i] and G[i] == DungeonGen.FLOOR and dist[i] > 10:
+			cand.append(i)
+	var n := mini(12, (3 + mini(5, w)) * DungeonGen.escala())
+	while n > 0 and cand.size():
+		var i: int = cand.pop_at(int(rnd() * cand.size()))
+		var x := (i % DungeonGen.GW + .5) * TS
+		var y := (i / DungeonGen.GW + .5) * TS + 6
+		var cerca := false
+		for o in trampas:
+			if JS.hypot(o.x - x, o.y - y) < TS * 4:
+				cerca = true
+				break
+		if cerca:
+			continue
+		trampas.append({"x": x, "y": y, "cx": i % DungeonGen.GW, "cy": i / DungeonGen.GW, "kind": "fuego" if rnd() < .4 else "pinchos", "estado": "listo", "t": 0.0, "tick": 0.0})
+		n -= 1
+
+func _pisa(tr: Dictionary, x: float, y: float) -> bool:
+	return JS.hypot(x - tr.x, y - tr.y) < TRAMPA_R
+
+func _trampas_tick(dt: float) -> void:
+	if trampas.is_empty():
+		return
+	# casillas con algún enemigo encima: una pasada por los enemigos cada 0,05 s (no una por trampa y fotograma)
+	_trampa_scan -= dt
+	var ocupadas := {}
+	if _trampa_scan <= 0:
+		_trampa_scan = .05
+		for e in enemies:
+			if not e.dying and e.state != "idle":   # los que esperan quietos no las disparan
+				ocupadas[int(e.y / TS) * DungeonGen.GW + int(e.x / TS)] = true
+	for tr in trampas:
+		tr.t -= dt
+		match tr.estado:
+			"listo":
+				var pisada := not p.dead and _pisa(tr, p.x, p.y)
+				if not pisada and ocupadas.has(tr.cy * DungeonGen.GW + tr.cx):
+					for e in enemies:
+						if not e.dying and e.state != "idle" and _pisa(tr, e.x, e.y):
+							pisada = true
+							break
+				if pisada:
+					tr.estado = "aviso"
+					tr.t = TRAMPA_AVISO
+					fx.sonido(&"trampa_click", tr.x, tr.y)
+			"aviso":
+				if tr.t <= 0:
+					tr.estado = "activa"
+					tr.t = .4 if tr.kind == "pinchos" else 1.2
+					tr.tick = 0.0
+					fx.sonido(&"pinchos" if tr.kind == "pinchos" else &"fuego", tr.x, tr.y)
+					if tr.kind == "pinchos":
+						_trampa_dano(tr, 12 + wave * 4)
+			"activa":
+				if tr.kind == "fuego":
+					tr.tick -= dt
+					if tr.tick <= 0:
+						tr.tick = .3
+						_trampa_dano(tr, 5 + wave * 2)
+						fx.burst(tr.x, tr.y, 14, ["#fff0a0", "#ffa020", "#ff4a10"], 6, 50)
+				if tr.t <= 0:
+					tr.estado = "recarga"
+					tr.t = 2.0
+			"recarga":
+				if tr.t <= 0:
+					tr.estado = "listo"
+
+## daña al héroe (la voltereta lo salva: hurt_player no hace nada con roll_t) y a los enemigos encima
+func _trampa_dano(tr: Dictionary, dmg: float) -> void:
+	if not p.dead and _pisa(tr, p.x, p.y):
+		hurt_player(dmg, tr.x, tr.y + 4, null, "trampa")
+	for e in enemies.duplicate():
+		if e.dying or absf(e.x - tr.x) > TRAMPA_R or absf(e.y - tr.y) > TRAMPA_R or not _pisa(tr, e.x, e.y):
+			continue
+		e.hp -= dmg
+		e.flash = .07
+		fx.text(e.x, e.y - 40, str(int(dmg)), COL_GOLPE, 11)
+		if e.hp <= 0:
+			kill_enemy(e, -PI / 2)
+
+func _mazmorra_init() -> void:
+	rompibles = []
+	trampas = []
+	if L.has("prueba"):
+		return
+	_rompibles_init(wave)
+	_trampas_init(wave)

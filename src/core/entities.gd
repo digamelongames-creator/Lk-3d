@@ -196,6 +196,7 @@ class Enemy extends RefCounted:
 	var invoca_t := 0.0
 	var invocador: Object = null # quién lo ha invocado
 	var jefe := false            # jefe del piso: guarda la escalera
+	var reto := false            # sale en una oleada del reto de la sala
 	var jefe_visto := false
 	var jefe_mitad := false      # ya llamó a sus siervos (al 50 % de vida)
 	var onda_t := 0.0
