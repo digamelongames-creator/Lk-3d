@@ -311,10 +311,37 @@ func quick(ref: Dictionary) -> void:
 # ======================================================================
 func _layout() -> void:
 	H = 30 + 7 * CELL + 26 + 6 * BC + 46 + PAD * 2
-	k = minf(1.35, minf((size.x - 20) / W, (size.y - 20) / H))
-	org = ((size - Vector2(W, H) * k) / 2).floor()
+	_marco = _medir_marco()
+	if _marco.is_empty():
+		k = minf(1.35, minf((size.x - 20) / W, (size.y - 20) / H))
+		org = ((size - Vector2(W, H) * k) / 2).floor()
+	else:
+		var fs: Vector2 = _marco.rect.size
+		k = minf(1.35, minf((size.x - 20) / fs.x, (size.y - 20) / fs.y))
+		org = ((size - fs * k) / 2 - _marco.rect.position * k).floor()
 	doll0 = Vector2(PAD + 2, PAD + 34)
 	bag0 = Vector2(PAD + 4, doll0.y + 7 * CELL + 26)
+
+## marco de Diego con las dos estatuas (assets/ui/inventario_marco.png): se estira solo por la viga del
+## centro y por el tramo liso de las columnas, para que las estatuas no se deformen
+const MARCO_M := Vector4(400, 1052, 403, 230)   # márgenes en píxeles de la imagen (izq, arriba, der, abajo)
+const MARCO_AIRE := 12.0                         # cuánto asoma el fondo de la hoja por dentro del marco
+var _marco := {}
+
+## {rect (en unidades del panel), k (escala de la imagen)} o vacío si no está la pieza
+func _medir_marco() -> Dictionary:
+	var t := UiArte.tex("inventario_marco")
+	if t == null:
+		return {}
+	var ts := t.get_size()
+	var h: Array = UiArte.med("inventario_marco").get("hueco", [.1471, .1009, .85, .9539])
+	var hx0: float = h[0] * ts.x
+	var hy0: float = h[1] * ts.y
+	var hw: float = (h[2] - h[0]) * ts.x
+	var hh: float = (h[3] - h[1]) * ts.y
+	var e := (H + MARCO_AIRE * 2) / hh
+	var extra := maxf(0, (W + MARCO_AIRE * 2) / e - hw)
+	return {"rect": Rect2(Vector2(-MARCO_AIRE - hx0 * e, -MARCO_AIRE - hy0 * e), Vector2(ts.x + extra, ts.y) * e), "k": e}
 
 func _to_panel(v: Vector2) -> Vector2:
 	return (v - org) / k
@@ -742,6 +769,27 @@ func _stripes(R: Rect2) -> void:
 			draw_colored_polygon(pp, c)
 		d += step
 
+## hueco de objeto de Diego según la calidad (0 básico, 1 mágico, 2 dorado, 3 legendario); borde en unidades
+## del panel. Mágico y legendario usan, teñidos, el normal y el dorado hasta que lleguen los suyos.
+func _hueco_q(R: Rect2, q: int, borde: float) -> bool:
+	var nombre := "hueco_objeto"
+	var mod := Color.WHITE
+	match q:
+		1:
+			if UiArte.tex("hueco_magico") != null:
+				nombre = "hueco_magico"
+			else:
+				mod = Color(.6, .8, 1.5)
+		2:
+			nombre = "hueco_dorado"
+		3:
+			if UiArte.tex("hueco_legendario") != null:
+				nombre = "hueco_legendario"
+			else:
+				nombre = "hueco_dorado"
+				mod = Color(.5, 1.25, 1.05)
+	return UiArte.caja(self, nombre, Rect2(org + R.position * k, R.size * k), 48, borde * k, mod)
+
 func _draw() -> void:
 	if not visible or sim == null or sim.p == null:
 		return
@@ -759,12 +807,17 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(10 / 255.0, 7 / 255.0, 5 / 255.0, .86))
 	# hoja: borde 2px #000 y anillos #8a6a3c, #1a130c, #5a4428; fondo de #1b1611 a #100c09
 	var pr := _panel_rect()
-	_outset(pr.grow(6), Color(0, 0, 0, .9), 18)
-	_rect(pr.grow(7), Color8(90, 68, 40))
-	_rect(pr.grow(6), Color8(26, 19, 12))
-	_rect(pr.grow(3), Color8(138, 106, 60))
-	_rect(pr.grow(2), Color.BLACK)
-	_quad(pr, Color8(27, 22, 17), Color8(16, 12, 9))
+	if not _marco.is_empty():
+		_quad(pr.grow(MARCO_AIRE + 4), Color8(27, 22, 17), Color8(16, 12, 9))
+		var mr: Rect2 = _marco.rect
+		UiArte.caja_lados(self, "inventario_marco", Rect2(org + mr.position * k, mr.size * k), MARCO_M, _marco.k * k)
+	else:
+		_outset(pr.grow(6), Color(0, 0, 0, .9), 18)
+		_rect(pr.grow(7), Color8(90, 68, 40))
+		_rect(pr.grow(6), Color8(26, 19, 12))
+		_rect(pr.grow(3), Color8(138, 106, 60))
+		_rect(pr.grow(2), Color.BLACK)
+		_quad(pr, Color8(27, 22, 17), Color8(16, 12, 9))
 	# cabecera
 	Fonts.outlined(self, Fonts.gothic(800), org + Vector2(PAD, PAD + 19) * k, "EQUIPO", int(19 * k), Color8(240, 215, 154), 0, 3, Color.BLACK)
 	var chr := Rect2(PAD + 98, PAD + 4, 142, 19)
@@ -777,18 +830,19 @@ func _draw() -> void:
 	_rect(Rect2(cr.position + Vector2(0, 3), cr.size), Color8(138, 90, 22))
 	_quad(cr, Color8(255, 196, 92) if chv else Color8(240, 172, 66), Color8(214, 140, 40) if chv else Color8(196, 124, 32))
 	Fonts.outlined_raw(self, Fonts.px(700), org + (cr.get_center() + Vector2(0, 5)) * k, Idioma.t("Cerrar"), int(13 * k), Color8(28, 16, 6), 1, 0)
-	# estatuas a los lados del muñeco (rnSt: todo el alto, a un 18 % de cada lado, opacidad .7)
-	var stt := Atlas.statue_tex()
-	var dh := 7 * CELL + 4
-	var stw := dh * stt.get_width() / float(stt.get_height())
-	var dw := W - PAD * 2
-	var sl := Rect2(Vector2(PAD + dw * .18, doll0.y - 6), Vector2(stw, dh))
-	var sr := Rect2(Vector2(PAD + dw * .82 - stw, doll0.y - 6), Vector2(stw, dh))
-	draw_texture_rect(stt, Rect2(org + sl.position * k, sl.size * k), false, Color(1, 1, 1, .5))
-	# la de la derecha, reflejada (un Rect2 de ancho negativo no refleja en Godot)
-	draw_set_transform(org + Vector2(sr.end.x, sr.position.y) * k, 0, Vector2(-1, 1))
-	draw_texture_rect(stt, Rect2(Vector2.ZERO, sr.size * k), false, Color(1, 1, 1, .5))
-	draw_set_transform(Vector2.ZERO)
+	# estatuas a los lados del muñeco (rnSt: todo el alto, a un 18 % de cada lado, opacidad .7) — solo sin el marco de Diego, que ya trae las suyas
+	if _marco.is_empty():
+		var stt := Atlas.statue_tex()
+		var dh := 7 * CELL + 4
+		var stw := dh * stt.get_width() / float(stt.get_height())
+		var dw := W - PAD * 2
+		var sl := Rect2(Vector2(PAD + dw * .18, doll0.y - 6), Vector2(stw, dh))
+		var sr := Rect2(Vector2(PAD + dw * .82 - stw, doll0.y - 6), Vector2(stw, dh))
+		draw_texture_rect(stt, Rect2(org + sl.position * k, sl.size * k), false, Color(1, 1, 1, .5))
+		# la de la derecha, reflejada (un Rect2 de ancho negativo no refleja en Godot)
+		draw_set_transform(org + Vector2(sr.end.x, sr.position.y) * k, 0, Vector2(-1, 1))
+		draw_texture_rect(stt, Rect2(Vector2.ZERO, sr.size * k), false, Color(1, 1, 1, .5))
+		draw_set_transform(Vector2.ZERO)
 	# piezas
 	for s in C.slots:
 		var R := _slot_rect(s)
@@ -797,9 +851,11 @@ func _draw() -> void:
 		var fit_r: bool = hit != null and hit.has("rune") and it != null and Items.why_not(p, Items.rune(hit.rune), s) == ""
 		var hov: bool = _hover != null and _hover.get("slot", "") == s and not _hover.has("sock")
 		# fondo: radial-gradient(rgba(42,34,27,.62) → rgba(20,15,11,.85)), borde #000 e inset 14px #000
-		_rect(R, Color(20 / 255.0, 15 / 255.0, 11 / 255.0, .85))
-		_glow(R.get_center() - Vector2(0, R.size.y * .05), maxf(R.size.x, R.size.y) * .62, Color(42 / 255.0, 34 / 255.0, 27 / 255.0, .62))
-		_inset(R, Color.BLACK, 14)
+		var arte := _hueco_q(R, it.q if it != null else 0, 7)
+		if not arte:
+			_rect(R, Color(20 / 255.0, 15 / 255.0, 11 / 255.0, .85))
+			_glow(R.get_center() - Vector2(0, R.size.y * .05), maxf(R.size.x, R.size.y) * .62, Color(42 / 255.0, 34 / 255.0, 27 / 255.0, .62))
+			_inset(R, Color.BLACK, 14)
 		var line := Color8(59, 46, 32)
 		if it != null:
 			line = ViewFx.col(Q_LINE[it.q])
@@ -815,8 +871,9 @@ func _draw() -> void:
 			_icon(Atlas.gear_tex(it.cls, s, it.q), R.grow(-R.size.x * .07), it.q, Color.WHITE, _pulse(it))
 		else:
 			_tex(Atlas.gear_tex(ck, s, 0), R.grow(-R.size.x * .07), Color(.55, .55, .55, .16))
-		draw_rect(Rect2(org + R.position * k, R.size * k), Color.BLACK, false, k)
-		draw_rect(Rect2(org + (R.position + Vector2(1, 1)) * k, (R.size - Vector2(2, 2)) * k), line, false, (2 if can or fit_r else 1) * k)
+		if not arte or can or fit_r:
+			draw_rect(Rect2(org + R.position * k, R.size * k), Color.BLACK, false, k)
+			draw_rect(Rect2(org + (R.position + Vector2(1, 1)) * k, (R.size - Vector2(2, 2)) * k), line, false, (2 if can or fit_r else 1) * k)
 		if hov:
 			_rect(R, Color(1, 1, 1, .07))
 		if fl != null and fl.s == s:
@@ -860,11 +917,17 @@ func _draw() -> void:
 	_txt(Vector2(bag0.x + Items.RB_W * BC - 2, hy), ("%d oro · %d %s · %d %s" % [p.gold, p.keys, "llave" if p.keys == 1 else "llaves", pc, "poción" if pc == 1 else "pociones"]).to_upper(), 10, mut, 2, 500)
 	var gr := Rect2(bag0, Vector2(Items.RB_W * BC, Items.RB_H * BC))
 	_rect(gr, Color8(10, 7, 5))
-	var gl := Color(90 / 255.0, 70 / 255.0, 50 / 255.0, .35)
-	for x in Items.RB_W:
-		draw_rect(Rect2(org + (bag0 + Vector2(x * BC, 0)) * k, Vector2(maxf(1, k * .8), gr.size.y * k)), gl)
-	for y in Items.RB_H:
-		draw_rect(Rect2(org + (bag0 + Vector2(0, y * BC)) * k, Vector2(gr.size.x * k, maxf(1, k * .8))), gl)
+	var ho := UiArte.tex("hueco_objeto")
+	if ho != null:
+		for y in Items.RB_H:
+			for x in Items.RB_W:
+				draw_texture_rect(ho, Rect2(org + (bag0 + Vector2(x * BC, y * BC)) * k, Vector2(BC, BC) * k), false, Color(.8, .8, .8))
+	else:
+		var gl := Color(90 / 255.0, 70 / 255.0, 50 / 255.0, .35)
+		for x in Items.RB_W:
+			draw_rect(Rect2(org + (bag0 + Vector2(x * BC, 0)) * k, Vector2(maxf(1, k * .8), gr.size.y * k)), gl)
+		for y in Items.RB_H:
+			draw_rect(Rect2(org + (bag0 + Vector2(0, y * BC)) * k, Vector2(gr.size.x * k, maxf(1, k * .8))), gl)
 	_rect(gr.grow(1), Color8(61, 46, 32), false)
 	for it in p.bag:
 		var R := _bag_rect(it)
@@ -880,7 +943,8 @@ func _draw() -> void:
 		elif it.slot == "potion":
 			bg = Color(60 / 255.0, 20 / 255.0, 16 / 255.0, .45)
 			bl = Color8(122, 58, 42)
-		_rect(R, bg)
+		if not (it.get("gear", false) and _hueco_q(R, it.q, 5)):
+			_rect(R, bg)
 		if it.get("gear", false) and it.cls != ck:
 			_stripes(R)
 		if hv:
@@ -1012,8 +1076,9 @@ func _draw_tip(lines: Array) -> void:
 		pos.x = _ptr.x - tw - 14
 	if pos.y + h > size.y - 6:
 		pos.y = maxf(6, size.y - h - 6)
-	draw_rect(Rect2(pos, Vector2(tw, h)), Color(14 / 255.0, 10 / 255.0, 8 / 255.0, .96))
-	draw_rect(Rect2(pos, Vector2(tw, h)), Color8(138, 106, 60), false, 1)
+	if not UiArte.caja(self, "panel", Rect2(pos, Vector2(tw, h)).grow(6 * k), 40, 12 * k):
+		draw_rect(Rect2(pos, Vector2(tw, h)), Color(14 / 255.0, 10 / 255.0, 8 / 255.0, .96))
+		draw_rect(Rect2(pos, Vector2(tw, h)), Color8(138, 106, 60), false, 1)
 	var y := pos.y + 6 * k
 	for l in wrapped:
 		y += l[2]

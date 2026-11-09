@@ -28,6 +28,8 @@ var _firma_equipo := ""
 var _armadura: Array[Node3D] = []
 var _botin_nodos := {}     # id del objeto del suelo → Node3D
 var _enemigos := {}        # id del objeto → Node3D
+var _cuerpos := []         # claves de _enemigos de los muertos, del más antiguo al más nuevo
+const MAX_CUERPOS := 100
 var _botin: Array[Node3D] = []
 var _oro: Array[Node3D] = []
 var _cofres := {}           # id de vista del cofre (c.vid) → Node3D
@@ -54,6 +56,7 @@ func nuevo_piso() -> void:
 	_rejas.clear()
 	_firma_rejas = -1
 	_enemigos.clear()
+	_cuerpos.clear()
 	for n in _botin_nodos.values():
 		n.queue_free()
 	_botin_nodos.clear()
@@ -549,7 +552,8 @@ func _actualizar_enemigos(dt: float) -> void:
 		else:
 			m.reproducir("idle")
 		d.act = e.act
-	# los que ya no están (o llevan rato muertos): se hunden y se quitan
+	# los muertos se quedan en el suelo todo el piso (decidido por Diego, 10 nov); como mucho MAX_CUERPOS:
+	# pasado el límite se quita el más antiguo. Los que caen al abismo y las cápsulas se quitan como antes.
 	for k in _enemigos.keys():
 		var d: Dictionary = _enemigos[k]
 		if not vistos.has(k):
@@ -558,10 +562,23 @@ func _actualizar_enemigos(dt: float) -> void:
 				d.muere = true
 				d.m.reproducir("death", 1.0, .1, true)
 		var t: float = d.get("muerto", 0.0)
-		if t > 6.0:
-			d.n.position.y -= dt * .4
-		if t > 8.0 or (d.m == null and t > 0):
-			d.n.queue_free()
+		if t <= 0:
+			continue
+		if d.get("cae", false) or (d.m == null and not d.has("mimico")):
+			if t > 8.0 or d.m == null:
+				d.n.queue_free()
+				_enemigos.erase(k)
+				_cuerpos.erase(k)
+			continue
+		if not d.get("cuerpo", false):
+			d.cuerpo = true
+			_cuerpos.append(k)
+		elif t > 3.0 and d.n.process_mode != Node.PROCESS_MODE_DISABLED:
+			d.n.process_mode = Node.PROCESS_MODE_DISABLED   # ya en el suelo: se congela la pose y no gasta
+	while _cuerpos.size() > MAX_CUERPOS:
+		var k = _cuerpos.pop_front()
+		if _enemigos.has(k):
+			_enemigos[k].n.queue_free()
 			_enemigos.erase(k)
 
 ## desplazamiento al caer al abismo t s después de pisar el vacío: sigue hacia donde iba (lejos del último

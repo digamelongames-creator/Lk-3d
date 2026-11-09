@@ -10,3 +10,4 @@ Nada con licencia no comercial.
 | Kit de la ciudad (Inca) | `assets/kit/kit_ciudad.glb` | Generado por script (`tools/blender/kit_ciudad.py`) | Claude para Diego | Propio |
 | Personajes y monstruos | `assets/monstruos/*.glb` | SPRITE_FACTORY de Diego (Tripo + Mixamo) | Diego | Tripo (confirmar plan comercial) y animaciones de Mixamo (uso comercial permitido en juegos) |
 | Sonidos (golpes, muertes, bloqueo, oro, explosión, jefe…) | `assets/sonidos/*.wav` | Sintetizados por script (`tools/sonidos.py`) | Claude para Diego | Propio |
+| HUD (orbes, marcos, inventario, huecos, panel, barra de experiencia) | `assets/ui/*.png` (convertidas con `tools/hud_piezas.py`) | Generadas con ChatGPT (imágenes) | Diego | Las condiciones de OpenAI ceden al usuario lo que genera, con uso comercial |

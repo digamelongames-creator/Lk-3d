@@ -2380,7 +2380,7 @@ func _update_enemies(dt: float) -> void:
 				e.wake_t -= dt
 				if e.wake_t <= 0:
 					wake(e)
-			elif not p.dead and phase == "fight" and ((d < 64 or e.hp < e.max_hp) if e.ambush else ((d < 200 * runes.see() and e.los) or d < 70 * runes.see() or e.hp < e.max_hp)):
+			elif not p.dead and phase == "fight" and ((d < 64 or e.hp < e.max_hp) if e.ambush else ((d < VISTA_PX * runes.see() and e.los) or d < OIDO_PX * runes.see() or e.hp < e.max_hp)):
 				wake(e)
 			if e.state == "idle":
 				e.moving = false
@@ -4806,6 +4806,10 @@ func can_interact() -> bool:
 const GRUPO_MIN := 5
 const GRUPO_MAX := 10
 const COL_GOLPE := "#f4ead8"     # daño normal
+## distancia a la que un enemigo dormido te ve (con línea de visión) o te nota sin verte;
+## a la mitad que en la web (antes 200 y 70), decidido por Diego el 10 nov
+const VISTA_PX := 100.0
+const OIDO_PX := 35.0
 const COL_CRIT := "#ffc83a"      # crítico: grande y amarillo
 const COL_RECIBIDO := "#ff2a1a"  # lo que recibe el héroe
 const PODERES := ["rapido", "escudo", "explota", "invoca"]

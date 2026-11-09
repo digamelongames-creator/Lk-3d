@@ -100,16 +100,22 @@ func _draw() -> void:
 	var font := Fonts.px(600)
 	var font5 := Fonts.px(500)
 	var gothic := Fonts.gothic(800)
-	# ---- oleada y enemigos que quedan (arriba a la izquierda) ----
+	# ---- arriba a la izquierda: dónde estás, equipo, puntos, nivel y cuentas (sobre el panel de mármol) ----
 	var left := 0
 	for e in sim.enemies:
 		if not e.dying:
 			left += 1
 	var lugar := "%s · zona segura" % Ciudad.NOMBRE if Ciudad.es_ciudad(sim.L) else "Oleada %d · quedan %d" % [sim.wave, left]
-	Fonts.outlined(self, font5, Vector2(12, 26), lugar, 19, C_FG, 0)
-	Fonts.outlined(self, font5, Vector2(12, 46), "I · Equipo" + (" · %d nuevo%s" % [p.rn_new, "" if p.rn_new == 1 else "s"] if p.rn_new > 0 else ""), 13, Color8(255, 210, 90) if p.rn_new > 0 else C_MUTED, 0)
+	var cab := Rect2(4, 4, 300, 118)
+	if not UiArte.caja(self, "panel", cab, 40, 14):
+		panel(cab)
+	Fonts.outlined(self, font5, Vector2(18, 31), lugar, 19, C_FG, 0)
+	Fonts.outlined(self, font5, Vector2(18, 51), "I · Equipo" + (" · %d nuevo%s" % [p.rn_new, "" if p.rn_new == 1 else "s"] if p.rn_new > 0 else ""), 13, Color8(255, 210, 90) if p.rn_new > 0 else C_MUTED, 0)
 	var pend := p.pts + p.skp
-	Fonts.outlined(self, font5, Vector2(12, 64), ("+%d puntos · Tab / T" % pend) if pend > 0 else "Tab · Personaje · T · Árbol", 13, Color8(255, 210, 90) if pend > 0 and int(_blink_t * 2) % 2 == 0 else C_MUTED, 0)
+	Fonts.outlined(self, font5, Vector2(18, 69), ("+%d puntos · Tab / T" % pend) if pend > 0 else "Tab · Personaje · T · Árbol", 13, Color8(255, 210, 90) if pend > 0 and int(_blink_t * 2) % 2 == 0 else C_MUTED, 0)
+	Fonts.outlined(self, Fonts.px(700), Vector2(18, 90), "Nivel %d" % p.lvl, 14, C_GOLD, 0, 3, Color.BLACK)
+	Fonts.outlined(self, font5, Vector2(cab.end.x - 16, 90), "Oro %d · Llaves %d" % [p.gold, p.keys], 13, C_MUTED, 2, 3, Color.BLACK)
+	Fonts.outlined(self, font5, Vector2(18, 108), "Bajas %d · Puntos %d" % [sim.kills, sim.score], 13, C_MUTED, 0, 3, Color.BLACK)
 	if p.chain >= 3:
 		var mult := 1 + mini(4, int(floorf(p.chain / 5.0)))
 		var big := p.chain_t > 1.2
@@ -141,94 +147,95 @@ func _draw() -> void:
 	var s := 3.6
 	var mw := DungeonGen.GW * s
 	var mh := DungeonGen.GH * s
-	var x0 := W - mw - 12
-	var y0 := 12.0
-	draw_rect(Rect2(x0 - 4, y0 - 4, mw + 8, mh + 8), Color(10 / 255.0, 8 / 255.0, 6 / 255.0, .62))
-	draw_rect(Rect2(x0 - 4, y0 - 4, mw + 8, mh + 8), Color(239 / 255.0, 227 / 255.0, 204 / 255.0, .22), false, 1)
+	var x0 := W - mw - 18
+	var y0 := 18.0
+	if not UiArte.caja(self, "panel", Rect2(x0 - 12, y0 - 12, mw + 24, mh + 24), 40, 14):
+		draw_rect(Rect2(x0 - 4, y0 - 4, mw + 8, mh + 8), Color(10 / 255.0, 8 / 255.0, 6 / 255.0, .62))
+		draw_rect(Rect2(x0 - 4, y0 - 4, mw + 8, mh + 8), Color(239 / 255.0, 227 / 255.0, 204 / 255.0, .22), false, 1)
 	draw_texture_rect(mini_tex, Rect2(x0, y0, mw, mh), false)
 	if sim.L.fount != null and sim.explored[sim.cell_of(sim.CY) * DungeonGen.GW + sim.cell_of(sim.CX)]:
 		draw_rect(Rect2(x0 + sim.CX / Sim.TS * s - 2, y0 + (sim.CY - 8) / Sim.TS * s - 2, 5, 5), ViewFx.col("#5fb4d6"))
 	if int(_blink_t * 3) % 2 == 0:
 		draw_rect(Rect2(x0 + p.x / Sim.TS * s - 2, y0 + (p.y - 6) / Sim.TS * s - 2, 5, 5), ViewFx.col("#ffd25a"))
-	# ---- vida y nivel (abajo a la izquierda) ----
-	var pw := minf(W * .34, 300)
-	var ph := 64.0
-	var px0 := 10.0
-	var py0 := H - 16 - ph
+	# ---- abajo: orbe de vida, habilidades y experiencia en el centro, orbe de maná (piezas de Diego) ----
+	var u := H / 1080.0
+	var oh := 236.0 * u
+	var tam_i: Array = UiArte.med("orbe_marco_izq").get("tam", [640, 586])
+	var tam_d: Array = UiArte.med("orbe_marco_der").get("tam", [640, 588])
+	var ri := Rect2(6 * u, H - oh - 2 * u, oh * tam_i[0] / tam_i[1], oh)
+	var wd: float = oh * tam_d[0] / tam_d[1]
+	var rd := Rect2(W - wd - 6 * u, H - oh - 2 * u, wd, oh)
 	if hit_shake > 0:
-		px0 += sin(hit_shake * 80) * 3
-	panel(Rect2(px0, py0, pw, ph))
-	var bx := px0 + 9
-	var by := py0 + 8
-	var bw := pw - 18
-	draw_rect(Rect2(bx - 2, by - 2, bw + 4, 20), Color8(12, 10, 8))
-	draw_rect(Rect2(bx - 1, by - 1, bw + 2, 18), C_LINE)
-	draw_rect(Rect2(bx, by, bw, 16), Color8(18, 12, 8))
+		ri.position.x += sin(hit_shake * 80) * 3
 	var f: float = clampf(p.hp / p.st.maxHp, 0, 1)
-	draw_rect(Rect2(bx, by, bw * ghost_hp, 16), Color8(240, 224, 192))
-	if f > 0:
-		draw_rect(Rect2(bx, by, bw * f, 8), Color8(224, 83, 62))
-		draw_rect(Rect2(bx, by + 8, bw * f, 8), Color8(168, 35, 26))
-	Fonts.outlined(self, font, Vector2(bx + bw / 2, by + 13), "%d / %d" % [maxi(0, ceili(p.hp)), int(p.st.maxHp)] + (" +%d" % JS.roundi(p.shield) if p.shield > 0 else ""), 13, C_FG, 1, 3, Color.BLACK)
-	if p.st.maxMana > 0:
-		draw_rect(Rect2(bx, by + 19, bw, 5), Color8(10, 14, 30))
-		draw_rect(Rect2(bx, by + 19, bw * clampf(p.mana / p.st.maxMana, 0, 1), 5), Color8(80, 130, 255))
-	Fonts.outlined(self, Fonts.px(700), Vector2(bx, by + 38), "Nivel %d" % p.lvl, 14, C_GOLD, 0, 3, Color.BLACK)
-	var extra := "Oro %d · Llaves %d" % [p.gold, p.keys]
-	Fonts.outlined(self, font5, Vector2(bx + bw, by + 38), extra, 13, C_MUTED, 2, 3, Color.BLACK)
-	# ---- oleada, bajas y puntos (abajo a la derecha) ----
-	var sw := 150.0
-	var sh := 64.0
-	var sx := W - 10 - sw
-	var sy := H - 16 - sh
-	panel(Rect2(sx, sy, sw, sh))
-	var rows := [["Oleada", sim.wave], ["Bajas", sim.kills], ["Puntos", sim.score]]
-	for i in rows.size():
-		var yy := sy + 19 + i * 18
-		Fonts.outlined(self, font5, Vector2(sx + 10, yy), rows[i][0], 14, C_MUTED, 0, 2, Color.BLACK)
-		Fonts.outlined(self, font, Vector2(sx + sw - 10, yy), str(rows[i][1]), 14, C_FG, 2, 2, Color.BLACK)
-	# ---- habilidades y poción (abajo en el centro) ----
-	var bs := 50.0
-	var gap := 8.0
+	var hv := _orbe("orbe_marco_izq", "orbe_vida_liquido", ri, f, ghost_hp, Color8(168, 35, 26))
+	Fonts.outlined(self, font, hv.get_center() + Vector2(0, 6 * u), "%d / %d" % [maxi(0, ceili(p.hp)), int(p.st.maxHp)] + (" +%d" % JS.roundi(p.shield) if p.shield > 0 else ""), int(17 * u), C_FG, 1, 4, Color.BLACK)
+	var con_mana: bool = p.st.maxMana > 0
+	var fm: float = clampf(p.mana / p.st.maxMana, 0, 1) if con_mana else 0.0
+	var hm := _orbe("orbe_marco_der", "orbe_mana_liquido", rd, fm, fm, Color8(60, 100, 230))
+	if con_mana:
+		Fonts.outlined(self, font, hm.get_center() + Vector2(0, 6 * u), "%d / %d" % [maxi(0, int(p.mana)), int(p.st.maxMana)], int(17 * u), C_FG, 1, 4, Color.BLACK)
+	# barra de habilidades y poción
+	var bs := 72.0 * u
+	var gap := 10.0 * u
 	var total_w := 4 * bs + 3 * gap
 	var kx := W / 2 - total_w / 2
-	var ky := H - 16 - bs
+	var ew := total_w + 200 * u
+	var tam_e: Array = UiArte.med("exp_marco").get("tam", [1100, 49])
+	var eh: float = ew * tam_e[1] / tam_e[0]
+	var ey := H - eh - 10 * u
+	var ky := ey - bs - 22 * u
+	UiArte.caja(self, "panel", Rect2(kx - 22 * u, ky - 16 * u, total_w + 44 * u, bs + 32 * u), 40, 16 * u)
 	for i in 4:
 		var r := Rect2(kx + i * (bs + gap), ky, bs, bs)
+		var dentro := r.grow(-bs * .17)
 		var on := i < 3 and sim.skill_on(i)
-		draw_rect(r.grow(2), Color8(12, 10, 8))
-		draw_rect(r, Color(58 / 255.0, 36 / 255.0, 24 / 255.0, .85))
-		draw_rect(r.grow(-6), Color(18 / 255.0, 12 / 255.0, 8 / 255.0, .55))
+		var ht := UiArte.tex("hueco_habilidad")
+		if ht != null:
+			draw_texture_rect(ht, r.grow(bs * .06), false, Color(1.35, .85, .75) if on else Color.WHITE)
+		else:
+			draw_rect(r, Color(58 / 255.0, 36 / 255.0, 24 / 255.0, .85))
+			draw_rect(dentro, Color(18 / 255.0, 12 / 255.0, 8 / 255.0, .55))
 		if i < 3:
-			draw_texture_rect(_icons[i], Rect2(r.position + Vector2(9, 9), Vector2(32, 32)), false)
+			draw_texture_rect(_icons[i], dentro.grow(-dentro.size.x * .08), false)
 			var sk: Dictionary = p.sk[i]
 			var def: Dictionary = Sim.SK[p.skills[i]]
 			if sk.cd > 0 and sk.t <= 0:
 				var k: float = minf(1, sk.cd / maxf(.01, def.cd - def.dur))
-				draw_rect(Rect2(r.position.x, r.end.y - bs * k, bs, bs * k), Color(0, 0, 0, .7))
-				Fonts.outlined(self, Fonts.px(700), r.get_center() + Vector2(0, 6), str(ceili(sk.cd)), 16, Color.WHITE, 1, 3, Color.BLACK)
+				draw_rect(Rect2(dentro.position.x, dentro.end.y - dentro.size.y * k, dentro.size.x, dentro.size.y * k), Color(0, 0, 0, .7))
+				Fonts.outlined(self, Fonts.px(700), dentro.get_center() + Vector2(0, 7 * u), str(ceili(sk.cd)), int(19 * u), Color.WHITE, 1, 3, Color.BLACK)
 			if sk.t > 0 and def.dur > 0:
-				draw_rect(Rect2(r.position.x, r.end.y - 3, bs * minf(1, sk.t / def.dur), 3), ViewFx.col("#ff5a46"))
-			draw_rect(r.grow(1), ViewFx.col("#ff5a46") if on else C_GOLD, false, 2)
-			Fonts.outlined(self, Fonts.px(700), r.position + Vector2(4, 13), str(i + 1), 12, Color8(243, 220, 160), 0, 2, Color.BLACK)
-			Fonts.outlined(self, font5, Vector2(r.get_center().x, r.end.y - 2), Idioma.t(def.n).split(" ")[0], 8, Color8(233, 207, 138), 1, 2, Color.BLACK)
+				draw_rect(Rect2(dentro.position.x, dentro.end.y - 3, dentro.size.x * minf(1, sk.t / def.dur), 3), ViewFx.col("#ff5a46"))
+			if on:
+				draw_rect(dentro, ViewFx.col("#ff5a46"), false, 2)
+			Fonts.outlined(self, Fonts.px(700), r.position + Vector2(5 * u, 17 * u), str(i + 1), int(14 * u), Color8(243, 220, 160), 0, 3, Color.BLACK)
+			Fonts.outlined(self, font5, Vector2(r.get_center().x, r.end.y + 12 * u), Idioma.t(def.n).split(" ")[0], int(11 * u), Color8(233, 207, 138), 1, 3, Color.BLACK)
 		else:
-			draw_rect(r.grow(1), Color8(138, 58, 42), false, 2)
-			draw_texture_rect(Atlas.potion, Rect2(r.get_center() - Vector2(Atlas.potion.get_width(), Atlas.potion.get_height()), Vector2(Atlas.potion.get_width(), Atlas.potion.get_height()) * 2), false)
+			var pt := Atlas.potion
+			var ps := minf(dentro.size.x / pt.get_width(), dentro.size.y / pt.get_height()) * .8
+			draw_texture_rect(pt, Rect2(dentro.get_center() - pt.get_size() * ps / 2, pt.get_size() * ps), false)
 			var pot_w := sim.pot_wait()
 			if pot_w > 0:
 				var k2 := pot_w / Sim.POT_CD
-				draw_rect(Rect2(r.position.x, r.end.y - bs * k2, bs, bs * k2), Color(0, 0, 0, .7))
-				Fonts.outlined(self, Fonts.px(700), r.get_center() + Vector2(0, 6), str(ceili(pot_w)), 16, Color.WHITE, 1, 3, Color.BLACK)
-			Fonts.outlined(self, Fonts.px(700), r.position + Vector2(4, 13), "Q", 12, Color8(243, 220, 160), 0, 2, Color.BLACK)
-			Fonts.outlined(self, Fonts.px(700), r.end + Vector2(-4, -4), str(Items.potion_count(p)), 14, Color.WHITE, 2, 3, Color.BLACK)
-	# ---- experiencia (franja al pie) ----
+				draw_rect(Rect2(dentro.position.x, dentro.end.y - dentro.size.y * k2, dentro.size.x, dentro.size.y * k2), Color(0, 0, 0, .7))
+				Fonts.outlined(self, Fonts.px(700), dentro.get_center() + Vector2(0, 7 * u), str(ceili(pot_w)), int(19 * u), Color.WHITE, 1, 3, Color.BLACK)
+			Fonts.outlined(self, Fonts.px(700), r.position + Vector2(5 * u, 17 * u), "Q", int(14 * u), Color8(243, 220, 160), 0, 3, Color.BLACK)
+			Fonts.outlined(self, Fonts.px(700), dentro.end + Vector2(-2, -3), str(Items.potion_count(p)), int(16 * u), Color.WHITE, 2, 3, Color.BLACK)
+	# experiencia: marco y relleno dorado debajo de las habilidades
 	var need := sim.xp_need(p.lvl)
 	var xf := 1.0 if p.lvl >= Sim.MAXLVL else float(p.xp) / need
-	draw_rect(Rect2(0, H - 8, W, 8), Color(18 / 255.0, 12 / 255.0, 8 / 255.0, .75))
-	draw_rect(Rect2(0, H - 9, W, 1), C_PANEL_LINE)
-	draw_rect(Rect2(0, H - 8, W * xf, 4), Color8(184, 155, 255))
-	draw_rect(Rect2(0, H - 4, W * xf, 4), Color8(106, 68, 216))
+	var em := UiArte.tex("exp_marco")
+	var er := UiArte.tex("exp_relleno")
+	var re := Rect2(W / 2 - ew / 2, ey, ew, eh)
+	var dentro_e := Rect2(re.position + Vector2(re.size.x * EXP_HUECO.position.x, re.size.y * EXP_HUECO.position.y), re.size * EXP_HUECO.size)
+	draw_rect(dentro_e, Color(0, 0, 0, .7))
+	if er != null and xf > 0:
+		var ts := er.get_size()
+		draw_texture_rect_region(er, Rect2(dentro_e.position, Vector2(dentro_e.size.x * xf, dentro_e.size.y)), Rect2(0, 0, ts.x * xf, ts.y))
+	elif xf > 0:
+		draw_rect(Rect2(dentro_e.position, Vector2(dentro_e.size.x * xf, dentro_e.size.y)), Color8(214, 160, 40))
+	if em != null:
+		draw_texture_rect(em, re, false)
 	# ---- pieza del suelo a tus pies: comparada con lo que llevas puesto ----
 	_tip_suelo(W, ky - 44, font5)
 	# ---- aviso de «Usar» ----
@@ -253,6 +260,34 @@ func _draw() -> void:
 			Fonts.outlined(self, Fonts.px(700), Vector2(W / 2, H / 2), "Descendiendo…", 30, c, 1, 4, Color.BLACK)
 	if big_map:
 		_draw_big_map(W, H)
+
+## parte de dentro del marco de la experiencia (fracciones de la imagen)
+const EXP_HUECO := Rect2(.055, .3, .89, .42)
+
+## orbe: fondo oscuro, líquido que baja de arriba abajo (con el «fantasma» detrás) y el marco encima;
+## devuelve el hueco del marco
+func _orbe(marco: String, liquido: String, r: Rect2, frac: float, fantasma: float, reserva: Color) -> Rect2:
+	var hu := UiArte.hueco(marco, r)
+	var ce := hu.get_center()
+	var rad := minf(hu.size.x, hu.size.y) / 2
+	draw_circle(ce, rad * 1.02, Color(.03, .02, .02, .92))
+	var dr := Rect2(ce - Vector2(rad, rad) * 1.04, Vector2(rad, rad) * 2.08)
+	var liq := UiArte.tex(liquido)
+	if liq != null:
+		_liquido(liq, dr, fantasma, Color(1, 1, 1, .3))
+		_liquido(liq, dr, frac, Color.WHITE)
+	elif frac > 0:
+		draw_circle(ce, rad * frac, reserva)
+	var mt := UiArte.tex(marco)
+	if mt != null:
+		draw_texture_rect(mt, r, false)
+	return hu
+
+func _liquido(t: Texture2D, dr: Rect2, frac: float, mod: Color) -> void:
+	if frac <= 0:
+		return
+	var ts := t.get_size()
+	draw_texture_rect_region(t, Rect2(dr.position.x, dr.position.y + dr.size.y * (1 - frac), dr.size.x, dr.size.y * frac), Rect2(0, ts.y * (1 - frac), ts.x, ts.y * frac), mod)
 
 func _draw_big_map(W: float, H: float) -> void:
 	draw_rect(Rect2(0, 0, W, H), Color(6 / 255.0, 6 / 255.0, 10 / 255.0, .92))
@@ -297,8 +332,9 @@ func _tip_suelo(W: float, abajo: float, f: Font) -> void:
 	for x in lineas:
 		h += x[2] + 5
 	var r := Rect2(W / 2 - w / 2, abajo - h, w, h)
-	draw_rect(r, Color(14 / 255.0, 10 / 255.0, 8 / 255.0, .88))
-	draw_rect(r, Color8(138, 106, 60), false, 1)
+	if not UiArte.caja(self, "panel", r.grow(6), 40, 12):
+		draw_rect(r, Color(14 / 255.0, 10 / 255.0, 8 / 255.0, .88))
+		draw_rect(r, Color8(138, 106, 60), false, 1)
 	var y := r.position.y + 6
 	for x in lineas:
 		y += x[2]

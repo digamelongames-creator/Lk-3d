@@ -65,3 +65,7 @@
 - Caída visible: el héroe y los enemigos que caen salen del borde y bajan acelerando ~11 m en 1 s (`Sim.CAIDA_T`, `Actores3D.caida`), con el sonido `caida`. Castigo igual: vuelves al último suelo con −20 % de vida.
 - `Abismo3D`: pared de roca de 14 m bajo cada borde (malla con relieve y textura de ruido de Godot, sin licencias), 3 capas de niebla con brillo tenue y fondo. La niebla de altura del entorno (`fog_height` −0,6) oscurece todo lo que queda bajo el suelo.
 
+
+## HUD de Diego, cuerpos, números y detección (10 nov)
+- HUD con las piezas de Diego hechas en ChatGPT (`assets/ui`, `tools/hud_piezas.py <carpeta> assets/ui`; `UiArte` las carga y estira): orbes de vida y maná con estatuas, barra de habilidades con huecos de pinchos sobre panel de mármol, experiencia dorada, panel de mármol arriba a la izquierda, en el minimapa y en las ventanitas; inventario dentro del marco de las estatuas (estirado solo por la viga y las columnas) con huecos por calidad. Faltan piezas: líquido azul (de reserva, el rojo con el tono girado), marco de la barra de habilidades, marco del minimapa, huecos mágico y legendario (de reserva, teñidos) y botones.
+- Detección de los enemigos a la mitad (`Sim.VISTA_PX` 100, `Sim.OIDO_PX` 35). Los números y textos salen encima de quien los recibe (`Fx3D._sobre_quien`). Los cuerpos se quedan todo el piso, como mucho 100 (`Actores3D.MAX_CUERPOS`, se quita el más antiguo) y con la pose congelada.

@@ -760,4 +760,5 @@ func _exit_tree() -> void:
 	MazmorraGridMap.limpiar()
 	Atlas.limpiar()
 	Fonts.limpiar()
+	UiArte.limpiar()
 	Idioma.soltar()

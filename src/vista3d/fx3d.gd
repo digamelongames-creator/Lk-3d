@@ -47,7 +47,7 @@ func text(x: float, y: float, txt: String, col: String, size: float = 10, crit: 
 	l.outline_size = 14 if crit else 10
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	l.no_depth_test = true
-	l.position = MazmorraGridMap.a3d(x + (randf() - .5) * 10 if jitter else x, y, 40)
+	l.position = _sobre_quien(x + (randf() - .5) * 10 if jitter else x, y)
 	raiz.add_child(l)
 	if crit:   # el crítico salta: sale grande y se encoge
 		l.scale = Vector3.ONE * 1.9
@@ -56,6 +56,26 @@ func text(x: float, y: float, txt: String, col: String, size: float = 10, crit: 
 	tw.tween_property(l, "position:y", l.position.y + (.8 if slow else 1.5), life)
 	tw.tween_property(l, "modulate:a", 0.0, life).set_delay(life * .4)
 	tw.chain().tween_callback(l.queue_free)
+
+## la simulación pone los textos en (x, y − alto), como en 2D; en 3D eso cae detrás del personaje.
+## Si el texto es de alguien (héroe o enemigo en esa x, un poco por debajo), sale encima de su cabeza
+## (decidido por Diego, 10 nov); si no (cofres, avisos sueltos), donde dice la simulación.
+const CABEZA_PX := 34.0
+func _sobre_quien(x: float, y: float) -> Vector3:
+	if sim != null:
+		var quien = null
+		if sim.p != null and absf(sim.p.x - x) < 6 and sim.p.y - y > 20 and sim.p.y - y < 120:
+			quien = sim.p
+		else:
+			for e in sim.enemies:
+				if absf(e.x - x) < 6 and e.y - y > 20 and e.y - y < 120:
+					quien = e
+					break
+		if quien != null:
+			var alto: float = quien.y - y
+			var grande: float = 1.6 if quien is Ent.Enemy and quien.jefe else 1.0
+			return MazmorraGridMap.a3d(x, quien.y, CABEZA_PX * grande + (alto - 40) * .5)
+	return MazmorraGridMap.a3d(x, y, 40)
 
 func banner(top: String, main: String) -> void:
 	banner_top = top
