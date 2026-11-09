@@ -99,6 +99,11 @@ func actualizar(dt: float) -> void:
 		heroe.visible = not p.dead   # con modelo se queda tumbado (animación de muerte) y con su luz
 	heroe.position = MazmorraGridMap.a3d(p.x, p.y)
 	heroe.rotation.y = _giro(p.face)
+	heroe.rotation.x = 0.0
+	if p.caida_t > 0:   # cae al abismo; al terminar la simulación lo devuelve al borde
+		var t := Sim.CAIDA_T - p.caida_t
+		heroe.position += caida(t, Vector2(p.x - p.seg_x, p.y - p.seg_y), p.face)
+		heroe.rotation.x = -minf(1.1, t * 1.4)
 	_animar_heroe(p)
 	_vestir()
 	_actualizar_enemigos(dt)
@@ -488,6 +493,21 @@ func _actualizar_enemigos(dt: float) -> void:
 			d.aura.visible = not (e.dying > 0) and not e.dead
 		var antes: Vector3 = n.position
 		n.position = MazmorraGridMap.a3d(e.x, e.y, e.bz)
+		if e.caida_t > 0 or d.get("cae", false):
+			# cae al abismo: baja acelerando hasta perderse en la niebla; luego ya no se ve
+			if not d.get("cae", false):
+				d.cae = true
+				d.cae_t = 0.0
+				if d.m != null:
+					d.m.reproducir("death", 1.0, .1, true)   # sin gesto de dolor en los enemigos
+					d.muere = true
+			d.cae_t += dt
+			n.position += caida(d.cae_t, Vector2(e.x - e.seg_x, e.y - e.seg_y), e.face)
+			n.rotation.x = -minf(1.1, d.cae_t * 1.4)
+			if d.cae_t >= Sim.CAIDA_T:
+				n.visible = false
+				d.muerto = 100.0
+			continue
 		n.rotation.y = lerp_angle(n.rotation.y, _giro(e.face), minf(1, dt * 12))
 		var m: Modelo3D = d.m
 		if d.has("mimico"):
@@ -544,6 +564,14 @@ func _actualizar_enemigos(dt: float) -> void:
 			d.n.queue_free()
 			_enemigos.erase(k)
 
+## desplazamiento al caer al abismo t s después de pisar el vacío: sigue hacia donde iba (lejos del último
+## suelo) y baja acelerando; en CAIDA_T s baja unos 11 m, ya dentro de la niebla
+const CAIDA_G := 22.0
+static func caida(t: float, dir_px: Vector2, face: float) -> Vector3:
+	var d := dir_px.normalized() if dir_px.length() > .5 else Vector2(cos(face), sin(face))
+	var lado := minf(t, .5) * 2.4   # sale del borde y después cae casi recto
+	return Vector3(d.x * lado, -.5 * CAIDA_G * t * t, d.y * lado)
+
 ## en la simulación face es el ángulo en el plano (x, y) con y hacia abajo; en 3D el nodo mira a -z
 static func _giro(face: float) -> float:
 	return atan2(-cos(face), -sin(face))
@@ -555,6 +583,9 @@ func _animar_heroe(p: Ent.Hero) -> void:
 		if p.dead:
 			if m.actual != "death":
 				m.reproducir("death", 1.0, .1, true)
+		elif p.caida_t > 0:
+			if m.actual != "hurt":
+				m.reproducir("hurt", .7, .05, true)
 		elif p.atk_t > 0:
 			# cada golpe del combo vuelve a empezar el tajo
 			# el clip se recorta: empieza poco antes del impacto para que la espada toque justo cuando la simulación hace el daño

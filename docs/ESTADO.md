@@ -54,7 +54,12 @@
 - Piezas de muro según las vecinas (rotas, con hiedra, de esquina) y el arco en las puertas del juego, porque las puertas siguen siendo cajas de Actores3D.
 - Más luz por pared: hoy el generador solo pone antorchas en las paredes del norte.
 - Modelos del héroe y los monstruos (los .fbx de SPRITE_FACTORY y Mixamo) con AnimationTree. Los enganches pasan a ser BoneAttachment3D.
-- Pisos 3–5 (abismo, alturas y escaleras largas): ahora el abismo sale como vacío y no hay alturas.
+- Pisos 3–5 (alturas y escaleras largas): no hay alturas. El abismo ya tiene paredes de roca, niebla y caída visible (9 nov).
 - Efectos de las habilidades y las runas (rayos, tajos, fuego): `Runes.bolts/slashes/fires` no se pintan.
 - Sonido, menús de inicio y pausa, guardar y continuar desde el menú.
 - Salas hechas a mano: cambiar el generador por plantillas de sala unidas por pasillos.
+
+## Abismo de los pisos 3–5 (9 nov)
+- Caída visible: el héroe y los enemigos que caen salen del borde y bajan acelerando ~11 m en 1 s (`Sim.CAIDA_T`, `Actores3D.caida`), con el sonido `caida`. Castigo igual: vuelves al último suelo con −20 % de vida.
+- `Abismo3D`: pared de roca de 14 m bajo cada borde (malla con relieve y textura de ruido de Godot, sin licencias), 3 capas de niebla con brillo tenue y fondo. La niebla de altura del entorno (`fog_height` −0,6) oscurece todo lo que queda bajo el suelo.
+

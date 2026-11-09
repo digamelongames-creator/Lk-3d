@@ -105,6 +105,8 @@ func construir(L: Dictionary) -> void:
 				objetos.set_cell_item(celda, pieza[t])
 	_antorchas(L)
 	_decorador(L)
+	if L.get("plataformas", false):
+		Abismo3D.crear(G, adornos)   # paredes de roca bajo los bordes y niebla en el vacío
 
 ## un muro solo hace falta donde la roca toca algo pisable (las 8 vecinas); la roca de dentro se queda vacía
 func _junto_a_suelo(G: PackedByteArray, cx: int, cy: int) -> bool:

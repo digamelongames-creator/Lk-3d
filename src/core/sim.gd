@@ -472,7 +472,7 @@ func muro_px(x: float, y: float) -> bool:
 	return tt != DungeonGen.ABISMO and DungeonGen.is_solid(tt)
 
 # ---------------- abismo (piso de pasarelas) ----------------
-const CAIDA_T := .7
+const CAIDA_T := 1.0          # dura la caída hasta perderse en la niebla (la vista la anima)
 const CAIDA_DANO := .2           # parte de la vida máxima que quita caer
 const CAIDA_EMPUJE := 45.0       # velocidad de empujón con la que un enemigo puede pasar el borde
 ## mientras es true, el vacío no frena el movimiento (lo activa mv para el héroe y los enemigos empujados)
@@ -513,7 +513,7 @@ func _vigilar_caida_heroe() -> void:
 		p.blocking = false
 		p.roll_t = 0
 		p.lunge = 0
-		fx.shake(4)
+		fx.sonido(&"caida", p.x, p.y)
 	elif fits(p.x, p.y):
 		p.seg_x = p.x
 		p.seg_y = p.y
@@ -570,6 +570,7 @@ func _caida_enemigo(e: Ent.Enemy, dt: float) -> bool:
 	e.no_corpse = true
 	e.hp = 0
 	e.caida_t = CAIDA_T
+	fx.sonido(&"caida", e.x, e.y)
 	e.caida_atras = _cae_atras(e.x, e.y)
 	e.vx = 0
 	e.vy = 0

@@ -303,6 +303,17 @@ def fuego():
     return norm(mezcla(rugido, chisp * .3))
 
 
+def caida():
+    # viento que pasa cada vez más deprisa y se aleja hacia abajo (el tono baja)
+    d = 1.1
+    t = t_(d)
+    sobre = np.minimum(1, t / .12) * np.exp(-np.maximum(0, t - .55) * 4)
+    viento = paso(ruido(d), "bandpass", [500, 2400]) * sobre
+    silbido = seno(900, d, 260) * sobre * .18
+    golpe = paso(ruido(.08), "lowpass", 400) * env(.08, .001, 40) * .8
+    return norm(mezcla(golpe, viento, silbido), .7)
+
+
 SONIDOS = {
     "impacto_1": lambda: impacto(0), "impacto_2": lambda: impacto(1), "impacto_3": lambda: impacto(2),
     "critico": critico,
@@ -316,7 +327,7 @@ SONIDOS = {
     "botin": botin, "legendario": legendario, "dorado": dorado,
     "mimico": mimico, "romper_madera_1": lambda: romper_madera(0), "romper_madera_2": lambda: romper_madera(1),
     "romper_urna": romper_urna, "rejas": rejas, "reto": reto, "trampa_click": trampa_click,
-    "pinchos": pinchos, "fuego": fuego,
+    "pinchos": pinchos, "fuego": fuego, "caida": caida,
 }
 
 

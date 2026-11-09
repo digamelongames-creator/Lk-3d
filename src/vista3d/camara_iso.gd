@@ -67,6 +67,12 @@ static func ambiente(padre: Node) -> WorldEnvironment:
 	e.volumetric_fog_density = .012
 	e.volumetric_fog_albedo = Color(.9, .7, .55)
 	e.volumetric_fog_length = 60
+	# niebla de altura: solo actúa por debajo del suelo (el abismo de los pisos 3 a 5); la roca se pierde en ella
+	e.fog_enabled = true
+	e.fog_density = .0005   # casi nada por distancia; con 0 Godot no aplica la de altura
+	e.fog_light_color = Color(.07, .075, .095)
+	e.fog_height = -.6
+	e.fog_height_density = .32
 	e.adjustment_enabled = true
 	e.adjustment_saturation = .9
 	e.adjustment_contrast = 1.12
