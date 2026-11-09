@@ -65,3 +65,9 @@
 - Caída visible: el héroe y los enemigos que caen salen del borde y bajan acelerando ~11 m en 1 s (`Sim.CAIDA_T`, `Actores3D.caida`), con el sonido `caida`. Castigo igual: vuelves al último suelo con −20 % de vida.
 - `Abismo3D`: pared de roca de 14 m bajo cada borde (malla con relieve y textura de ruido de Godot, sin licencias), 3 capas de niebla con brillo tenue y fondo. La niebla de altura del entorno (`fog_height` −0,6) oscurece todo lo que queda bajo el suelo.
 
+
+## Efectos con hojas de fotogramas de IA (9 nov, rama `vfx-prueba`)
+- `Hechizos3D` pinta la bola de fuego del mago (`Clases.fballs`) con una hoja en bucle girada hacia donde vuela, más una luz que la sigue, y una explosión de una vez (con fogonazo de luz y sonido) al chocar. Shader aditivo con `instance uniform` (fotograma e intensidad). La simulación no cambia.
+- Hojas en `assets/vfx/<nombre>.png + .json`, hechas con `python3 tools/vfx_hoja.py convertir <png o gif> <nombre> [--bucle] [--fps=N]` (rejilla 4×4 o GIF animado, sobre fondo negro, de ChatGPT). Los originales de Diego están en `tools/vfx_originales/`; `provisional` dibuja unas por código.
+- «Piso de prueba» del menú abre «Salas de prueba» (todas las salas; se empieza en la elegida). Sala nueva «Efectos» (`--sala=11`): se entra como mago, con 5 muñecos (`Ent.Enemy.muneco`: quietos, sin daño, no mueren, no aprenden) y maná sin fin. `--hechizo` lanza solo (capturas).
+- Ojo: al cerrar tras lanzar bolas de fuego, Godot avisa de una malla y 2 shaders sin soltar; pasa igual sin `Hechizos3D` (viene de los efectos que ya pide la simulación). Por mirar, puede tener que ver con el cierre de Godot en el PC de Diego.

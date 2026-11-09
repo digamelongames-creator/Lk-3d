@@ -297,6 +297,9 @@ class Enemy extends RefCounted:
 	var apr_ang := 0.0           # «rodear»: ángulo de su hueco alrededor del héroe
 	var apr_titulo := ""         # "Experto", "Asesino" o ""
 	var en_arena := false        # sale en la sala del aprendizaje del piso de prueba
+	var casa_x := 0.0            # sitio del muñeco
+	var casa_y := 0.0
+	var muneco := false          # muñeco de la sala de efectos del piso de prueba: no se mueve, no ataca, no muere, no aprende
 	var burn_t := 0.0
 	var burn_d := 0.0
 	var burn_tick := 0.0

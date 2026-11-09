@@ -84,10 +84,21 @@ func _init() -> void:
 	main.mostrar_creditos(false)
 	ok(main.state == "menu" and main.menu.visible, "al cerrar los créditos, otra vez el menú")
 
-	# piso de prueba
-	main.menu.piso_prueba.emit()
+	# piso de prueba: primero la página con las salas; la de efectos va primero y entra con el mago
+	main.menu.mostrar("pruebas")
+	ok(main.menu.pagina == "pruebas", "Piso de prueba abre el menú de salas")
+	var efectos := -1
+	var l := PisoPrueba.salas_menu()
+	for i in l.size():
+		if l[i][1] == "efectos": efectos = i
+	ok(efectos > 0 and PisoPrueba.clase_de_sala(efectos) == "mage" and PisoPrueba.clase_de_sala(0) == "knight", "sala de efectos (mago)")
+	main.menu.piso_prueba.emit(efectos)
 	await process_frame
-	ok(main.prueba == 1 and main.state == "play", "Piso de prueba")
+	ok(main.prueba == 1 and main.state == "play" and main.clase == "mage", "Piso de prueba · Efectos")
+	for _f in 5:
+		await process_frame
+	var munecos: Array = main.sim.enemies.filter(func(e): return e.muneco)
+	ok(munecos.size() == PisoPrueba.MUNECOS.size(), "muñecos en la sala de efectos")
 
 	main.queue_free()
 	await process_frame

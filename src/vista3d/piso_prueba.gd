@@ -6,7 +6,8 @@ class_name PisoPrueba
 ##   · arriba, una sala por paquete: Poly Haven, Modular Dungeon Kit, Low Poly, Gótico y Ruinas.
 ##     Las de los kits llevan sus propios muros y suelos (ESTILOS); las demás, los del juego.
 ##   · abajo, una sala por propósito: almacén, guardia, tesoro (con el cofre que se abre) y cueva,
-##     y la sala del aprendizaje: un miniboss y 4 esbirros que vuelven a salir al acabar (arena()).
+##     la sala del aprendizaje: un miniboss y 4 esbirros que vuelven a salir al acabar (arena()),
+##     y la sala de efectos: el héroe es mago y tiene muñecos para probar los hechizos (efectos(), Hechizos3D).
 ## Lo que hay en cada sala lo reparte Repartidor según su propósito.
 ##
 ## generar() hace el mapa (la misma forma que DungeonGen, para que la simulación lo use tal cual)
@@ -26,12 +27,24 @@ const ESTILOS := {
 const ARRIBA := [["Poly Haven", "", "muestra_polyhaven"], ["Modular Dungeon Kit", "dungeon_kit", "muestra_dungeon_kit"],
 	["Low Poly Dungeon", "low_poly", "muestra_low_poly"], ["Gothic Interior", "gotico", "muestra_gotico"], ["Ancient Ruins", "", "muestra_ruinas"]]
 const ABAJO := [["Almacén", "", "almacen"], ["Guardia", "", "guardia"], ["Tesoro", "", "tesoro"], ["Cueva", "", "cueva"],
-	["Aprendizaje", "", "arena"]]
+	["Aprendizaje", "", "arena"], ["Efectos", "", "efectos"]]
 const LADO := 9          # casillas de cada sala
 const PASO_SALAS := 11   # sala + 2 de roca
 const Y_ARRIBA := 3
 const Y_PASILLO := 14    # 3 de ancho
 const Y_ABAJO := 19
+
+## las salas del piso 1 en orden (el mismo que salas_prueba: 0 es el pasillo), para el menú de pruebas
+static func salas_menu() -> Array:
+	var out := [["Pasillo (entrada)", "pasillo"]]
+	for a in ARRIBA + ABAJO:
+		out.append([a[0], a[2]])
+	return out
+
+## con qué clase se entra en cada sala: mago en la de efectos (para la bola de fuego), caballero en el resto
+static func clase_de_sala(sala: int) -> String:
+	var l := salas_menu()
+	return "mage" if sala >= 0 and sala < l.size() and l[sala][1] == "efectos" else "knight"
 
 static func nombre(n: int) -> String:
 	return NOMBRES[clampi(n - 1, 0, NOMBRES.size() - 1)]
@@ -53,7 +66,7 @@ static func generar(n: int) -> Dictionary:
 	var corr := PackedByteArray()
 	corr.resize(W * H)
 	var salas := []
-	var x_fin := 3 + (ARRIBA.size() - 1) * PASO_SALAS + LADO
+	var x_fin := 3 + (maxi(ARRIBA.size(), ABAJO.size()) - 1) * PASO_SALAS + LADO
 	salas.append({"nombre": "Pasillo", "x": 2, "y": Y_PASILLO, "w": x_fin - 1, "h": 3, "estilo": "", "proposito": "pasillo"})
 	for i in ARRIBA.size():
 		salas.append({"nombre": ARRIBA[i][0], "x": 3 + i * PASO_SALAS, "y": Y_ARRIBA, "w": LADO, "h": LADO, "estilo": ARRIBA[i][1], "proposito": ARRIBA[i][2], "arriba": true})
@@ -369,3 +382,53 @@ static func _ronda_arena(sim, s: Dictionary, ronda: int) -> void:
 	sim.p.hp = sim.p.st.maxHp
 	sim.fx.hud()
 	sim.fx.banner("Ronda %d · miniboss y 4 esbirros · F3: lo que han aprendido" % ronda, "Sala del aprendizaje")
+
+# ======================================================================
+#  sala de efectos: muñecos para probar los hechizos (Hechizos3D)
+# ======================================================================
+## Tres filas de muñecos (esqueletos quietos): no se mueven, no atacan, no mueren y no aprenden.
+## Se ven los números de daño y los efectos; la vida vuelve a llenarse sola.
+const MUNECOS := [Vector2(2.5, 2.5), Vector2(4.5, 2.0), Vector2(6.5, 2.5), Vector2(1.8, 5.0), Vector2(7.2, 5.0)]
+
+static func sala_efectos(sim) -> Dictionary:
+	for s in sim.L.get("salas_prueba", []):
+		if s.proposito == "efectos":
+			return s
+	return {}
+
+static func efectos(sim) -> void:
+	var s := sala_efectos(sim)
+	if s.is_empty():
+		return
+	var hay := false
+	for e in sim.enemies:
+		if e.muneco:
+			hay = true
+			# quieto en su sitio, dormido y con la vida llena (los números de daño sí salen)
+			e.x = e.casa_x
+			e.y = e.casa_y
+			e.vx = 0
+			e.vy = 0
+			e.state = "idle"
+			e.act = ""
+			e.moving = false
+			e.face = PI / 2
+			e.hp = e.max_hp
+			e.ghost = e.max_hp
+	sim.p.mana = sim.p.st.get("maxMana", sim.p.mana)   # maná sin fin para probar
+	if hay:
+		return
+	var TS := DungeonGen.TS
+	for c in MUNECOS:
+		var e: Ent.Enemy = sim.mon_spawn("esqueleto", (s.x + c.x) * TS, (s.y + c.y) * TS)
+		e.muneco = true
+		e.en_arena = true      # main3d deja vivos en el piso de prueba solo a los en_arena
+		e.ambush = true        # no despierta al acercarse
+		e.dmg = 0
+		e.max_hp = 1000000
+		e.hp = e.max_hp
+		e.ghost = e.max_hp
+		e.xp = 0
+		e.score = 0
+		e.casa_x = e.x
+		e.casa_y = e.y
