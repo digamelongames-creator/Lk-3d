@@ -53,10 +53,12 @@ def _a_rgba(rgb):
 # ----------------------------------------------------------------------
 #  convertir lo de ChatGPT
 # ----------------------------------------------------------------------
-def convertir(ruta, nombre, cols=4, filas=4, fps=20, bucle=False, centrar=False):
+def convertir(ruta, nombre, cols=4, filas=4, fps=None, bucle=False, centrar=False):
+    """fps None: el del GIF (si es GIF) o 20"""
     fuente = Image.open(ruta)
     if getattr(fuente, "n_frames", 1) > 1:   # GIF animado: cada fotograma, una celda
         return _convertir_gif(fuente, nombre, cols, filas, fps, bucle, Path(ruta).name)
+    fps = fps or 20
     img = np.asarray(fuente.convert("RGB")).astype(np.float32) / 255
     H, W = img.shape[:2]
     # fondo: la mediana del borde de la imagen (por si sale gris oscuro en vez de negro)
@@ -104,12 +106,15 @@ def _convertir_gif(fuente, nombre, cols, filas, fps, bucle, origen):
     if n > cols * filas:
         print(f"aviso: el GIF tiene {n} fotogramas; se usan los {cols * filas} primeros")
         n = cols * filas
-    if fuente.info.get("duration"):
-        fps = max(1, round(1000 / fuente.info["duration"]))
+    if fps is None:
+        fps = max(1, round(1000 / fuente.info["duration"])) if fuente.info.get("duration") else 20
     frames = []
     for k in range(n):
         fuente.seek(k)
-        img = _limpiar(np.asarray(fuente.convert("RGB")).astype(np.float32) / 255)
+        # lo transparente del GIF, a negro (si no, sale el color de fondo que traiga, p. ej. naranja)
+        rgba = fuente.convert("RGBA")
+        negro = Image.new("RGBA", rgba.size, (0, 0, 0, 255))
+        img = _limpiar(np.asarray(Image.alpha_composite(negro, rgba).convert("RGB")).astype(np.float32) / 255)
         h, w = img.shape[:2]
         lado = max(h, w)   # a cuadrado, sin deformar
         cuad = np.zeros((lado, lado, 3), np.float32)
@@ -286,7 +291,7 @@ if __name__ == "__main__":
         lote(a[1], set(x.lower() for x in a[2:]) or None)
     elif a[0] == "convertir" and len(a) >= 3:
         op = {k.lstrip("-").split("=")[0]: (k.split("=")[1] if "=" in k else True) for k in a[3:]}
-        convertir(a[1], a[2], int(op.get("cols", 4)), int(op.get("filas", 4)), int(op.get("fps", 20)),
+        convertir(a[1], a[2], int(op.get("cols", 4)), int(op.get("filas", 4)), int(op["fps"]) if "fps" in op else None,
                   bool(op.get("bucle", False)), bool(op.get("centrar", False)))
     else:
         print(__doc__)

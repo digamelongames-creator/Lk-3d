@@ -2,7 +2,7 @@
  "cols": 4,
  "filas": 4,
  "fotogramas": 16,
- "fps": 22,
+ "fps": 20,
  "bucle": false,
- "origen": "provisional (tools/vfx_hoja.py)"
+ "origen": "mago_estallido.png"
 }

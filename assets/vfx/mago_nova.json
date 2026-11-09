@@ -2,7 +2,7 @@
  "cols": 4,
  "filas": 4,
  "fotogramas": 16,
- "fps": 14,
+ "fps": 16,
  "bucle": true,
- "origen": "provisional (tools/vfx_hoja.py)"
+ "origen": "mago_llamarada.gif"
 }
