@@ -71,6 +71,8 @@ func construir(L: Dictionary) -> void:
 	# casillas montadas a mano (pisos de prueba con kits de fuera): bit 1 sin muro, 2 sin suelo, 4 sin objeto
 	var mano: PackedByteArray = L.get("a_mano", PackedByteArray())
 	var i_sala := KitMazmorra.id("suelo_sala")
+	var i_pasillo := KitMazmorra.id("suelo_pasillo")
+	var corr: PackedByteArray = L.get("corr", PackedByteArray())
 	var i_arco := KitMazmorra.id("arco")
 	var pieza := {
 		DungeonGen.WATER: KitMazmorra.id("agua"),
@@ -98,12 +100,15 @@ func construir(L: Dictionary) -> void:
 			# todo lo que no es roca ni vacío lleva suelo debajo (también agua, puertas, tumbas…)
 			if t != DungeonGen.WATER and not (m & A_MANO_SUELO):
 				var en_sala := sala.size() > 0 and sala[cy * W + cx] >= 0
-				suelo.set_cell_item(celda, i_sala if en_sala and i_sala >= 0 else KitMazmorra.variante("suelo", cx, cy), _giro_azar(cy, cx))
+				var en_pasillo := not en_sala and corr.size() > 0 and corr[cy * W + cx] != 0 and i_pasillo >= 0
+				var item := i_sala if en_sala and i_sala >= 0 else (i_pasillo if en_pasillo else KitMazmorra.variante("suelo", cx, cy))
+				suelo.set_cell_item(celda, item, _giro_azar(cy, cx))
 			if t == DungeonGen.DOOR and i_arco >= 0:
 				muros.set_cell_item(celda, i_arco, _orientacion_arco(G, cx, cy))
 			elif pieza.has(t) and pieza[t] >= 0 and not (m & A_MANO_OBJETO):
 				objetos.set_cell_item(celda, pieza[t])
 	_antorchas(L)
+	_luces_pasillo(L)
 	_decorador(L)
 
 ## un muro solo hace falta donde la roca toca algo pisable (las 8 vecinas); la roca de dentro se queda vacía
@@ -187,6 +192,54 @@ func _antorchas(L: Dictionary) -> void:
 	# la antorcha cuelga de la cara sur del muro de la casilla (cx, cy - 1)
 	for tr in L.get("torches", []):
 		poner_antorcha(Vector2i(tr.cx, tr.cy), Vector2i(0, -1))
+
+## pasillos (9 nov): una antorcha cada ~6 casillas en sus paredes y una luz suave en cada boca
+## (donde el pasillo entra en una sala), para ver por dónde sigue. Sin sombras: son muchas.
+const PASILLO_ANTORCHA_CADA := 6
+const BOCA_SEPARACION := 4
+func _luces_pasillo(L: Dictionary) -> void:
+	var corr: PackedByteArray = L.get("corr", PackedByteArray())
+	var sala: PackedInt32Array = L.get("room_of", PackedInt32Array())
+	if corr.is_empty() or sala.is_empty():
+		return
+	var W := DungeonGen.GW
+	var H := DungeonGen.GH
+	var puestas: Array[Vector2i] = []
+	for tr in L.get("torches", []):
+		puestas.append(Vector2i(tr.cx, tr.cy))
+	var lejos_de := func(c: Vector2i, lista: Array[Vector2i], dmin: int) -> bool:
+		for o in lista:
+			if absi(o.x - c.x) + absi(o.y - c.y) < dmin:
+				return false
+		return true
+	var bocas: Array[Vector2i] = []
+	for cy in range(1, H - 1):
+		for cx in range(1, W - 1):
+			var i := cy * W + cx
+			if corr[i] == 0 or sala[i] >= 0 or not _pisable(cx, cy):
+				continue
+			var c := Vector2i(cx, cy)
+			# boca: casilla de pasillo junto a una de sala
+			var boca := false
+			for d in DIRS:
+				var j: int = (cy + d.y) * W + cx + d.x
+				if sala[j] >= 0 and _pisable(cx + d.x, cy + d.y):
+					boca = true
+			if boca:
+				if lejos_de.call(c, bocas, BOCA_SEPARACION):
+					bocas.append(c)
+					var luz := _luz(centro(c) + Vector3(0, 1.6, 0), Color(1, .7, .45), 1.6, 6.0)
+					luz.shadow_enabled = false
+				continue
+			# antorcha en una pared del pasillo (norte u oeste, las que ve la cámara)
+			if not lejos_de.call(c, puestas, PASILLO_ANTORCHA_CADA):
+				continue
+			for cara in [Vector2i(0, -1), Vector2i(-1, 0)]:
+				var t := _G[(cy + cara.y) * W + cx + cara.x]
+				if t == DungeonGen.ROCK:
+					poner_antorcha(c, cara)
+					puestas.append(c)
+					break
 
 ## centro del suelo de una casilla, en metros
 static func centro(c: Vector2i) -> Vector3:

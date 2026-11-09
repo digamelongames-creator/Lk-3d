@@ -4,6 +4,10 @@ class_name DungeonGen
 ## (lo comprueba tests/test_mapas.gd contra mapas sacados del navegador).
 
 ## tamaño del mapa: ×3 de superficie (83 × 59) con el triple de salas; fijar_grande(false) vuelve al de la web (48 × 34)
+## reparto de anchos de pasillo (1, 2 o 3 casillas; el resto hasta 1 es de 3) y cuántos van en zigzag
+const ANCHO_1 := .2
+const ANCHO_2 := .6
+const ZIGZAG := .35
 const GW_WEB := 48
 const GH_WEB := 34
 const GW_GRANDE := 83
@@ -258,7 +262,8 @@ static func try_gen(seed: String, wave: int, canals: bool, force: bool, theme: S
 			edges.append([i, j])
 			has[key.call(i, j)] = true
 
-	# ---- pasillos (la mayoría de una casilla; algunos de dos) ----
+	# ---- pasillos (9 nov, decidido por Diego): unos pocos estrechos de 1 casilla, la mayoría de 2 y algunas
+	# galerías de 3; en L como siempre o en zigzag (escalones de 3–5 casillas) para que no sean todos iguales ----
 	var cw := [2]
 	var dig := func(x: int, y: int) -> void:
 		for j in cw[0]:
@@ -271,37 +276,46 @@ static func try_gen(seed: String, wave: int, canals: bool, force: bool, theme: S
 				if grid[kk] == 0:
 					grid[kk] = 1
 					corr[kk] = 1
+	# tramo recto de (x0, y0) a (x1, y1), con los dos extremos (solo en horizontal o en vertical)
+	var tramo := func(x0: int, y0: int, x1: int, y1: int) -> void:
+		var sx := int(JS.sign(x1 - x0))
+		var sy := int(JS.sign(y1 - y0))
+		var x := x0
+		var y := y0
+		while true:
+			dig.call(x, y)
+			if x == x1 and y == y1:
+				break
+			x += sx
+			y += sy
 	for e in edges:
 		var A: Dictionary = nodes[e[0]]
 		var B: Dictionary = nodes[e[1]]
 		var hf := R.next() < .5
-		var sx := int(JS.sign(B.x - A.x))
-		var sy := int(JS.sign(B.y - A.y))
-		cw[0] = 1 if R.next() < .65 else 2
-		if hf:
+		var r := R.next()
+		cw[0] = 1 if r < ANCHO_1 else (2 if r < ANCHO_1 + ANCHO_2 else 3)
+		var zig := R.next() < ZIGZAG and absi(B.x - A.x) >= 6 and absi(B.y - A.y) >= 6
+		if zig:
 			var x: int = A.x
-			while x != B.x:
-				dig.call(x, A.y)
-				x += sx
 			var y: int = A.y
-			var sty := sy if sy != 0 else 1
-			while y != B.y + sy:
-				dig.call(B.x, y)
-				if sy == 0:
-					break
-				y += sty
+			var hor := hf
+			while x != B.x or y != B.y:
+				var paso := 3 + int(R.next() * 3)
+				if hor and x != B.x:
+					var nx: int = x + int(JS.sign(B.x - x)) * mini(paso, absi(B.x - x))
+					tramo.call(x, y, nx, y)
+					x = nx
+				elif not hor and y != B.y:
+					var ny: int = y + int(JS.sign(B.y - y)) * mini(paso, absi(B.y - y))
+					tramo.call(x, y, x, ny)
+					y = ny
+				hor = not hor
+		elif hf:
+			tramo.call(A.x, A.y, B.x, A.y)
+			tramo.call(B.x, A.y, B.x, B.y)
 		else:
-			var y: int = A.y
-			while y != B.y:
-				dig.call(A.x, y)
-				y += sy
-			var x: int = A.x
-			var stx := sx if sx != 0 else 1
-			while x != B.x + sx:
-				dig.call(x, B.y)
-				if sx == 0:
-					break
-				x += stx
+			tramo.call(A.x, A.y, A.x, B.y)
+			tramo.call(A.x, B.y, B.x, B.y)
 
 	# ---- canal con puentes ----
 	if canals and (wave >= 2 or theme != "castle") and R.next() < (.8 if (theme == "hell" or theme == "souls" or theme == "forge") else .55):

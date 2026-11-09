@@ -30,7 +30,8 @@ static func mesh_library() -> MeshLibrary:
 	_cargar_glb()
 	_lib = MeshLibrary.new()
 	_provisionales()
-	for n in DE_CASILLA:
+	_suelo_pasillo()
+	for n in DE_CASILLA + ["suelo_pasillo"]:
 		if _mallas.has(n):
 			var i := _lib.get_last_unused_item_id()
 			_lib.create_item(i)
@@ -39,6 +40,20 @@ static func mesh_library() -> MeshLibrary:
 	return _lib
 
 ## vaciar las cachés estáticas al salir: si siguen vivas cuando Godot apaga el servidor gráfico, el juego se cuelga al cerrar
+## suelo de los pasillos (9 nov): las mismas losas que «suelo», más claras y cálidas, para que el pasillo
+## se distinga de la sala y se lea por dónde sigue
+static func _suelo_pasillo() -> void:
+	if not _mallas.has("suelo"):
+		return
+	var m: Mesh = (_mallas["suelo"] as Mesh).duplicate()
+	var losa := material("losa")
+	for s in m.get_surface_count():
+		if m.surface_get_material(s) == losa:
+			m.surface_set_material(s, _piedra(COLOR_PASILLO, .65))
+	_mallas["suelo_pasillo"] = m
+
+const COLOR_PASILLO := Color(.66, .57, .45)
+
 static func limpiar() -> void:
 	_lib = null
 	_mallas.clear()

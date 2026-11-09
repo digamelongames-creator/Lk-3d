@@ -1724,6 +1724,7 @@ func _do_hit() -> void:
 		if absf(da) > (1.6 if a3 and has("k_verd_a") else 1.3) + abre and d > 12 + e.cuerpo:
 			continue
 		hits += 1
+		e.tajo_t = t
 		var rp: bool = rip and e == p.rip_target
 		var crit = rp or rnd() < p.st.crit
 		var blk := false if rp else enemy_block(e, p.x, p.y)

@@ -228,6 +228,7 @@ class Enemy extends RefCounted:
 	var back_t := -9.0
 	var hit_count := 0
 	var last_hit := -9.0
+	var tajo_t := -9.0   # cuándo le dio el último tajo del héroe (la vista le pone el contorno rojo)
 	var guard_chest := false
 	var pool_seed := 0.0
 	# campeón: tajo con cuña, embestida y furia (champAI)

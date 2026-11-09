@@ -102,6 +102,7 @@ func actualizar(dt: float) -> void:
 	_animar_heroe(p)
 	_vestir()
 	_actualizar_enemigos(dt)
+	_contornos()
 	# botín y oro: reserva de nodos del tamaño de la lista
 	_actualizar_botin()
 	_reserva(_oro, sim.gold.size(), func(): return _caja(Vector3(.3, .08, .3), Color(1, .8, .2), Color(1, .7, .1)))
@@ -771,6 +772,78 @@ func _nuevo_enemigo(e: Ent.Enemy) -> Dictionary:
 	if e.jefe or (e.rare and e.poder != ""):
 		_marcar_elite(e, d)
 	return d
+
+# ---------- contorno rojo (9 nov, decidido por Diego) ----------
+## fino en el enemigo bajo el ratón; más marcado en el que estás golpeando (le dio el tajo hace menos de CONTORNO_GOLPE_S)
+const CONTORNO_COLOR := Color(1, .08, .04)
+const CONTORNO_FINO := .025
+const CONTORNO_GRUESO := .05
+const CONTORNO_GOLPE_S := 1.2
+var _mat_fino: ShaderMaterial
+var _mat_grueso: ShaderMaterial
+var bajo_raton: Ent.Enemy = null   # lo calcula _contornos; main3d puede usarlo
+
+func _mat_contorno(grosor: float) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = load("res://assets/shaders/contorno.gdshader")
+	m.set_shader_parameter("color", CONTORNO_COLOR)
+	m.set_shader_parameter("grosor", grosor)
+	return m
+
+func _contornos() -> void:
+	if _mat_fino == null:
+		_mat_fino = _mat_contorno(CONTORNO_FINO)
+		_mat_grueso = _mat_contorno(CONTORNO_GRUESO)
+	bajo_raton = _enemigo_bajo_raton()
+	for e in sim.enemies:
+		var d: Dictionary = _enemigos.get(e.get_instance_id(), {})
+		if d.is_empty() or d.get("lejos", false):
+			continue
+		var mat: Material = null
+		if not e.dead and not (e.dying > 0) and not e.mimic:
+			if sim.t - e.tajo_t < CONTORNO_GOLPE_S:
+				mat = _mat_grueso
+			elif e == bajo_raton:
+				mat = _mat_fino
+		if d.get("contorno") == mat:
+			continue
+		d.contorno = mat
+		if not d.has("mallas"):
+			# solo el modelo (y lo que lleva en las manos), no el aro ni la burbuja de las élites
+			var base: Node = d.m if d.m != null else d.n
+			d.mallas = base.find_children("*", "MeshInstance3D", true, false)
+		for mi in d.mallas:
+			if is_instance_valid(mi):
+				(mi as MeshInstance3D).material_overlay = mat
+
+## el enemigo vivo más cercano al ratón en pantalla, si el ratón cae sobre su cuerpo (de los pies a la cabeza)
+func _enemigo_bajo_raton() -> Ent.Enemy:
+	if not is_inside_tree():
+		return null
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return null
+	var raton := get_viewport().get_mouse_position()
+	var mejor: Ent.Enemy = null
+	var mejor_d := INF
+	for e in sim.enemies:
+		if e.dead or e.dying > 0 or e.mimic:
+			continue
+		var d: Dictionary = _enemigos.get(e.get_instance_id(), {})
+		if d.is_empty() or d.get("lejos", false):
+			continue
+		var esc := ESCALA_JEFE if e.jefe else (ESCALA_ELITE if e.rare else 1.0)
+		var pie: Vector3 = d.n.position
+		if cam.is_position_behind(pie):
+			continue
+		var a := cam.unproject_position(pie)
+		var b := cam.unproject_position(pie + Vector3(0, 1.7 * esc, 0))
+		var r := (cam.unproject_position(pie + cam.global_basis.x * .45 * esc) - a).length()
+		var dd := Geometry2D.get_closest_point_to_segment(raton, a, b).distance_to(raton)
+		if dd < r and dd < mejor_d:
+			mejor = e
+			mejor_d = dd
+	return mejor
 
 const LEJOS_M := 32.0
 const ESCALA_ELITE := 1.22
