@@ -17,7 +17,8 @@ var sim := Sim.new()
 var fx := Fx3D.new()
 var mazmorra: MazmorraGridMap
 var actores: Actores3D
-var hechizos: Hechizos3D   # bola de fuego y explosión con hojas de fotogramas (assets/vfx)
+var hechizos: Hechizos3D   # efectos de las magias con hojas de fotogramas (assets/vfx, catálogo)
+var panel_efectos: PanelEfectos   # F4 en el piso de prueba: ajustar los efectos
 var camara: CamaraIso
 var hud: Hud
 var inventory: Inventory
@@ -40,6 +41,7 @@ var _antes_creditos := "play"   # a qué estado vuelven los créditos al cerrars
 var _luz_menu: OmniLight3D   # luz cálida sobre el héroe en el fondo del menú
 const GIRO := 45.0
 var _creditos: Creditos
+var _panel_fx := false   # --f4: el panel de ajuste de efectos abierto (capturas)
 var _hechizo := false   # --hechizo: en la sala de efectos, lanza solo (capturas)
 var _sala := -1   # pruebas: --sala=N pone al héroe en la sala N del piso de prueba (0 = pasillo)
 var _panel_apr: Label   # F3: lo que han aprendido los enemigos cercanos (solo para pruebas)
@@ -111,6 +113,8 @@ func _ready() -> void:
 			_directo = true
 		elif a == "--hechizo":
 			_hechizo = true
+		elif a == "--f4":
+			_panel_fx = true
 		elif a == "--f3":
 			_f3 = true
 		elif a == "--morir":   # pruebas: el héroe cae al empezar (panel de muerte)
@@ -210,6 +214,10 @@ func _ready() -> void:
 	_panel_apr.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_panel_apr.visible = _f3
 	ui.add_child(_panel_apr)
+	panel_efectos = PanelEfectos.new()
+	panel_efectos.hechizos = hechizos
+	panel_efectos.visible = _panel_fx
+	ui.add_child(panel_efectos)
 	menu = MenuInicio.new()
 	menu.visible = false
 	menu.empezar.connect(func(c: String): _empezar(c, 0))
@@ -317,7 +325,7 @@ func _entrar_prueba(n: int) -> void:
 		sim.unstick(sim.p)
 		_camara(1.0)
 	if not PisoPrueba.sala_efectos(sim).is_empty() and _sala >= 0 and PisoPrueba.salas_menu()[_sala][1] == "efectos":
-		fx.banner("Muñecos para probar los hechizos · clic derecho: bola de fuego", "Sala de efectos")
+		fx.banner("Muñecos para probar las magias · F4: ajustar los efectos · F6: probar", "Sala de efectos")
 	else:
 		fx.banner("Sin enemigos · F1: créditos", PisoPrueba.nombre(n))
 
@@ -553,6 +561,7 @@ func _a_mazmorra(n: int) -> void:
 # ======================================================================
 ## la pantalla de inicio: de fondo, un piso 1 fijo sin enemigos con el héroe quieto y la cámara girando
 func _ir_menu() -> void:
+	panel_efectos.visible = false
 	sim.apr.cerrar_todos(sim)
 	sim.apr.guardar()
 	_muerte.visible = false
@@ -664,6 +673,16 @@ func _unhandled_input(ev: InputEvent) -> void:
 		if menu.pagina == "opciones":
 			menu._refrescar_opciones()
 		return
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F4 and state == "play" and prueba > 0:
+		panel_efectos.visible = not panel_efectos.visible
+		if panel_efectos.visible:
+			panel_efectos.refrescar()
+		get_viewport().set_input_as_handled()
+		return
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F6 and state == "play" and prueba > 0:
+		panel_efectos.probar_actual()
+		get_viewport().set_input_as_handled()
+		return
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F3 and state == "play":
 		_panel_apr.visible = not _panel_apr.visible
 		_panel_apr_t = 0
@@ -729,6 +748,10 @@ func _read_input() -> Sim.Inp:
 	inp.attack = _attack_edge
 	inp.attack_held = Input.is_action_pressed("lk_attack")
 	inp.block = Input.is_action_pressed("lk_block")
+	if panel_efectos.tapa_raton():   # tocando el panel de efectos no se lanza nada
+		inp.attack = false
+		inp.attack_held = false
+		inp.block = false
 	inp.dash = _dash_edge
 	inp.skill = _skill_edge
 	inp.interact = _interact_edge

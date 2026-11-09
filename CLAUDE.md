@@ -8,6 +8,8 @@ Responde en español.
 - Al explicar cambios de código, enseña solo las funciones o líneas tocadas, con el archivo.
 - Si una tarea es grande o ambigua, haz una sola pregunta antes de empezar.
 - Al terminar un cambio importante, añade 2–3 líneas a `docs/ESTADO.md`.
+- **No hagas capturas de pantalla del juego salvo que Diego las pida**: lo prueba él en su PC (aquí no hay tarjeta gráfica y cada captura tarda minutos). Comprueba con las pruebas `tests/`.
+- No dibujes imágenes provisionales por código si Diego va a pasar las suyas.
 
 ## Estructura
 - `src/core`: la simulación de Last Knight 2D, tal cual (posiciones en px, 32 px = 1 casilla = 2 m). No dibuja; lo visual sale por `SimFx`.
@@ -28,13 +30,14 @@ Responde en español.
 - Pantalla de inicio (`MenuInicio`): el juego arranca en ella. Nueva partida (con elección de clase), Piso de prueba, Opciones, Créditos y Salir; de fondo, un piso 1 fijo sin enemigos con la cámara girando. Esc en la partida abre la pausa (Continuar, Opciones, Volver al menú). Opciones guardadas en `user://opciones.cfg` (`Opciones`).
 - Inca (la ciudad, `Ciudad`): la partida empieza ahí. Kit: `python3 tools/blender/kit_ciudad.py assets/kit/kit_ciudad.glb`. Zona segura; la entrada del norte deja elegir oleada (`Hero.piso_max`), tras el jefe se elige bajar o subir y al morir se vuelve sin mochila ni el oro de la bajada. `--ciudad[=portal|puerta|escalera]`.
 - Piso de prueba: se entra desde el menú (`PisoPrueba`, sin enemigos). Adornos por propósito de sala: `Repartidor.PROPOSITOS`.
+- Efectos de las magias (`Hechizos3D`): catálogo `assets/vfx/catalogo.json` (una ficha por efecto: hoja, forma proyectil|golpe|suelo|aura, tam, brillo, velocidad, alto, luz, sonido, al_acabar, pegado). Imágenes de ChatGPT de Diego (carpeta `C:\VFX_MAGIAS`, nombre = hoja): `python3 tools/vfx_hoja.py lote <carpeta>`. Panel de ajuste F4 en el piso de prueba (F6 prueba el efecto; «Guardar» escribe el catálogo). Sala «Efectos» (`--sala=11`, mago y muñecos). Lo que es código: el enganche de cada habilidad en `Hechizos3D._enganches()`.
 - Sonidos: `python3 tools/sonidos.py assets/sonidos` (sintetizados; `Fx3D.sonido` elige entre las tomas `_1`, `_2`…). Efectos de golpe: `xvfb-run -a godot --path . -s res://tools/vitrina_sangre.gd -- --shot=/tmp/s.png`; rompibles, trampas y mímico: `tools/vitrina_mazmorra.gd`.
 
 ## Ejecutar y probar
 - Espacio de trabajo nuevo: `bash tools/preparar_entorno.sh` (Godot 4.7.2, Vulkan por software y bpy). Diego ha autorizado instalar Godot en cualquier chat de este proyecto.
 - Godot 4.7.2, renderizador Forward+.
 - Importar: `godot --headless --path . --editor --quit`.
-- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` `tests/test_demonios.gd`, `tests/test_zoom.gd`, `tests/test_combate.gd` `tests/test_dos_espadas.gd`, `tests/test_armadura.gd`, `tests/test_piso_prueba.gd`, `tests/test_menu.gd`, `tests/test_grupos.gd`, `tests/test_botin_explota.gd`, `tests/test_mazmorra.gd`, `tests/test_devorador.gd`, `tests/test_rigidez.gd`, `tests/test_ciudad.gd` y `tests/test_aprendizaje.gd` (deben decir «todo bien»).
+- Pruebas del núcleo: `godot --headless --path . -s tests/test_botin.gd` `tests/test_clases.gd`, `tests/test_modelos.gd` `tests/test_demonios.gd`, `tests/test_zoom.gd`, `tests/test_combate.gd` `tests/test_dos_espadas.gd`, `tests/test_armadura.gd`, `tests/test_piso_prueba.gd`, `tests/test_menu.gd`, `tests/test_grupos.gd`, `tests/test_botin_explota.gd`, `tests/test_mazmorra.gd`, `tests/test_devorador.gd`, `tests/test_rigidez.gd`, `tests/test_ciudad.gd`, `tests/test_aprendizaje.gd` y `tests/test_efectos.gd` (deben decir «todo bien»).
 - Captura: `xvfb-run -a godot --path . -- --bot --shot=/tmp/x.png,200` (sin GPU: `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`).
 - Opciones (las que empiezan partida se saltan el menú): `--partida` `--ciudad[=portal|puerta|escalera]` `--prueba=N --sala=N` `--menu[=clase|opciones|pausa]` (capturas del menú) `--clase=knight|dk|archer|mage|dl --piso=N --semilla=… --heroe=… --junto=<monstruo>|jefe|elite|reto|trampa --equipo=0..3 --f3 --morir --zoom=… --giro=… --inclinacion=… --perspectiva --bot`.
 - El juego arranca en pantalla completa (o como diga Opciones); F11 cambia a ventana y se guarda; F1 créditos; Esc pausa. Rueda o +/− para el zoom (7–20 m).

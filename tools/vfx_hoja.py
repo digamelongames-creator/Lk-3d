@@ -7,6 +7,12 @@
       centra cada fotograma por su brillo si se pide y la deja en una rejilla de 256 px por celda.
       El alfa sale del brillo: el juego la pinta en modo aditivo (lo negro no suma nada).
 
+  python3 tools/vfx_hoja.py lote <carpeta> [nombre…]
+      Convierte de una vez todas las imágenes (.png, .gif, .webp, .jpg) de la carpeta (la de Diego, C:\\VFX_MAGIAS).
+      El nombre del archivo es el de la hoja (mago_nova.png → assets/vfx/mago_nova.png). Si en el catálogo
+      (assets/vfx/catalogo.json) hay una ficha con esa hoja, se usa su «bucle»; si no hay ninguna, se añade una
+      ficha nueva de forma «golpe» para ajustarla luego con el panel (F4). El original se copia a tools/vfx_originales/.
+
   python3 tools/vfx_hoja.py provisional
       Dibuja por código las dos de la prueba (bola_fuego y explosion_fuego), para que el juego
       funcione antes de tener las de ChatGPT. Se sustituyen convirtiendo las buenas con el mismo nombre.
@@ -173,6 +179,100 @@ def provisional():
     _guardar(frames, "explosion_fuego", 4, 4, 24, False, "provisional (tools/vfx_hoja.py)")
 
 
+def provisional_mago():
+    """las del mago que aún no ha hecho Diego (no pisa las que ya existen)"""
+    rng = np.random.default_rng(11)
+    n = CELDA
+    yy, xx = (np.indices((n, n)).astype(np.float32) - n / 2) / (n / 2)
+    r = np.sqrt(xx ** 2 + yy ** 2)
+    ang = np.arctan2(yy, xx)
+    def hecha(nombre):
+        return (SALIDA / f"{nombre}.png").exists()
+    if not hecha("mago_nova"):   # anillo de fuego visto desde arriba, en bucle
+        fr = []
+        for k in range(16):
+            ru = _ruido(rng, n, 6)
+            onda = .5 + .5 * np.sin(ang * 9 + k / 16 * 2 * np.pi)
+            anillo = np.clip(1 - np.abs(r - .8) / (.1 + .06 * onda), 0, 1)
+            t = np.clip(anillo * (.75 + .5 * ru), 0, 1)
+            fr.append(_a_rgba((_fuego(t) * np.clip(t * 1.8, 0, 1)[..., None]).astype(np.float32)))
+        _guardar(fr, "mago_nova", 4, 4, 14, True, "provisional (tools/vfx_hoja.py)")
+    if not hecha("mago_llamarada"):   # onda de fuego que se abre, desde arriba
+        fr = []
+        for k in range(16):
+            p = k / 15
+            ru = _ruido(rng, n, 6)
+            rad = .1 + .85 * (1 - (1 - p) ** 2)
+            anillo = np.clip(1 - np.abs(r - rad) / (.18 - .1 * p), 0, 1)
+            t = np.clip(anillo * (1.1 - p) + (ru - .5) * .3 * anillo, 0, 1)
+            fr.append(_a_rgba((_fuego(t) * np.clip(t * 2, 0, 1)[..., None] * (1 - p ** 2)).astype(np.float32)))
+        _guardar(fr, "mago_llamarada", 4, 4, 22, False, "provisional (tools/vfx_hoja.py)")
+    if not hecha("mago_llamas"):   # columna de llamas, de lado, en bucle
+        fr = []
+        for k in range(16):
+            ru = np.roll(_ruido(rng, n, 5), -k * 10, axis=0)
+            subir = np.clip((yy + 1) / 2, 0, 1)   # 0 arriba, 1 abajo
+            ancho = .18 + .22 * subir
+            cuerpo = np.clip(1 - np.abs(xx) / ancho, 0, 1) * subir ** .6
+            t = np.clip(cuerpo * (.6 + .8 * ru) * 1.2, 0, 1)
+            fr.append(_a_rgba((_fuego(t) * np.clip(t * 1.6, 0, 1)[..., None]).astype(np.float32)))
+        _guardar(fr, "mago_llamas", 4, 4, 16, True, "provisional (tools/vfx_hoja.py)")
+    if not hecha("mago_teletransporte"):   # columna de luz dorada que se abre y se cierra
+        fr = []
+        for k in range(16):
+            p = k / 15
+            ru = _ruido(rng, n, 6)
+            ancho = .04 + .32 * np.sin(np.pi * min(1, p * 1.3)) ** .7
+            col = np.clip(1 - np.abs(xx) / max(ancho, .02), 0, 1) * np.clip(1 - np.abs(yy) / .95, 0, 1) ** .5
+            t = np.clip(col * (1.15 - p) + (ru - .5) * .25 * col, 0, 1)
+            oro = np.stack([t, t * .8, t * .35], -1) + _fuego(t) * .3
+            fr.append(_a_rgba(np.clip(oro * np.clip(t * 2, 0, 1)[..., None], 0, 1).astype(np.float32)))
+        _guardar(fr, "mago_teletransporte", 4, 4, 22, False, "provisional (tools/vfx_hoja.py)")
+
+
+RAIZ = Path(__file__).resolve().parent.parent
+CATALOGO = RAIZ / "assets" / "vfx" / "catalogo.json"
+ORIGINALES = RAIZ / "tools" / "vfx_originales"
+EXT = {".png", ".gif", ".webp", ".jpg", ".jpeg"}
+
+
+def _leer_catalogo():
+    return json.loads(CATALOGO.read_text(encoding="utf-8")) if CATALOGO.exists() else {}
+
+
+def _escribir_catalogo(cat):
+    lineas = [f" {json.dumps(k, ensure_ascii=False)}: {json.dumps(v, ensure_ascii=False)}" for k, v in cat.items()]
+    CATALOGO.write_text("{\n" + ",\n".join(lineas) + "\n}\n", encoding="utf-8")
+
+
+def lote(carpeta, solo=None):
+    import shutil
+    cat = _leer_catalogo()
+    nuevas = []
+    archivos = sorted(p for p in Path(carpeta).iterdir() if p.suffix.lower() in EXT)
+    if solo:
+        archivos = [p for p in archivos if p.stem.lower() in solo]
+    for ruta in archivos:
+        nombre = ruta.stem.lower().replace(" ", "_").replace("-", "_")
+        fichas = [d for d in cat.values() if d.get("hoja") == nombre]
+        bucle = any(d.get("bucle", False) for d in fichas)
+        try:
+            convertir(str(ruta), nombre, bucle=bucle)
+        except Exception as e:   # una mala no para las demás
+            print(f"  ERROR con {ruta.name}: {e}")
+            continue
+        ORIGINALES.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ruta, ORIGINALES / (nombre + "_chatgpt" + ruta.suffix.lower()))
+        if not fichas:
+            cat[nombre] = {"nombre": nombre.replace("_", " ").capitalize(), "hoja": nombre, "forma": "golpe", "tam": 2.5,
+                           "brillo": 1.0, "velocidad": 1.0, "alto": 1.0, "luz": "#ffa040", "luz_energia": 4.0, "luz_alcance": 5.0, "sonido": ""}
+            nuevas.append(nombre)
+    if nuevas:
+        _escribir_catalogo(cat)
+        print("fichas nuevas en el catálogo (forma «golpe», ajústalas con F4):", ", ".join(nuevas))
+    print(f"{len(archivos)} imágenes convertidas")
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     if not a:
@@ -180,6 +280,10 @@ if __name__ == "__main__":
         sys.exit(1)
     if a[0] == "provisional":
         provisional()
+    elif a[0] == "provisional_mago":
+        provisional_mago()
+    elif a[0] == "lote" and len(a) >= 2:
+        lote(a[1], set(x.lower() for x in a[2:]) or None)
     elif a[0] == "convertir" and len(a) >= 3:
         op = {k.lstrip("-").split("=")[0]: (k.split("=")[1] if "=" in k else True) for k in a[3:]}
         convertir(a[1], a[2], int(op.get("cols", 4)), int(op.get("filas", 4)), int(op.get("fps", 20)),
