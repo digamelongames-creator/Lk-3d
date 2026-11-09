@@ -32,7 +32,7 @@ func _init() -> void:
 	ok(sim.enemies.is_empty(), "sin enemigos (%d)" % sim.enemies.size())
 	var L: Dictionary = sim.L
 	var salas: Array = L.salas_prueba
-	ok(salas.size() == 10, "pasillo + 5 salas de paquete + 4 de propósito (%d)" % salas.size())
+	ok(salas.size() == 11, "pasillo + 5 salas de paquete + 4 de propósito + la del aprendizaje (%d)" % salas.size())
 	var d: PackedInt32Array = L.dist
 	var W := DungeonGen.GW
 	for s in salas:

@@ -5,7 +5,8 @@ class_name PisoPrueba
 ## Piso de prueba 1: un pasillo largo de este a oeste con
 ##   · arriba, una sala por paquete: Poly Haven, Modular Dungeon Kit, Low Poly, Gótico y Ruinas.
 ##     Las de los kits llevan sus propios muros y suelos (ESTILOS); las demás, los del juego.
-##   · abajo, una sala por propósito: almacén, guardia, tesoro (con el cofre que se abre) y cueva.
+##   · abajo, una sala por propósito: almacén, guardia, tesoro (con el cofre que se abre) y cueva,
+##     y la sala del aprendizaje: un miniboss y 4 esbirros que vuelven a salir al acabar (arena()).
 ## Lo que hay en cada sala lo reparte Repartidor según su propósito.
 ##
 ## generar() hace el mapa (la misma forma que DungeonGen, para que la simulación lo use tal cual)
@@ -24,7 +25,8 @@ const ESTILOS := {
 ## salas del piso 1: nombre, estilo (kit de muros; "" = el del juego) y propósito (Repartidor)
 const ARRIBA := [["Poly Haven", "", "muestra_polyhaven"], ["Modular Dungeon Kit", "dungeon_kit", "muestra_dungeon_kit"],
 	["Low Poly Dungeon", "low_poly", "muestra_low_poly"], ["Gothic Interior", "gotico", "muestra_gotico"], ["Ancient Ruins", "", "muestra_ruinas"]]
-const ABAJO := [["Almacén", "", "almacen"], ["Guardia", "", "guardia"], ["Tesoro", "", "tesoro"], ["Cueva", "", "cueva"]]
+const ABAJO := [["Almacén", "", "almacen"], ["Guardia", "", "guardia"], ["Tesoro", "", "tesoro"], ["Cueva", "", "cueva"],
+	["Aprendizaje", "", "arena"]]
 const LADO := 9          # casillas de cada sala
 const PASO_SALAS := 11   # sala + 2 de roca
 const Y_ARRIBA := 3
@@ -301,3 +303,69 @@ static func amueblar(L: Dictionary, M: MazmorraGridMap) -> void:
 ## la parte de arriba de los muros de los kits: piedra oscura, como el remate de los muros del juego
 static func _material_techo() -> StandardMaterial3D:
 	return KitMazmorra._piedra(Color(.24, .22, .23), .95)
+
+# ======================================================================
+#  sala del aprendizaje: miniboss y 4 esbirros que aprenden (Aprendizaje)
+# ======================================================================
+## Al entrar (y cada vez que mueren todos) sale otra ronda con los mismos puestos («prueba-1» a «prueba-5»):
+## son los mismos enemigos, que recuerdan lo de las rondas anteriores. Al empezar cada ronda, vida llena.
+const ARENA_ESPERA := 2.5
+
+static func sala_arena(sim) -> Dictionary:
+	for s in sim.L.get("salas_prueba", []):
+		if s.proposito == "arena":
+			return s
+	return {}
+
+static func arena(sim, dt: float) -> void:
+	var s := sala_arena(sim)
+	if s.is_empty():
+		return
+	var A: Dictionary = sim.L.get_or_add("arena_estado", {"ronda": 0, "t": ARENA_ESPERA})
+	var vivos := 0
+	for e in sim.enemies:
+		if e.en_arena and not e.dying and not e.dead:
+			vivos += 1
+	var cx := int(sim.p.x / DungeonGen.TS)
+	var cy := int((sim.p.y - 3) / DungeonGen.TS)
+	var dentro: bool = cx >= s.x and cx < s.x + s.w and cy > s.y and cy < s.y + s.h
+	if vivos > 0 or sim.p.dead:
+		A.t = ARENA_ESPERA
+		return
+	if not dentro:
+		A.t = minf(A.t, ARENA_ESPERA)
+		return
+	A.t -= dt
+	if A.t > 0:
+		return
+	A.t = ARENA_ESPERA
+	A.ronda += 1
+	_ronda_arena(sim, s, int(A.ronda))
+
+static func _ronda_arena(sim, s: Dictionary, ronda: int) -> void:
+	var TS := DungeonGen.TS
+	var bx: float = (s.x + 4.5) * TS
+	var by: float = (s.y + s.h - 3.0) * TS
+	var jefe: Ent.Enemy = sim.mon_spawn("esqueleto", bx, by)
+	sim._hacer_elite(jefe)
+	if jefe.poder == "invoca":   # sin invocados: en la prueba solo cuentan los 5 de siempre
+		jefe.poder = "escudo"
+		jefe.invoca_t = 0
+		jefe.escudo_max = jefe.max_hp * .35
+		jefe.escudo = jefe.escudo_max
+	var grupo: Array = [jefe]
+	for k in 4:
+		var a := PI + (k - 1.5) * .7
+		var e: Ent.Enemy = sim.mon_spawn("esqueleto", bx + cos(a) * 52, by - absf(sin(a)) * 40 - 20)
+		sim.unstick(e, 8)
+		grupo.append(e)
+	for i in grupo.size():
+		var e: Ent.Enemy = grupo[i]
+		e.en_arena = true
+		e.puesto = "prueba-%d" % (i + 1)
+		e.apr_lider = null if i == 0 else jefe
+		e.apr_clave = Aprendizaje.clave_de(e, 0)
+		e.apr_titulo = sim.apr.titulo(e.puesto)
+	sim.p.hp = sim.p.st.maxHp
+	sim.fx.hud()
+	sim.fx.banner("Ronda %d · miniboss y 4 esbirros · F3: lo que han aprendido" % ronda, "Sala del aprendizaje")

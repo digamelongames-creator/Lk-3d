@@ -285,6 +285,18 @@ class Enemy extends RefCounted:
 	var arena_on := false
 	# cofres y runas
 	var mimic := false
+	# enemigos que aprenden (Aprendizaje): puesto fijo por piso, táctica del combate y su título
+	var puesto := ""             # "piso-n" (p. ej. "2-37"); "" = sin puesto (refuerzos, siervos, oleadas)
+	var apr_clave := ""          # memoria compartida: "tipo/papel" (p. ej. "esqueleto/esbirro")
+	var apr_lider: Object = null # élite o jefe de su sala (para la táctica «escolta»)
+	var tactica := ""            # táctica de este combate ("" = aún no ha empezado)
+	var apr_activo := false      # combate en curso (despierto)
+	var apr_t0 := 0.0
+	var apr_dealt0 := 0.0
+	var apr_ult := 0.0           # último golpe empezado (para no quedarse esperando para siempre)
+	var apr_ang := 0.0           # «rodear»: ángulo de su hueco alrededor del héroe
+	var apr_titulo := ""         # "Experto", "Asesino" o ""
+	var en_arena := false        # sale en la sala del aprendizaje del piso de prueba
 	var burn_t := 0.0
 	var burn_d := 0.0
 	var burn_tick := 0.0

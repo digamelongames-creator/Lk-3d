@@ -39,6 +39,10 @@ const PROPOSITOS := {
 		{"p": "dungeon_kit", "piezas": ["pilar"], "n": [2, 2], "donde": "esquina", "solido": true},
 		{"p": "dungeon_kit", "piezas": ["brasero"], "n": [2, 2], "donde": "pared", "solido": true, "fuego": [.24, 1.0]},
 	],
+	"arena": [
+		{"p": "dungeon_kit", "piezas": ["brasero"], "n": [4, 4], "donde": "esquina", "solido": true, "fuego": [.24, 1.0]},
+		{"p": "dungeon_kit", "piezas": ["estandarte_1", "estandarte_2", "estandarte_3"], "n": [2, 3], "donde": "colgado", "alto": 2.0},
+	],
 	"cueva": [
 		{"p": "polyhaven", "piezas": ["roca_grande"], "n": [1, 1], "donde": "esquina", "solido": true, "escala": [.45, .55]},
 		{"p": "polyhaven", "piezas": ["roca_musgo_7", "roca_musgo_8", "roca_musgo_9", "roca_musgo_10", "roca_musgo_11", "roca_musgo_12", "roca_musgo_13"], "n": [4, 6], "donde": "pared", "solido": true, "escala": [.8, 1.1]},

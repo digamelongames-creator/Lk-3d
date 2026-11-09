@@ -122,6 +122,8 @@ var level_up_pending := false
 var start_gear: Array = []    # lo fijo del equipo inicial (las piezas básicas)
 ## datos de la partida (tecla P): ataques, golpes, tiempo total y por oleada, distancia, muertes y bajas por tipo
 var stats := new_stats()
+## enemigos que aprenden (Aprendizaje): sin archivo hasta que main3d le da uno (las pruebas no tocan el disco)
+var apr := Aprendizaje.new()
 var start_wave := 1
 var _last_pos := Vector2(INF, INF)
 
@@ -198,6 +200,7 @@ func level_seed(w: int) -> String:
 ## entra en un piso ya generado (L); el ornato, las antorchas a su altura y los llaveros salen de Muros
 ## (si el arte ya se dibujó, ya están). No necesita el arte: vale para el servidor y las pruebas.
 func enter_level(level: Dictionary) -> void:
+	apr.cerrar_todos(self)   # los combates del piso anterior acaban aquí
 	L = level
 	Muros.preparar(L)
 	G = L.grid
@@ -238,6 +241,8 @@ func enter_level(level: Dictionary) -> void:
 	_chests_init()
 	_mazmorra_init()
 	total = enemies.size()
+	# cada enemigo, su puesto fijo («piso-n» por orden de reparto), su papel y su título
+	apr.repartir(self, "" if L.has("prueba") else str(wave))
 	phase = "fight"
 	fade = 1.0
 	reveal(L.start.cx, L.start.cy)
@@ -279,6 +284,9 @@ func revive() -> void:
 	fx.shake(8)
 	fx.text(p.x, p.y - 60, "¡En pie!", "#ffd25a", 15, true)
 	fx.hud()
+	for e in enemies:   # los que siguen despiertos empiezan otro combate
+		if e.state != "idle" and not e.dying and not e.dead:
+			apr.empezar(self, e)
 
 func begin_descend() -> void:
 	phase = "descend"
@@ -1399,6 +1407,7 @@ func step(dt: float, inp: Inp) -> String:
 		hitstop -= dt
 		return ""
 	t += dt
+	apr.tick(self)
 	if phase == "fight":
 		if not p.dead and tile_at(cell_of(p.x), cell_of(p.y - 3)) == DungeonGen.DOWN:
 			if jefe_vivo() == null:
@@ -1835,6 +1844,7 @@ func kill_enemy(e: Ent.Enemy, ang: float) -> void:
 		p.skp += 1
 		fx.text(p.x, p.y - 70, "+1 punto de habilidad", "#b89bff", 12, true, 2, true, false)
 	e.dying = mon_def(e).dieT if e.mon != "" else .25
+	apr.terminar(self, e, false)
 	fx.sonido(&"muerte_enemigo", e.x, e.y)
 	e.die_a = ang
 	e.flash = .06
@@ -1957,6 +1967,7 @@ func hurt_player(dmg: float, from_x: float, from_y: float, src, kind: String = "
 			p.death_t = 0
 			p.blocking = false
 			p.flip = cos(a) < 0
+			apr.heroe_muere(self, src)
 		p.parry_t = p.st.parryWin
 		p.parry_src = src
 		runes.on_block(src, dmg)
@@ -1982,6 +1993,7 @@ func hurt_player(dmg: float, from_x: float, from_y: float, src, kind: String = "
 		p.dead = true
 		p.death_t = 0
 		p.flip = cos(a) < 0
+		apr.heroe_muere(self, src)
 	return "hit"
 
 func _count_stats(dt: float) -> void:
@@ -2317,6 +2329,7 @@ func wake(e: Ent.Enemy) -> void:
 	for o in enemies:
 		if o != e and o.state == "idle" and not o.ambush and not o.dying and not (o.wake_t > 0) and JS.hypot(o.x - e.x, o.y - e.y) < 140:
 			o.wake_t = .15 + rnd() * .35
+	apr.empezar(self, e)
 
 func _update_enemies(dt: float) -> void:
 	for e in enemies:
@@ -2519,6 +2532,8 @@ func _update_enemies(dt: float) -> void:
 				e.dodge_a = atan2(ay + dy / d * .4, ax + dx / d * .4)
 				e.vx += ax * 260 + dx / d * 90
 				e.vy += ay * 260 + dy / d * 90
+			# táctica aprendida: a dónde ir (o null: a por ti y a golpear)
+			var tg = apr.objetivo(self, e, d) if e.apr_activo and e.clear else null
 			if reacted:
 				pass
 			elif e.thrower and e.has_sword and e.los and d > 60 and d < 190 and e.throw_cd <= 0:
@@ -2527,10 +2542,11 @@ func _update_enemies(dt: float) -> void:
 				e.flip = dx < 0
 				e.face = atan2(dy, dx)
 				e.throw_cd = (2.4 + rnd() * 1.2) / e.am
-			elif d < (e.reach if e.type == "knight" else e.reach + 24) and e.cool <= 0 and e.has_sword and e.type != "champ":
+			elif tg == null and d < (e.reach if e.type == "knight" else e.reach + 24) and e.cool <= 0 and e.has_sword and e.type != "champ":
 				e.act = "wind"
 				e.act_t = e.wind_t
 				e.face = atan2(dy, dx)
+				e.apr_ult = t
 			else:
 				var want := 1.0
 				if e.thrower:
@@ -2551,6 +2567,14 @@ func _update_enemies(dt: float) -> void:
 							want = 1
 					else:
 						want = 0
+				if tg != null:
+					var g: Vector2 = tg - Vector2(e.x, e.y)
+					if g.length() < 6:
+						want = 0
+					else:
+						nx = g.x / g.length()
+						ny = g.y / g.length()
+						want = 1
 				if want != 0:
 					vx = nx * want
 					vy = ny * want

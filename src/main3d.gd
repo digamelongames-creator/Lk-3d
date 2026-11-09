@@ -39,6 +39,9 @@ var _luz_menu: OmniLight3D   # luz cálida sobre el héroe en el fondo del menú
 const GIRO := 45.0
 var _creditos: Creditos
 var _sala := -1   # pruebas: --sala=N pone al héroe en la sala N del piso de prueba (0 = pasillo)
+var _panel_apr: Label   # F3: lo que han aprendido los enemigos cercanos (solo para pruebas)
+var _panel_apr_t := 0.0
+var _f3 := false   # --f3: el panel abierto desde el principio (capturas)
 
 
 var _bot: Bot = null
@@ -98,6 +101,8 @@ func _ready() -> void:
 		elif a.begins_with("--equipo="):
 			_equipo = int(a.get_slice("=", 1))
 			_directo = true
+		elif a == "--f3":
+			_f3 = true
 		elif a == "--morir":   # pruebas: el héroe cae al empezar (panel de muerte)
 			_morir = true
 			_directo = true
@@ -119,6 +124,7 @@ func _ready() -> void:
 	Opciones.aplicar_sonido()
 	sim.vel_mov = Opciones.vel_mov()
 	sim.preguntar_escalera = _bot == null
+	sim.apr = Aprendizaje.new("user://aprendizaje.json")   # lo que aprenden los enemigos, entre partidas
 	mazmorra = MazmorraGridMap.new()
 	add_child(mazmorra)
 	actores = Actores3D.new()
@@ -175,6 +181,22 @@ func _ready() -> void:
 	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_zoom_label.modulate.a = 0
 	ui.add_child(_zoom_label)
+	_panel_apr = Label.new()
+	_panel_apr.add_theme_font_override("font", Fonts.px(400))
+	_panel_apr.add_theme_font_size_override("font_size", 13)
+	_panel_apr.add_theme_color_override("font_outline_color", Color.BLACK)
+	_panel_apr.add_theme_constant_override("outline_size", 5)
+	var caja_apr := StyleBoxFlat.new()
+	caja_apr.bg_color = Color(0, 0, 0, .62)
+	caja_apr.set_content_margin_all(10)
+	_panel_apr.add_theme_stylebox_override("normal", caja_apr)
+	_panel_apr.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_panel_apr.offset_left = -470
+	_panel_apr.offset_right = -20
+	_panel_apr.offset_top = 330
+	_panel_apr.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_panel_apr.visible = _f3
+	ui.add_child(_panel_apr)
 	menu = MenuInicio.new()
 	menu.visible = false
 	menu.empezar.connect(func(c: String): _empezar(c, 0))
@@ -287,6 +309,7 @@ func _bajar() -> void:
 	_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
 	fx.banner("Derrota al jefe y baja por la escalera", "Oleada %d" % sim.wave)
 	Guardado.guardar(sim)
+	sim.apr.guardar()
 
 # ======================================================================
 #  bucle
@@ -303,7 +326,9 @@ func _process(dt: float) -> void:
 		var inp := _read_input() if _bot == null else _bot.play(sim)
 		var r := sim.step(dt, inp)
 		if prueba > 0:
-			sim.enemies.clear()   # el piso de prueba no tiene enemigos (ni los que aparecen por el camino)
+			# el piso de prueba no tiene enemigos (ni los que aparecen por el camino), salvo la sala del aprendizaje
+			sim.enemies = sim.enemies.filter(func(e): return e.en_arena)
+			PisoPrueba.arena(sim, dt)
 		if r == "descend":
 			_bajar()
 		elif r == "escalera":
@@ -314,7 +339,13 @@ func _process(dt: float) -> void:
 		elif r == "over":
 			state = "over"
 			_muerte.visible = true
+			sim.apr.guardar()
 	fx.tick(dt)
+	if _panel_apr.visible:
+		_panel_apr_t -= dt
+		if _panel_apr_t <= 0:
+			_panel_apr_t = .25
+			_panel_apr.text = _texto_aprendizaje()
 	if _zoom_t > 0:
 		_zoom_t -= dt
 		_zoom_label.modulate.a = clampf(_zoom_t / .5, 0, 1)
@@ -497,6 +528,8 @@ func _a_mazmorra(n: int) -> void:
 # ======================================================================
 ## la pantalla de inicio: de fondo, un piso 1 fijo sin enemigos con el héroe quieto y la cámara girando
 func _ir_menu() -> void:
+	sim.apr.cerrar_todos(sim)
+	sim.apr.guardar()
 	_muerte.visible = false
 	_escalera.visible = false
 	_puerta.visible = false
@@ -606,6 +639,11 @@ func _unhandled_input(ev: InputEvent) -> void:
 		if menu.pagina == "opciones":
 			menu._refrescar_opciones()
 		return
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F3 and state == "play":
+		_panel_apr.visible = not _panel_apr.visible
+		_panel_apr_t = 0
+		get_viewport().set_input_as_handled()
+		return
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F1 and state in ["play", "creditos"]:
 		mostrar_creditos(state == "play")
 		get_viewport().set_input_as_handled()
@@ -683,8 +721,37 @@ func _read_input() -> Sim.Inp:
 	return inp
 
 
+## panel F3 (pruebas): los enemigos despiertos o cercanos, su táctica de ahora y lo que ha aprendido cada puesto
+func _texto_aprendizaje() -> String:
+	var cerca := []
+	for e in sim.enemies:
+		if e.dying or e.dead:
+			continue
+		var dist := Vector2(e.x - sim.p.x, e.y - sim.p.y).length() * MazmorraGridMap.PX_M
+		if e.apr_activo or dist < 14.0:
+			cerca.append([dist, e])
+	cerca.sort_custom(func(a, b): return a[0] < b[0])
+	var t := "Aprendizaje (F3)"
+	if cerca.is_empty():
+		return t + "\nNingún enemigo cerca"
+	for par in cerca.slice(0, 6):
+		var e: Ent.Enemy = par[1]
+		var nombre: String = e.puesto if e.puesto != "" else "sin puesto"
+		t += "\n\n%s · %s%s · %d combates" % [nombre, e.apr_clave, (" · " + e.apr_titulo) if e.apr_titulo != "" else "", sim.apr.combates(e.puesto)]
+		t += "\n  ahora: %s" % (Aprendizaje.NOMBRE.get(e.tactica, "—") if e.apr_activo else ("dormido" if e.state == "idle" else "combate acabado"))
+		var v := sim.apr.valores(e.apr_clave, e.puesto)
+		var ts: Array = Aprendizaje.TACTICAS.duplicate()
+		ts.sort_custom(func(a, b): return v[a] > v[b])
+		var partes := []
+		for k in ts:
+			partes.append("%s %.2f" % [Aprendizaje.NOMBRE[k], v[k]])
+		t += "\n  " + "  ".join(partes.slice(0, 3)) + "\n  " + "  ".join(partes.slice(3))
+	return t
+
 ## al salir, soltar las cachés estáticas antes de que Godot apague el servidor gráfico
 func _exit_tree() -> void:
+	sim.apr.cerrar_todos(sim)
+	sim.apr.guardar()
 	KitMazmorra.limpiar()
 	Props3D.limpiar()
 	Ciudad.limpiar()

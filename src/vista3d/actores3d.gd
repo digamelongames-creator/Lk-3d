@@ -801,7 +801,24 @@ func _nuevo_enemigo(e: Ent.Enemy) -> Dictionary:
 		d = {"n": n, "m": null}
 	if e.jefe or (e.rare and e.poder != ""):
 		_marcar_elite(e, d)
+	elif e.apr_titulo != "":
+		_marcar_titulo(e, d)
 	return d
+
+## «Asesino» (te ha matado varias veces) o «Experto» (muchos combates) encima de su cabeza (Aprendizaje)
+const COL_TITULO := {"Asesino": Color(1, .32, .25), "Experto": Color(1, .78, .35)}
+func _marcar_titulo(e: Ent.Enemy, d: Dictionary) -> void:
+	var l := Label3D.new()
+	l.text = e.apr_titulo
+	l.modulate = COL_TITULO.get(e.apr_titulo, Color.WHITE)
+	l.outline_modulate = Color.BLACK
+	l.outline_size = 8
+	l.font_size = 28
+	l.pixel_size = .005
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.position.y = 2.35
+	d.n.add_child(l)
 
 const LEJOS_M := 32.0
 const ESCALA_ELITE := 1.22
@@ -838,7 +855,7 @@ func _marcar_elite(e: Ent.Enemy, d: Dictionary) -> void:
 	luz.position.y = 1.2
 	aura.add_child(luz)
 	var l := Label3D.new()
-	l.text = e.title
+	l.text = e.title if e.apr_titulo == "" else "%s · %s" % [e.apr_titulo, e.title]
 	l.modulate = c.lightened(.35)
 	l.outline_modulate = Color.BLACK
 	l.outline_size = 8
