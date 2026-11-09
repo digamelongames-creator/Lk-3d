@@ -46,7 +46,9 @@ func _init() -> void:
 	ok(not main.menu.visible and main.hud.visible, "menú oculto y HUD visible")
 	ok(is_equal_approx(main.camara.giro, deg_to_rad(45.0)), "la cámara vuelve a 45°")
 	ok(main.camara.zoom == 17.0, "zoom de las opciones")
-	ok(not sim.enemies.is_empty(), "la partida tiene enemigos")
+	ok(Ciudad.es_ciudad(sim.L) and sim.enemies.is_empty(), "la partida empieza en Inca, sin enemigos")
+	main._a_mazmorra(1)
+	ok(not sim.enemies.is_empty(), "la mazmorra tiene enemigos")
 
 	# Esc → pausa → Esc → sigue
 	esc(main)
@@ -71,7 +73,7 @@ func _init() -> void:
 	var textos := []
 	for b in main._muerte.find_children("*", "Button", true, false):
 		textos.append(b.text)
-	ok(textos == ["Revivir", "Volver al menú"], "botones del panel de muerte: %s" % [textos])
+	ok(textos == ["Volver a Inca", "Volver al menú"], "botones del panel de muerte: %s" % [textos])
 	main._ir_menu()
 	await process_frame
 	ok(main.state == "menu" and main.menu.visible and not main._muerte.visible, "Volver al menú")

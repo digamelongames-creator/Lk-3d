@@ -5,7 +5,7 @@ class_name Guardado
 
 const PATH := "user://partida.save"
 const V := 1
-const HERO := ["lvl", "xp", "pts", "skp", "tree", "alloc", "upg", "bag", "eq", "hp", "best_chain", "dmg_dealt", "gold", "keys", "rn_cls"]
+const HERO := ["lvl", "xp", "pts", "skp", "tree", "alloc", "upg", "bag", "eq", "hp", "best_chain", "dmg_dealt", "gold", "keys", "rn_cls", "piso_max"]
 
 static func guardar(sim: Sim) -> void:
 	var p := sim.p

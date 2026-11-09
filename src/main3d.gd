@@ -8,6 +8,7 @@ extends Node3D
 ##   --prueba=N (piso de prueba N; es como arranca)   --partida (partida normal, sin piso de prueba)
 ##   --sala=N (en el piso de prueba, empieza en la sala N: 0 pasillo, 1–5 paquetes, 6–9 propósitos)
 ##   --menu (abre la pantalla de inicio aunque haya otras opciones; --menu=opciones|clase|pausa para las capturas)
+##   --ciudad (empieza en Inca; --ciudad=puerta|escalera abre esa ventana, para las capturas)
 ## Sin opciones arranca en la pantalla de inicio (MenuInicio). Las opciones que empiezan una partida
 ## (--partida, --prueba, --piso, --junto, --sala, --equipo, --morir, --bot, --clase) se la saltan.
 
@@ -21,7 +22,11 @@ var inventory: Inventory
 var personaje: Personaje
 var state := "play"
 var clase := "knight"
-var _muerte: Control   # panel «Has caído» con Revivir y Nueva partida
+var _muerte: Control   # panel «Has caído»: Volver a Inca (pierdes la mochila y el oro de la bajada) o al menú
+var _escalera: Control   # tras vencer al jefe: bajar a la oleada siguiente, subir a Inca o seguir en el piso
+var _puerta: Control     # la entrada a la mazmorra de Inca: elegir la oleada
+var _ciudad := ""        # --ciudad[=puerta|escalera]: empieza en Inca (pruebas y capturas)
+var _visitas := 0        # cada bajada genera pisos nuevos aunque se repita la oleada
 var opciones_camara: Array = []
 var heroe_id := "esqueleto"   # modelo del héroe (--heroe=… para probar otro)
 var prueba := 0   # piso de prueba N (PisoPrueba); 0 = partida normal
@@ -96,6 +101,9 @@ func _ready() -> void:
 		elif a == "--morir":   # pruebas: el héroe cae al empezar (panel de muerte)
 			_morir = true
 			_directo = true
+		elif a == "--ciudad" or a.begins_with("--ciudad="):
+			_ciudad = a.get_slice("=", 1) if "=" in a else "si"
+			_directo = true
 		elif a == "--menu" or a.begins_with("--menu="):
 			con_menu = true
 			_menu_pagina = a.get_slice("=", 1) if "=" in a else ""
@@ -110,6 +118,7 @@ func _ready() -> void:
 	Opciones.aplicar_grafico(entorno, get_viewport())
 	Opciones.aplicar_sonido()
 	sim.vel_mov = Opciones.vel_mov()
+	sim.preguntar_escalera = _bot == null
 	mazmorra = MazmorraGridMap.new()
 	add_child(mazmorra)
 	actores = Actores3D.new()
@@ -143,6 +152,12 @@ func _ready() -> void:
 	personaje.closed.connect(func(): if state == "char": _set_state("play"))
 	_muerte = _panel_muerte()
 	ui.add_child(_muerte)
+	_escalera = _panel_escalera()
+	ui.add_child(_escalera)
+	_puerta = Control.new()
+	_puerta.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_puerta.visible = false
+	ui.add_child(_puerta)
 	_creditos = Creditos.new()
 	_creditos.visible = false
 	_creditos.cerrado.connect(func(): if state == "creditos": mostrar_creditos(false))
@@ -189,6 +204,20 @@ func _ready() -> void:
 			menu.mostrar(_menu_pagina)
 		return
 	sim.new_game(piso, semilla, clase)
+	sim.oro_salida = sim.p.gold
+	if _ciudad != "":
+		_ir_ciudad()
+		if _ciudad == "puerta":
+			sim.p.piso_max = 12
+			Ciudad.salir_del_portal(sim)
+			_camara(1.0)
+			_abrir_puerta()
+		elif _ciudad == "portal":   # capturas: junto a la entrada, sin la ventana
+			Ciudad.salir_del_portal(sim)
+			_camara(1.0)
+		elif _ciudad == "escalera":
+			_abrir_escalera()
+		return
 	if prueba > 0:
 		_entrar_prueba(prueba)
 	else:
@@ -228,6 +257,7 @@ func _ready() -> void:
 
 func _entrar(L: Dictionary) -> void:
 	fx.reset()
+	Ciudad.ambiente(entorno.environment, Ciudad.es_ciudad(L))
 	sim.enter_level(L)
 	mazmorra.construir(sim.L)
 	actores.nuevo_piso()
@@ -276,6 +306,11 @@ func _process(dt: float) -> void:
 			sim.enemies.clear()   # el piso de prueba no tiene enemigos (ni los que aparecen por el camino)
 		if r == "descend":
 			_bajar()
+		elif r == "escalera":
+			if Ciudad.es_ciudad(sim.L):
+				_abrir_puerta()
+			else:
+				_abrir_escalera()
 		elif r == "over":
 			state = "over"
 			_muerte.visible = true
@@ -314,9 +349,10 @@ func _raton_en_suelo() -> Vector2:
 	return MazmorraGridMap.a_px(camara.suelo_bajo(get_viewport().get_mouse_position()))
 
 # ======================================================================
-#  muerte: revivir o empezar de nuevo
+#  ventanas: muerte, escalera tras el jefe y entrada a la mazmorra
 # ======================================================================
-func _panel_muerte() -> Control:
+## ventana centrada con fondo oscuro: devuelve [raíz, caja] (la caja es un VBox para los botones)
+func _ventana(titulo_txt: String, texto: String, ancho := 380) -> Array:
 	var raiz := Control.new()
 	raiz.set_anchors_preset(Control.PRESET_FULL_RECT)
 	raiz.visible = false
@@ -324,31 +360,136 @@ func _panel_muerte() -> Control:
 	fondo.color = Color(0, 0, 0, .55)
 	fondo.set_anchors_preset(Control.PRESET_FULL_RECT)
 	raiz.add_child(fondo)
+	var centro := CenterContainer.new()
+	centro.set_anchors_preset(Control.PRESET_FULL_RECT)
+	raiz.add_child(centro)
 	var caja := VBoxContainer.new()
-	caja.set_anchors_preset(Control.PRESET_CENTER)
-	caja.offset_left = -170
-	caja.offset_right = 170
-	caja.offset_top = -110
-	caja.offset_bottom = 110
-	caja.add_theme_constant_override("separation", 18)
-	raiz.add_child(caja)
+	caja.custom_minimum_size = Vector2(ancho, 0)
+	caja.add_theme_constant_override("separation", 14)
+	centro.add_child(caja)
 	var titulo := Label.new()
-	titulo.text = "Has caído"
+	titulo.text = titulo_txt
 	titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	titulo.add_theme_font_override("font", Fonts.gothic(700))
 	titulo.add_theme_font_size_override("font_size", 46)
-	titulo.add_theme_color_override("font_color", Color(.85, .12, .08))
+	titulo.add_theme_color_override("font_color", Color(.85, .12, .08) if titulo_txt == "Has caído" else MenuInicio.ORO)
 	titulo.add_theme_color_override("font_outline_color", Color.BLACK)
 	titulo.add_theme_constant_override("outline_size", 8)
 	caja.add_child(titulo)
-	caja.add_child(MenuInicio.boton("Revivir", _revivir))
-	caja.add_child(MenuInicio.boton("Volver al menú", _ir_menu))
-	return raiz
+	if texto != "":
+		var t := Label.new()
+		t.text = texto
+		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		t.add_theme_font_override("font", Fonts.px(500))
+		t.add_theme_font_size_override("font_size", 17)
+		t.add_theme_color_override("font_color", Color(.92, .86, .74))
+		t.add_theme_color_override("font_outline_color", Color.BLACK)
+		t.add_theme_constant_override("outline_size", 4)
+		caja.add_child(t)
+	return [raiz, caja]
 
-## se levanta en el sitio con media vida (Sim.revive), sin apartar a los enemigos
-func _revivir() -> void:
-	sim.revive()
+## al morir no se revive: vuelves a Inca con el equipo puesto y pierdes la mochila y el oro de esta bajada
+func _panel_muerte() -> Control:
+	var v := _ventana("Has caído", "Pierdes lo que llevabas en la mochila y el oro ganado en esta bajada. Conservas el equipo puesto.")
+	v[1].add_child(MenuInicio.boton("Volver a %s" % Ciudad.NOMBRE, _volver_tras_morir))
+	v[1].add_child(MenuInicio.boton("Volver al menú", _ir_menu))
+	return v[0]
+
+func _volver_tras_morir() -> void:
+	sim.p.bag.clear()
+	sim.p.rn_new = 0
+	sim.p.gold = mini(sim.p.gold, sim.oro_salida)
+	sim.p.dead = false
+	sim.p.death_t = 0
+	sim.p.effects = []
+	sim.over = false
+	_ir_ciudad()
+
+## tras vencer al jefe del piso, en la escalera: bajar, subir a Inca o seguir recogiendo
+func _panel_escalera() -> Control:
+	var v := _ventana("Escalera", "Has vencido al jefe de esta oleada.")
+	v[1].add_child(MenuInicio.boton("Bajar", _escalera_bajar))
+	v[1].add_child(MenuInicio.boton("Subir a %s" % Ciudad.NOMBRE, _ir_ciudad))
+	v[1].add_child(MenuInicio.boton("Seguir en el piso", _escalera_seguir, 40))
+	v[0].set_meta("caja", v[1])
+	return v[0]
+
+func _escalera_bajar() -> void:
+	_escalera.visible = false
+	state = "play"
+	sim.begin_descend()
+
+func _escalera_seguir() -> void:
+	_escalera.visible = false
+	state = "play"
+
+func _abrir_escalera() -> void:
+	sim.p.piso_max = maxi(sim.p.piso_max, sim.wave + 1)
+	var caja: VBoxContainer = _escalera.get_meta("caja")
+	(caja.get_child(2) as Button).text = "Bajar a la oleada %d" % (sim.wave + 1)
+	_escalera.visible = true
+	sim.fade = 0.0
+	state = "escalera"
+
+## la entrada a la mazmorra de Inca: una casilla por oleada alcanzada (las de jefe vencido y la siguiente)
+func _abrir_puerta() -> void:
+	for c in _puerta.get_children():
+		c.queue_free()
+	var n: int = maxi(1, sim.p.piso_max)
+	var v := _ventana("La Mazmorra", "¿A qué oleada bajas?" if n > 1 else "Aún solo puedes bajar a la oleada 1.", 460)
+	v[0].visible = true
+	_puerta.add_child(v[0])
+	var rejilla := GridContainer.new()
+	rejilla.columns = mini(n, 6)
+	rejilla.add_theme_constant_override("h_separation", 8)
+	rejilla.add_theme_constant_override("v_separation", 8)
+	var centro := CenterContainer.new()
+	centro.add_child(rejilla)
+	v[1].add_child(centro)
+	for k in n:
+		var b := MenuInicio.boton(str(k + 1), _a_mazmorra.bind(k + 1), 52)
+		b.custom_minimum_size.x = 64
+		if k + 1 == n:
+			b.add_theme_color_override("font_color", Color(1, .9, .6))
+		rejilla.add_child(b)
+	v[1].add_child(MenuInicio.boton("Quedarme en %s" % Ciudad.NOMBRE, _quedarme, 40))
+	_puerta.visible = true
+	sim.fade = 0.0
+	fx.banner_t = 0
+	state = "puerta"
+
+func _quedarme() -> void:
+	_puerta.visible = false
+	Ciudad.salir_del_portal(sim)
+	state = "play"
+
+# ======================================================================
+#  Inca y bajar a la mazmorra
+# ======================================================================
+## a Inca: la ciudad, zona segura, con la vida y el maná llenos
+func _ir_ciudad() -> void:
 	_muerte.visible = false
+	_escalera.visible = false
+	_puerta.visible = false
+	prueba = 0
+	_entrar(Ciudad.generar())
+	Ciudad.vaciar(sim)
+	Ciudad.amueblar(sim.L, mazmorra)
+	sim.p.hp = sim.p.st.maxHp
+	sim.p.mana = sim.p.st.maxMana
+	fx.banner("Zona segura · la mazmorra está al norte", Ciudad.NOMBRE)
+	fx.hud()
+	state = "play"
+
+## de Inca a la oleada n (las que se pueden elegir: hasta piso_max)
+func _a_mazmorra(n: int) -> void:
+	_puerta.visible = false
+	_visitas += 1
+	sim.wave = n
+	sim.oro_salida = sim.p.gold
+	_entrar(DungeonGen.gen_level(sim.level_seed(n) + "-v%d" % _visitas, n))
+	fx.banner("Derrota al jefe y baja por la escalera", "Oleada %d" % n)
 	state = "play"
 
 # ======================================================================
@@ -357,6 +498,8 @@ func _revivir() -> void:
 ## la pantalla de inicio: de fondo, un piso 1 fijo sin enemigos con el héroe quieto y la cámara girando
 func _ir_menu() -> void:
 	_muerte.visible = false
+	_escalera.visible = false
+	_puerta.visible = false
 	_set_state("menu")
 	hud.big_map = false
 	prueba = 0
@@ -385,12 +528,11 @@ func _empezar(c: String, n: int) -> void:
 	camara.zoom = Opciones.v("zoom")
 	camara.aplicar()
 	sim.new_game(1, "", clase)
+	state = "play"
 	if n > 0:
 		_entrar_prueba(n)
 	else:
-		_entrar(DungeonGen.gen_level(sim.level_seed(sim.wave), sim.wave))
-		fx.banner("Derrota al jefe y baja por la escalera", "Oleada %d" % sim.wave)
-	state = "play"
+		_ir_ciudad()   # la partida empieza en Inca
 
 func _pausa() -> void:
 	_set_state("pausa")
@@ -528,6 +670,11 @@ func _read_input() -> Sim.Inp:
 	inp.skill = _skill_edge
 	inp.interact = _interact_edge
 	inp.potion = _potion_edge
+	if Ciudad.es_ciudad(sim.L):   # zona segura: en Inca no se ataca
+		inp.attack = false
+		inp.attack_held = false
+		inp.block = false
+		inp.skill = -1
 	_attack_edge = false
 	_dash_edge = false
 	_skill_edge = -1
@@ -540,6 +687,7 @@ func _read_input() -> Sim.Inp:
 func _exit_tree() -> void:
 	KitMazmorra.limpiar()
 	Props3D.limpiar()
+	Ciudad.limpiar()
 	Modelo3D.limpiar()
 	Armadura3D.limpiar()
 	MazmorraGridMap.limpiar()

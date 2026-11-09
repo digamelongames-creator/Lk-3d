@@ -105,7 +105,8 @@ func _draw() -> void:
 	for e in sim.enemies:
 		if not e.dying:
 			left += 1
-	Fonts.outlined(self, font5, Vector2(12, 26), "Oleada %d · quedan %d" % [sim.wave, left], 19, C_FG, 0)
+	var lugar := "%s · zona segura" % Ciudad.NOMBRE if Ciudad.es_ciudad(sim.L) else "Oleada %d · quedan %d" % [sim.wave, left]
+	Fonts.outlined(self, font5, Vector2(12, 26), lugar, 19, C_FG, 0)
 	Fonts.outlined(self, font5, Vector2(12, 46), "I · Equipo" + (" · %d nuevo%s" % [p.rn_new, "" if p.rn_new == 1 else "s"] if p.rn_new > 0 else ""), 13, Color8(255, 210, 90) if p.rn_new > 0 else C_MUTED, 0)
 	var pend := p.pts + p.skp
 	Fonts.outlined(self, font5, Vector2(12, 64), ("+%d puntos · Tab / T" % pend) if pend > 0 else "Tab · Personaje · T · Árbol", 13, Color8(255, 210, 90) if pend > 0 and int(_blink_t * 2) % 2 == 0 else C_MUTED, 0)
@@ -266,7 +267,7 @@ func _draw_big_map(W: float, H: float) -> void:
 	var pulse := 6 + sin(_blink_t * 6) * 2
 	draw_circle(Vector2(x0 + p.x / Sim.TS * s, y0 + (p.y - 6) / Sim.TS * s), pulse + 3, Color(228 / 255.0, 155 / 255.0, 76 / 255.0, .35))
 	draw_circle(Vector2(x0 + p.x / Sim.TS * s, y0 + (p.y - 6) / Sim.TS * s), 5, Color8(228, 155, 76))
-	Fonts.outlined(self, Fonts.px(700), Vector2(W / 2, y0 - 16), "Mapa de la mazmorra · Oleada %d" % sim.wave, 22, ViewFx.col("#e9cf8a"))
+	Fonts.outlined(self, Fonts.px(700), Vector2(W / 2, y0 - 16), ("Mapa de %s" % Ciudad.NOMBRE if Ciudad.es_ciudad(sim.L) else "Mapa de la mazmorra · Oleada %d" % sim.wave), 22, ViewFx.col("#e9cf8a"))
 	var st: Dictionary = sim.L.stairs_cell
 	var seen: bool = sim.explored[st.cy * DungeonGen.GW + st.cx] != 0
 	var left := 0

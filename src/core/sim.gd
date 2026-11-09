@@ -232,6 +232,7 @@ func enter_level(level: Dictionary) -> void:
 	map_dirty = true
 	pcell = -1
 	cleared = false
+	_escalera_pedida = false
 	_elegir_reto()
 	_populate()
 	_chests_init()
@@ -856,6 +857,8 @@ func _rand_cell_in(r: Dictionary, tries: int = 40) -> Variant:
 	return null
 
 func _populate() -> void:
+	if L.has("ciudad"):   # Inca es zona segura: sin enemigos
+		return
 	var w := wave
 	var dist: PackedInt32Array = L.dist
 	var corr: PackedByteArray = L.corr
@@ -1399,12 +1402,20 @@ func step(dt: float, inp: Inp) -> String:
 	if phase == "fight":
 		if not p.dead and tile_at(cell_of(p.x), cell_of(p.y - 3)) == DungeonGen.DOWN:
 			if jefe_vivo() == null:
-				begin_descend()
+				if preguntar_escalera:
+					# la vista pregunta qué hacer (Inca: elegir piso; tras el jefe: bajar o subir a Inca), una vez por pisada
+					if not _escalera_pedida:
+						_escalera_pedida = true
+						return "escalera"
+				else:
+					begin_descend()
 			elif t - _aviso_escalera_t > 2.0:
 				_aviso_escalera_t = t
 				var j := jefe_vivo()
 				fx.text(p.x, p.y - 60, j.title + " guarda la escalera", "#ff5a3a", 12, false, 1.6, true, false)
 				fx.sonido(&"escalera_cerrada", p.x, p.y)
+		else:
+			_escalera_pedida = false
 	elif phase == "descend":
 		fade += dt / .7
 		if fade >= 1:
@@ -4791,6 +4802,11 @@ const EXPLOTA_R := 70.0
 const EXPLOTA_AVISO := 1.0
 var bombas: Array = []     # golpes en área con aviso: {x, y, r, t, dmg, own, col, snd}
 var _aviso_escalera_t := -9.0
+## si es true, pisar la escalera sin jefe devuelve "escalera" en step() en lugar de bajar (la vista pregunta)
+var preguntar_escalera := false
+var _escalera_pedida := false
+## oro que llevaba el héroe al salir de Inca: al morir en la mazmorra vuelve a tener solo eso
+var oro_salida := 0
 
 ## el jefe del piso que sigue vivo (o null)
 func jefe_vivo() -> Ent.Enemy:
@@ -5115,7 +5131,7 @@ const RETO_OLAS := [6, 9, 12]
 
 func _elegir_reto() -> void:
 	reto = {}
-	if L.has("prueba"):
+	if L.has("prueba") or L.has("ciudad"):
 		return
 	var mejor := -1
 	var ks := []
@@ -5315,7 +5331,7 @@ func _trampa_dano(tr: Dictionary, dmg: float) -> void:
 func _mazmorra_init() -> void:
 	rompibles = []
 	trampas = []
-	if L.has("prueba"):
+	if L.has("prueba") or L.has("ciudad"):
 		return
 	_rompibles_init(wave)
 	_trampas_init(wave)

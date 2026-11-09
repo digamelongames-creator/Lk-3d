@@ -107,6 +107,7 @@ class Hero extends RefCounted:
 	var drain_tick := 0.0
 	var leech_acc := 0.0
 	var gold := 0
+	var piso_max := 1             # el piso más hondo al que se puede ir desde Inca (se gana al vencer al jefe del anterior)
 	var keys := 0
 	var healed := 0
 	var effects := []
