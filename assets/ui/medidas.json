@@ -76,5 +76,41 @@
    1100,
    25
   ]
+ },
+ "boton_normal": {
+  "tam": [
+   241,
+   56
+  ]
+ },
+ "boton_normal_chico": {
+  "tam": [
+   138,
+   32
+  ]
+ },
+ "boton_encima": {
+  "tam": [
+   240,
+   56
+  ]
+ },
+ "boton_encima_chico": {
+  "tam": [
+   137,
+   32
+  ]
+ },
+ "boton_pulsado": {
+  "tam": [
+   236,
+   56
+  ]
+ },
+ "boton_pulsado_chico": {
+  "tam": [
+   135,
+   32
+  ]
  }
 }

@@ -427,10 +427,13 @@ func _ventana(titulo_txt: String, texto: String, ancho := 380) -> Array:
 	var centro := CenterContainer.new()
 	centro.set_anchors_preset(Control.PRESET_FULL_RECT)
 	raiz.add_child(centro)
+	var marco := PanelContainer.new()
+	marco.add_theme_stylebox_override("panel", UiArte.estilo_panel(26))
+	centro.add_child(marco)
 	var caja := VBoxContainer.new()
 	caja.custom_minimum_size = Vector2(ancho, 0)
 	caja.add_theme_constant_override("separation", 14)
-	centro.add_child(caja)
+	marco.add_child(caja)
 	var titulo := Label.new()
 	titulo.text = titulo_txt
 	titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

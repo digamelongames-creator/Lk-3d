@@ -87,6 +87,9 @@ func _make_theme() -> Theme:
 	th.set_stylebox("pressed", "Button", h)
 	th.set_stylebox("focus", "Button", f)
 	th.set_stylebox("disabled", "Button", d)
+	if UiArte.tex("boton_normal") != null:   # los botones de Diego, en su tamaño chico
+		for e in ["normal", "hover", "pressed", "focus", "disabled"]:
+			th.set_stylebox(e, "Button", UiArte.estilo_boton(e, true))
 	th.set_color("font_color", "Button", C_FG)
 	th.set_color("font_hover_color", "Button", C_GOLDT)
 	th.set_color("font_focus_color", "Button", C_GOLDT)
@@ -109,7 +112,11 @@ func _button(parent: Node, txt: String, cb: Callable, red := false) -> Button:
 	var b := Button.new()
 	b.text = txt
 	b.pressed.connect(cb)
-	if red:
+	if red and UiArte.vestir_boton(b):
+		b.add_theme_font_override("font", Fonts.gothic(800))
+		for k in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
+			b.add_theme_color_override(k, C_GOLDT)
+	elif red:
 		var n := StyleBoxFlat.new()
 		n.bg_color = Color8(162, 33, 22)
 		n.border_color = C_GOLD
@@ -152,12 +159,7 @@ func _rebuild() -> void:
 # ======================================================================
 func _panel(w: float) -> VBoxContainer:
 	var pc := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color8(22, 16, 12)
-	sb.border_color = Color8(107, 84, 52)
-	sb.set_border_width_all(2)
-	sb.set_content_margin_all(18)
-	pc.add_theme_stylebox_override("panel", sb)
+	pc.add_theme_stylebox_override("panel", UiArte.estilo_panel(18))
 	pc.custom_minimum_size.x = w
 	var cc := CenterContainer.new()
 	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -514,12 +516,7 @@ func _build_tree() -> void:
 				first = nb
 	# ficha del nodo
 	var info := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(20 / 255.0, 16 / 255.0, 12 / 255.0, .92)
-	sb.border_color = Color8(107, 84, 52)
-	sb.set_border_width_all(1)
-	sb.set_content_margin_all(10)
-	info.add_theme_stylebox_override("panel", sb)
+	info.add_theme_stylebox_override("panel", UiArte.estilo_panel(10))
 	info.custom_minimum_size = Vector2(0, 92)
 	info.name = "Info"
 	v.add_child(info)

@@ -157,14 +157,21 @@ func _draw() -> void:
 		draw_rect(Rect2(x0 + sim.CX / Sim.TS * s - 2, y0 + (sim.CY - 8) / Sim.TS * s - 2, 5, 5), ViewFx.col("#5fb4d6"))
 	if int(_blink_t * 3) % 2 == 0:
 		draw_rect(Rect2(x0 + p.x / Sim.TS * s - 2, y0 + (p.y - 6) / Sim.TS * s - 2, 5, 5), ViewFx.col("#ffd25a"))
-	# ---- abajo: orbe de vida, habilidades y experiencia en el centro, orbe de maná (piezas de Diego) ----
+	# ---- abajo en el centro, todo junto: orbe de vida, habilidades con la experiencia debajo y orbe de maná
+	# (piezas de Diego; centrado por decisión suya, 10 nov) ----
 	var u := H / 1080.0
 	var oh := 236.0 * u
+	var bs := 72.0 * u
+	var gap := 10.0 * u
+	var total_w := 4 * bs + 3 * gap
+	var ew := total_w + 200 * u
 	var tam_i: Array = UiArte.med("orbe_marco_izq").get("tam", [640, 586])
 	var tam_d: Array = UiArte.med("orbe_marco_der").get("tam", [640, 588])
-	var ri := Rect2(6 * u, H - oh - 2 * u, oh * tam_i[0] / tam_i[1], oh)
+	var wi: float = oh * tam_i[0] / tam_i[1]
 	var wd: float = oh * tam_d[0] / tam_d[1]
-	var rd := Rect2(W - wd - 6 * u, H - oh - 2 * u, wd, oh)
+	# el aro del orbe de vida acaba al ~93 % de su imagen y el del maná empieza al ~7 %: ahí se pegan al centro
+	var ri := Rect2(W / 2 - ew / 2 - wi * .93, H - oh - 2 * u, wi, oh)
+	var rd := Rect2(W / 2 + ew / 2 - wd * .07, H - oh - 2 * u, wd, oh)
 	if hit_shake > 0:
 		ri.position.x += sin(hit_shake * 80) * 3
 	var f: float = clampf(p.hp / p.st.maxHp, 0, 1)
@@ -176,11 +183,7 @@ func _draw() -> void:
 	if con_mana:
 		Fonts.outlined(self, font, hm.get_center() + Vector2(0, 6 * u), "%d / %d" % [maxi(0, int(p.mana)), int(p.st.maxMana)], int(17 * u), C_FG, 1, 4, Color.BLACK)
 	# barra de habilidades y poción
-	var bs := 72.0 * u
-	var gap := 10.0 * u
-	var total_w := 4 * bs + 3 * gap
 	var kx := W / 2 - total_w / 2
-	var ew := total_w + 200 * u
 	var tam_e: Array = UiArte.med("exp_marco").get("tam", [1100, 49])
 	var eh: float = ew * tam_e[1] / tam_e[0]
 	var ey := H - eh - 10 * u

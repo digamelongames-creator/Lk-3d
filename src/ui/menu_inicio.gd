@@ -291,13 +291,7 @@ func _pagina_opciones() -> Control:
 	panel.offset_right = 260
 	panel.offset_top = -260
 	panel.grow_vertical = Control.GROW_DIRECTION_END
-	var st := StyleBoxFlat.new()
-	st.bg_color = Color(.07, .04, .03, .93)
-	st.border_color = Color8(150, 110, 50)
-	st.set_border_width_all(2)
-	st.set_corner_radius_all(4)
-	st.set_content_margin_all(22)
-	panel.add_theme_stylebox_override("panel", st)
+	panel.add_theme_stylebox_override("panel", UiArte.estilo_panel(22))
 	var caja := VBoxContainer.new()
 	caja.add_theme_constant_override("separation", 12)
 	panel.add_child(caja)
@@ -403,7 +397,7 @@ static func boton(texto: String, accion: Callable, alto: int = 48) -> Button:
 	b.add_theme_color_override("font_hover_color", Color(1, .9, .6))
 	b.add_theme_color_override("font_focus_color", Color(1, .9, .6))
 	b.add_theme_color_override("font_pressed_color", Color(1, .9, .6))
-	for estado in ["normal", "hover", "pressed", "focus"]:
+	for estado in ([] if UiArte.vestir_boton(b) else ["normal", "hover", "pressed", "focus"]):
 		var st := StyleBoxFlat.new()
 		st.bg_color = Color(.12, .06, .04, .95) if estado == "normal" else Color(.25, .1, .05, .95)
 		st.border_color = Color8(230, 180, 90) if estado in ["hover", "focus"] else Color8(150, 110, 50)

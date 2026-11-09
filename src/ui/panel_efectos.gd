@@ -24,13 +24,7 @@ func _ready() -> void:
 	offset_top = 110
 	custom_minimum_size = Vector2(380, 0)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	var caja := StyleBoxFlat.new()
-	caja.bg_color = Color(.05, .03, .02, .88)
-	caja.border_color = Color8(150, 110, 50)
-	caja.set_border_width_all(1)
-	caja.set_corner_radius_all(4)
-	caja.set_content_margin_all(12)
-	add_theme_stylebox_override("panel", caja)
+	add_theme_stylebox_override("panel", UiArte.estilo_panel(12))
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
 	add_child(col)

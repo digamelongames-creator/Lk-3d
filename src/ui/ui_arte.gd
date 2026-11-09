@@ -56,6 +56,52 @@ static func caja_lados(ci: CanvasItem, nombre: String, r: Rect2, m: Vector4, k: 
 	ci.draw_set_transform(Vector2.ZERO)
 	return true
 
+## estilo de las ventanas: el panel de mármol (o el plano de antes si falta la pieza)
+static func estilo_panel(contenido := 22.0) -> StyleBox:
+	var t := tex("panel")
+	if t == null:
+		var f := StyleBoxFlat.new()
+		f.bg_color = Color(.07, .04, .03, .93)
+		f.border_color = Color8(150, 110, 50)
+		f.set_border_width_all(2)
+		f.set_content_margin_all(contenido)
+		return f
+	var s := StyleBoxTexture.new()
+	s.texture = t
+	s.set_texture_margin_all(40)
+	s.set_content_margin_all(contenido + 6)
+	return s
+
+const MARGEN_BOTON := Vector2(34, 16)   # en píxeles de boton_*.png (56 de alto); el chico, la mitad larga
+## estilo de un estado del botón: normal, hover, pressed, focus o disabled
+static func estilo_boton(estado: String, chico := false) -> StyleBox:
+	var nombre: String = {"hover": "boton_encima", "focus": "boton_encima", "pressed": "boton_pulsado"}.get(estado, "boton_normal")
+	var t := tex(nombre + ("_chico" if chico else ""))
+	if t == null:
+		return null
+	var m := MARGEN_BOTON * (32.0 / 56.0 if chico else 1.0)
+	var s := StyleBoxTexture.new()
+	s.texture = t
+	s.texture_margin_left = m.x
+	s.texture_margin_right = m.x
+	s.texture_margin_top = m.y
+	s.texture_margin_bottom = m.y
+	s.content_margin_left = m.x * .7
+	s.content_margin_right = m.x * .7
+	s.content_margin_top = 3
+	s.content_margin_bottom = 4
+	if estado == "disabled":
+		s.modulate_color = Color(.55, .55, .55, .8)
+	return s
+
+## pone los botones de Diego a un botón; devuelve false si faltan las piezas
+static func vestir_boton(b: Button, chico := false) -> bool:
+	if tex("boton_normal") == null:
+		return false
+	for e in ["normal", "hover", "pressed", "focus", "disabled"]:
+		b.add_theme_stylebox_override(e, estilo_boton(e, chico))
+	return true
+
 ## mientras Diego no pase el líquido azul: el rojo con el tono girado
 static func _mana_de_reserva() -> Texture2D:
 	var rojo := tex("orbe_vida_liquido")

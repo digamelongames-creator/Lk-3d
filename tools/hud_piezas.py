@@ -34,6 +34,15 @@ PIEZAS = {
     "Barra de habilidades": ("barra_habilidades", 1200),
 }
 
+# botones (normal, al pasar el ratón y pulsado): se guardan a dos altos, el normal y el chico
+BOTONES = {
+    "Botón normal": "boton_normal",
+    "Botón encima": "boton_encima",
+    "Botón pulsado": "boton_pulsado",
+}
+ALTO_BOTON = 56
+ALTO_CHICO = 32
+
 
 def sin_fondo_negro(im: Image.Image) -> Image.Image:
     """Fondo negro → transparente: alfa por brillo y color sin premultiplicar."""
@@ -90,6 +99,20 @@ def main(src: Path, dst: Path) -> None:
         h = hueco(im) if nombre.endswith("marco") or nombre.startswith("orbe_marco") or nombre == "minimapa_marco" else None
         medidas[nombre] = {"tam": [im.width, im.height], **({"hueco": h} if h else {})}
         print(f"{f.name} → {nombre}.png {im.size} {h or ''}")
+    for pref, nombre in BOTONES.items():
+        f = next((x for x in archivos if x.stem.startswith(pref)), None)
+        if f is None:
+            continue
+        im = preparar(Image.open(f))
+        # fuera los adornos sueltos de arriba o abajo: solo las filas con bastante dibujo
+        a = np.asarray(im)[:, :, 3]
+        filas = np.where((a > 40).sum(1) > im.width * .2)[0]
+        im = im.crop((0, filas.min(), im.width, filas.max() + 1))
+        for suf, alto in (("", ALTO_BOTON), ("_chico", ALTO_CHICO)):
+            b = im.resize((round(im.width * alto / im.height), alto), Image.LANCZOS)
+            b.save(dst / f"{nombre}{suf}.png", optimize=True)
+            medidas[nombre + suf] = {"tam": [b.width, b.height]}
+            print(f"{f.name} → {nombre}{suf}.png {b.size}")
     # barra de experiencia: marco arriba y relleno abajo en la misma imagen
     f = next((x for x in archivos if x.stem.startswith("Barra de experiencia")), None)
     if f is not None:
