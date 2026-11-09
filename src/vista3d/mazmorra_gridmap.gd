@@ -105,8 +105,25 @@ func construir(L: Dictionary) -> void:
 				objetos.set_cell_item(celda, pieza[t])
 	_antorchas(L)
 	_decorador(L)
+	_puertas_secretas(L)
 	if L.get("plataformas", false):
 		Abismo3D.crear(G, adornos)   # paredes de roca bajo los bordes y niebla en el vacío
+
+## puertas negras de las salas secretas (SalaSecreta): la cara del muro que da al suelo pasa a ser una puerta,
+## con una luz fría y tenue delante para que se distinga de los nichos
+func _puertas_secretas(L: Dictionary) -> void:
+	var i_puerta := KitMazmorra.id("cara_puerta")
+	if i_puerta < 0:
+		return
+	for s in L.get("secretas", []):
+		for par in [[s.puerta, s.fuera], [s.puerta_dentro, s.dentro]]:
+			var m: Vector2i = par[0]
+			var k := DIRS.find(par[1] - m)
+			if k < 0:
+				continue
+			caras[k].set_cell_item(Vector3i(m.x, 0, m.y), i_puerta, _ori(caras[k], GIROS[k]))
+			var d: Vector2i = par[1] - m
+			_luz(centro(par[1]) - Vector3(d.x, 0, d.y) * .4 + Vector3(0, 1.4, 0), Color(.55, .65, 1.0), .9, 3.5)
 
 ## un muro solo hace falta donde la roca toca algo pisable (las 8 vecinas); la roca de dentro se queda vacía
 func _junto_a_suelo(G: PackedByteArray, cx: int, cy: int) -> bool:

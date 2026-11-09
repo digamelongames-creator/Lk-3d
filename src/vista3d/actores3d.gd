@@ -110,6 +110,7 @@ func actualizar(dt: float) -> void:
 	_animar_heroe(p)
 	_vestir()
 	_actualizar_enemigos(dt)
+	_nombre_enemigo()
 	# botín y oro: reserva de nodos del tamaño de la lista
 	_actualizar_botin()
 	_reserva(_oro, sim.gold.size(), func(): return _caja(Vector3(.3, .08, .3), Color(1, .8, .2), Color(1, .7, .1)))
@@ -821,6 +822,71 @@ func _nuevo_enemigo(e: Ent.Enemy) -> Dictionary:
 	elif e.apr_titulo != "":
 		_marcar_titulo(e, d)
 	return d
+
+## nombre del enemigo bajo el ratón o del último que has golpeado (élites y jefes ya llevan el suyo encima)
+const NOMBRE_GOLPE_S := 1.5   # segundos que se ve el nombre tras golpearlo
+const NOMBRE_RATON_PX := 46.0
+var _nombre: Label3D
+func _nombre_enemigo() -> void:
+	if not is_inside_tree():
+		return
+	if _nombre == null:
+		_nombre = Label3D.new()
+		_nombre.modulate = Color(1, .9, .78)
+		_nombre.outline_modulate = Color.BLACK
+		_nombre.outline_size = 8
+		_nombre.font_size = 26
+		_nombre.pixel_size = .005
+		_nombre.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_nombre.no_depth_test = true
+		add_child(_nombre)
+	var e := _enemigo_bajo_raton()
+	if e == null:
+		var mejor := NOMBRE_GOLPE_S
+		for o in sim.enemies:
+			if o.dying or o.dead:
+				continue
+			var hace: float = sim.t - o.golpe_t
+			if hace < mejor:
+				mejor = hace
+				e = o
+	if e == null or e.rare or e.jefe:
+		_nombre.visible = false
+		return
+	var d: Dictionary = _enemigos.get(e.get_instance_id(), {})
+	if d.is_empty() or d.get("lejos", false):
+		_nombre.visible = false
+		return
+	_nombre.text = sim.nombre_de(e)
+	_nombre.position = (d.n as Node3D).position + Vector3(0, 2.3 + (.3 if e.apr_titulo != "" else 0.0), 0)   # encima de «Experto»/«Asesino»
+	_nombre.visible = true
+
+## el enemigo vivo más cercano al ratón en pantalla (de los pies a la cabeza)
+func _enemigo_bajo_raton() -> Ent.Enemy:
+	if not is_inside_tree():
+		return null
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return null
+	var raton := get_viewport().get_mouse_position()
+	var mejor: Ent.Enemy = null
+	var bd := NOMBRE_RATON_PX
+	for e in sim.enemies:
+		if e.dying or e.dead:
+			continue
+		var d: Dictionary = _enemigos.get(e.get_instance_id(), {})
+		if d.is_empty() or d.get("lejos", false):
+			continue
+		var pie: Vector3 = (d.n as Node3D).position
+		if cam.is_position_behind(pie):
+			continue
+		var a := cam.unproject_position(pie)
+		var b := cam.unproject_position(pie + Vector3(0, 1.8, 0))
+		var dd := Geometry2D.get_closest_point_to_segment(raton, a, b).distance_to(raton)
+		if dd < bd:
+			bd = dd
+			mejor = e
+	return mejor
 
 ## «Asesino» (te ha matado varias veces) o «Experto» (muchos combates) encima de su cabeza (Aprendizaje)
 const COL_TITULO := {"Asesino": Color(1, .32, .25), "Experto": Color(1, .78, .35)}

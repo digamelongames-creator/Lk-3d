@@ -28,6 +28,8 @@ var clase := "knight"
 var _muerte: Control   # panel «Has caído»: Volver a Inca (pierdes la mochila y el oro de la bajada) o al menú
 var _escalera: Control   # tras vencer al jefe: bajar a la oleada siguiente, subir a Inca o seguir en el piso
 var _puerta: Control     # la entrada a la mazmorra de Inca: elegir la oleada
+var _secreta: Control    # puerta de una sala secreta: «¿Entrar?» (SalaSecreta)
+var _negro: ColorRect    # fundido a negro al cruzar una puerta secreta
 var _ciudad := ""        # --ciudad[=puerta|escalera]: empieza en Inca (pruebas y capturas)
 var _visitas := 0        # cada bajada genera pisos nuevos aunque se repita la oleada
 var opciones_camara: Array = []
@@ -181,6 +183,8 @@ func _ready() -> void:
 	_puerta.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_puerta.visible = false
 	ui.add_child(_puerta)
+	_secreta = _panel_secreta()
+	ui.add_child(_secreta)
 	_creditos = Creditos.new()
 	_creditos.visible = false
 	_creditos.cerrado.connect(func(): if state == "creditos": mostrar_creditos(false))
@@ -367,6 +371,8 @@ func _process(dt: float) -> void:
 				_abrir_puerta()
 			else:
 				_abrir_escalera()
+		elif r == "secreta":
+			_abrir_secreta()
 		elif r == "over":
 			state = "over"
 			_muerte.visible = true
@@ -525,6 +531,54 @@ func _abrir_puerta() -> void:
 	sim.fade = 0.0
 	fx.banner_t = 0
 	state = "puerta"
+
+## puerta de una sala secreta: entrar (o salir) con un fundido a negro, o quedarse
+func _panel_secreta() -> Control:
+	var v := _ventana("Puerta oculta", "¿Quieres entrar?")
+	v[1].add_child(MenuInicio.boton("Entrar", _cruzar_secreta))
+	v[1].add_child(MenuInicio.boton("No", _no_secreta, 40))
+	v[0].set_meta("caja", v[1])
+	return v[0]
+
+func _abrir_secreta() -> void:
+	if _bot != null:
+		_cruzar_secreta()
+		return
+	var sale: bool = sim.secreta_pedida.sale
+	var caja: VBoxContainer = _secreta.get_meta("caja")
+	(caja.get_child(1) as Label).text = "¿Vuelves a la mazmorra?" if sale else "Detrás de esta puerta hay algo. ¿Quieres entrar?"
+	(caja.get_child(2) as Button).text = "Salir" if sale else "Entrar"
+	_secreta.visible = true
+	state = "secreta"
+
+func _no_secreta() -> void:
+	_secreta.visible = false
+	sim.cancelar_secreta()
+	state = "play"
+
+## fundido a negro (la pequeña pantalla de carga), el héroe pasa al otro lado y vuelve la imagen
+func _cruzar_secreta() -> void:
+	_secreta.visible = false
+	state = "fundido"
+	if _negro == null:
+		_negro = ColorRect.new()
+		_negro.color = Color.BLACK
+		_negro.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_negro.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_secreta.get_parent().add_child(_negro)
+	_negro.modulate.a = 0.0
+	_negro.visible = true
+	var tw := create_tween()
+	tw.tween_property(_negro, "modulate:a", 1.0, .35)
+	tw.tween_callback(func():
+		sim.cruzar_secreta()
+		_camara(1.0))
+	tw.tween_interval(.35)
+	tw.tween_property(_negro, "modulate:a", 0.0, .35)
+	tw.tween_callback(func():
+		_negro.visible = false
+		if state == "fundido":
+			state = "play")
 
 func _quedarme() -> void:
 	_puerta.visible = false

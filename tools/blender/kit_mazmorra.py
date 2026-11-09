@@ -423,14 +423,16 @@ def cara(nombre, tipo="lisa"):
         huecos = [("arco", -.48, .48, .75, 1.6)]
     elif tipo == "arco_ciego":
         huecos = [("arco", -.78, .78, ZOCALO, 1.55)]
+    elif tipo == "puerta":   # puerta negra hasta el suelo (las de las salas secretas, SalaSecreta)
+        huecos = [("arco", -.55, .55, 0, 1.45)]
     elif tipo == "reja":
         huecos = [("rect", -.45, .45, 1.15, 2.15)]
     elif tipo == "columna":
         huecos = [("rect", -.36, .36, 0, ALTO_MURO)]
-    _zocalo(p, piedra) if tipo != "arco_ciego" else None
+    _zocalo(p, piedra) if tipo not in ("arco_ciego", "puerta") else None
     sillares(p, piedra, -CELDA / 2, CELDA / 2, ZOCALO, IMPOSTA, huecos=huecos, quitar=.22 if tipo == "rota" else 0.0)
     _cornisa(p, piedra)
-    if tipo in ("nicho", "arco_ciego"):
+    if tipo in ("nicho", "arco_ciego", "puerta"):
         x0, x1, z0, za = huecos[0][1:5]
         r = (x1 - x0) / 2
         # fondo del hueco, metido hacia dentro, y dovelas alrededor
@@ -439,10 +441,15 @@ def cara(nombre, tipo="lisa"):
             for lado in (-1, 1):   # jambas del arco
                 for k, (za_, zb_) in enumerate([(0, .5), (.5, 1.0), (1.0, za)]):
                     p.caja((lado * (r + .1), FRENTE - .06 + .15, (za_ + zb_) / 2), (.22, .3, zb_ - za_ - JUNTA), piedra, bisel=.04)
+        elif tipo == "puerta":
+            p.caja((0, FRENTE + .32, (z0 + za + r) / 2), (x1 - x0, .1, za + r - z0), oscuro, bisel=0, desorden=False, color=(1, 1, 1))
+            for lado in (-1, 1):   # jambas
+                p.caja((lado * (r + .1), FRENTE - .06 + .15, za / 2), (.22, .3, za - JUNTA), piedra, bisel=.04)
+            p.caja((0, FRENTE - .05, .03), (x1 - x0 + .2, .5, .06), piedra, bisel=.02)   # umbral
         else:
             p.caja((0, FRENTE + .28, (z0 + za + r) / 2), (x1 - x0, .1, za + r - z0), oscuro, bisel=0, desorden=False, color=(1, 1, 1))
             p.caja((0, FRENTE - .1 + .2, z0 - .06), (x1 - x0 + .3, .4, .12), piedra, bisel=.03)   # repisa
-        nd = 9 if tipo == "arco_ciego" else 7
+        nd = 9 if tipo == "arco_ciego" else (8 if tipo == "puerta" else 7)
         for k in range(nd):
             a = math.pi * (k + .5) / nd
             rm = r + .12
@@ -537,6 +544,7 @@ def main(salida):
     cara("cara_columna", "columna")
     cara("cara_nicho", "nicho")
     cara("cara_arco_ciego", "arco_ciego")
+    cara("cara_puerta", "puerta")
     cara("cara_reja", "reja")
     cara("cara_rota", "rota")
     cara("cara_hiedra", "hiedra")

@@ -203,6 +203,7 @@ func enter_level(level: Dictionary) -> void:
 	apr.cerrar_todos(self)   # los combates del piso anterior acaban aquí
 	L = level
 	Muros.preparar(L)
+	SalaSecreta.tallar(L, wave)   # salas secretas tras algunas puertas negras (antes de pintar el piso)
 	G = L.grid
 	CX = L.fount.x if L.fount != null else -9999.0
 	CY = L.fount.y if L.fount != null else -9999.0
@@ -240,6 +241,9 @@ func enter_level(level: Dictionary) -> void:
 	_populate()
 	_chests_init()
 	_mazmorra_init()
+	_cofre_entrada()
+	_cofres_sala()
+	_secretas_init()
 	total = enemies.size()
 	# cada enemigo, su puesto fijo («piso-n» por orden de reparto), su papel y su título
 	apr.repartir(self, "" if L.has("prueba") else str(wave))
@@ -1024,6 +1028,7 @@ const CHEST_LOOT := {
 	"iron": {"n": [2, 2], "min": 1, "potion": .35, "leg": 0.0, "gold": [20, 50]},
 	"gold": {"n": [3, 3], "min": 2, "potion": 1.0, "leg": .15, "gold": [60, 120]},
 	"cursed": {"n": [2, 3], "min": 2, "potion": .3, "leg": .1, "gold": [40, 80]},
+	"sala": {"n": [1, 2], "min": 0, "potion": .6, "leg": .02, "gold": [15, 40]},
 }
 const CHEST_N := {"wood": "Baúl de madera", "iron": "Cofre de hierro", "gold": "Cofre dorado", "cursed": "Cofre maldito", "mimic": "Baúl de madera"}
 
@@ -1041,6 +1046,8 @@ func nearest_chest() -> Variant:
 
 ## ¿el cofre aún tiene guardianes vivos?
 func chest_locked(c: Dictionary) -> bool:
+	if c.has("sala"):   # cofre de sala: cerrado hasta que mueran los que estaban en ella
+		return guardias_vivos(c) > 0
 	if c.kind != "gold":
 		return false
 	for e in c.guards:
@@ -1081,7 +1088,12 @@ func try_open_chest(c: Dictionary) -> void:
 	if chest_locked(c):
 		if not (c.msg_t > t - .8):
 			c.msg_t = t
-			fx.text(c.x, c.y - 36, "Derrota al guardián", "#ffd25a", 10, false, 1.1, false, false)
+			var n := guardias_vivos(c)
+			var aviso := ("Limpia la sala · queda %d" % n if n == 1 else "Limpia la sala · quedan %d" % n) if c.has("sala") else "Derrota al guardián"
+			fx.text(c.x, c.y - 36, aviso, "#ffd25a", 10, false, 1.1, false, false)
+		return
+	if c.get("inicio", false):
+		_abrir_cofre_entrada(c)
 		return
 	if c.kind == "iron":
 		if not (p.keys > 0) and not runes.lockpick():
@@ -1097,7 +1109,7 @@ func try_open_chest(c: Dictionary) -> void:
 	if c.kind == "mimic":   # ¡muerde!
 		_morder(c)
 		return
-	var CL: Dictionary = CHEST_LOOT[c.kind]
+	var CL: Dictionary = CHEST_LOOT["sala" if c.has("sala") else c.kind]
 	var n: int = CL.n[0] + int(rnd() * (CL.n[1] - CL.n[0] + 1))
 	var quals := []
 	for i in n:
@@ -1127,7 +1139,7 @@ func try_open_chest(c: Dictionary) -> void:
 		for i in 5:
 			drop_gold(c.x + (rnd() - .5) * 60, c.y + 8 + rnd() * 24, (60 + rnd() * 40) * (1 + wave * .15), false)
 	fx.burst(c.x, c.y, 12, ["#fff3c0", Items.RQ_C[c.best]], 10, 70)
-	fx.text(c.x, c.y - 34, CHEST_N[c.kind], Items.RQ_C[c.best], 10, false, 1.2, false, false)
+	fx.text(c.x, c.y - 34, String(c.get("nombre", CHEST_N[c.kind])), Items.RQ_C[c.best], 10, false, 1.2, false, false)
 	if c.kind == "cursed":
 		if rnd() < .5:
 			_spawn_around(c.x, c.y, 3, 40, 80)
@@ -1215,7 +1227,7 @@ func _gear_drop(q: int) -> Dictionary:
 ## madera 1 runa, hierro 2 (una de rango II o más), dorado 3 (una de III o más), maldito 2
 func _chest_runes(c: Dictionary) -> Array:
 	const N := {"wood": 1, "iron": 2, "gold": 3, "cursed": 2}
-	var n: int = N.get(c.kind, 1) + int(runes.rv("looter"))
+	var n: int = (1 if c.has("sala") else N.get(c.kind, 1)) + int(runes.rv("looter"))
 	var out := []
 	for i in n:
 		out.append(rune_roll(N.get(c.kind, 1) if i == 0 else 1, c.kind == "gold"))
@@ -1248,10 +1260,11 @@ func roll_drops(e: Ent.Enemy) -> void:
 			ids.append(rune_roll(2 if i == 0 else 1, true))
 		var r := rnd()
 		gear.append(3 if r < .08 else (2 if r < .45 else 1))
+		gear.append(1 if rnd() < .5 else 0)   # más botín (10 nov): una pieza más
 	else:
-		if rnd() < .10 * fm:
+		if rnd() < BOTIN.runa * fm:
 			ids.append(rune_roll(1, false))
-		if rnd() < (.18 if e.thrower else .12) * fm:
+		if rnd() < (BOTIN.pieza_lanza if e.thrower else BOTIN.pieza) * fm:
 			var r := rnd()
 			gear.append(3 if r < .01 else (2 if r < .06 else (1 if r < .31 else 0)))
 	if ids.is_empty() and gear.is_empty():
@@ -1476,6 +1489,8 @@ func step(dt: float, inp: Inp) -> String:
 		over = true
 		stats.deaths = int(stats.get("deaths", 0)) + 1
 		return "over"
+	if secreta_pedida != null:
+		return "secreta"   # la vista pregunta «¿Entrar?» y hace el fundido (cruzar_secreta)
 	return ""
 
 func _update_hero(dt: float, inp: Inp) -> void:
@@ -1705,6 +1720,7 @@ func enemy_block(e: Ent.Enemy, fx_: float, fy: float) -> bool:
 
 ## los caballeros legendarios, tras encajar tres golpes seguidos, se cubren con el escudo
 func note_hit(e: Ent.Enemy) -> void:
+	e.golpe_t = t
 	if not e.rare or e.dying:
 		return
 	if t - e.last_hit > 1.2:
@@ -1745,6 +1761,7 @@ func _do_hit() -> void:
 		if absf(da) > (1.6 if a3 and has("k_verd_a") else 1.3) + abre and d > 12 + e.cuerpo:
 			continue
 		hits += 1
+		e.golpe_t = t
 		var rp: bool = rip and e == p.rip_target
 		var crit = rp or rnd() < p.st.crit
 		var blk := false if rp else enemy_block(e, p.x, p.y)
@@ -1895,13 +1912,13 @@ func kill_enemy(e: Ent.Enemy, ang: float) -> void:
 	var w := wave
 	if e.rare or champ:
 		drop_gold(e.x, e.y, (20 + rnd() * 25) * (1 + w * .12) * (2 if champ else 1), true)
-	elif rnd() < .45:
+	elif rnd() < BOTIN.oro:
 		drop_gold(e.x, e.y, (3 + rnd() * 7) * (1 + w * .12), true)
 	if (e.type == "slayer" or e.type == "sargwen" or e.rare) and rnd() < (.5 if e.rare else .1) * p.st.keyMul:
 		floor_keys.append({"x": e.x + (rnd() - .5) * 16, "y": e.y + 8, "bob": rnd() * 6})
-	var chance := 1.0 if champ else (.6 if e.rare else (.3 if e.thrower else .18))
+	var chance := 1.0 if champ else (BOTIN.pocion_elite if e.rare else (BOTIN.pocion_lanza if e.thrower else BOTIN.pocion))
 	if rnd() < chance:
-		pickups.append({"x": e.x, "y": e.y, "t": 9.0, "bob": rnd() * 6, "no_pick": 0.0})
+		pickups.append({"x": e.x, "y": e.y, "t": BOTIN.pocion_dura, "bob": rnd() * 6, "no_pick": 0.0})
 	fx.hud()
 
 func drop_gold(x: float, y: float, amt: float, manual: bool) -> void:
@@ -4709,6 +4726,9 @@ func interact() -> void:
 		var dd := JS.hypot(dr.cx - p.x, dr.cy - (p.y - 6))
 		if dd < DOOR_R:
 			opts.append({"d": dd, "f": func(): open_door(dr)})
+	var ps = secreta_cerca()
+	if ps != null:
+		opts.append({"d": ps.d * .9, "f": func(): _pedir_secreta(ps)})
 	for k in keyrings:
 		if k.taken:
 			continue
@@ -4792,7 +4812,7 @@ func can_interact() -> bool:
 	for k in floor_keys:
 		if JS.hypot(k.x - p.x, k.y - p.y) < KEY_R:
 			return true
-	if nearest_key_table() != null:
+	if nearest_key_table() != null or secreta_cerca() != null:
 		return true
 	for g in gold:
 		if g.manual and JS.hypot(g.x - p.x, g.y - p.y) < GOLD_R:
@@ -5363,3 +5383,223 @@ func _mazmorra_init() -> void:
 		return
 	_rompibles_init(wave)
 	_trampas_init(wave)
+
+# ======================================================================
+#  10 nov: más botín, cofre de entrada, cofre por sala, nombres y salas secretas
+# ======================================================================
+## lo que sueltan los enemigos normales (antes: runa .10, pieza .12/.18, oro .45, poción .18/.3/.6 durante 9 s)
+const BOTIN := {"runa": .14, "pieza": .24, "pieza_lanza": .32, "oro": .6,
+	"pocion": .28, "pocion_lanza": .4, "pocion_elite": .9, "pocion_dura": 25.0}
+
+## cofre junto a la entrada de cada piso: una pieza de tu clase, mágica o mejor, para el hueco que peor llevas
+func _cofre_entrada() -> void:
+	if L.has("prueba") or L.has("ciudad"):
+		return
+	var sx: float = (L.start.cx + .5) * TS
+	var sy: float = (L.start.cy + .5) * TS + 10
+	for o in [[0, -2], [1, -2], [-1, -2], [2, 0], [-2, 0], [0, 2], [2, -1], [-2, -1]]:
+		var cx: int = L.start.cx + o[0]
+		var cy: int = L.start.cy + o[1]
+		var x := (cx + .5) * TS
+		var y := (cy + 1) * TS - 4
+		if tile_at(cx, cy) != DungeonGen.FLOOR or not fits(x, y, 8) or not has_los(sx, sy - 6, x, y - 6):
+			continue
+		if _cofre_cerca(cx, cy, 2):
+			continue
+		chests.append({"cx": cx, "cy": cy, "kind": "gold", "inicio": true, "nombre": "Cofre del descenso", "room": L.start_room, "se": false,
+			"x": x, "y": y, "open": false, "open_t": 0.0, "best": 0, "guards": [], "msg_t": -9.0})
+		return
+
+func _cofre_cerca(cx: int, cy: int, r: int) -> bool:
+	for c in chests:
+		if absi(c.cx - cx) + absi(c.cy - cy) <= r:
+			return true
+	return false
+
+## el hueco con la pieza más floja (o vacío) de las de tu clase
+func hueco_mas_flojo() -> String:
+	var peor := ""
+	var pq := 99
+	for s in Items.set_of(p.cls_key()).slots:
+		var it = p.eq.get(s)
+		var q: int = -1 if it == null else int(it.q) * 100 + Items.puntos(it)
+		if q < pq:
+			pq = q
+			peor = s
+	return peor
+
+func _abrir_cofre_entrada(c: Dictionary) -> void:
+	c.open = true
+	c.open_t = 0
+	var r := rnd() * (1 / maxf(.5, p.st.findMul))
+	var q := 3 if r < .05 else (2 if r < .4 else 1)
+	c.best = q
+	var it := Items.make_gear(rng, q, p.cls_key(), hueco_mas_flojo())
+	_fan(c.x, c.y, [it], 1, true)
+	drop_gold(c.x, c.y + 4, (15 + rnd() * 20) * (1 + wave * .1), false)
+	fx.burst(c.x, c.y, 12, ["#fff3c0", Items.RQ_C[q]], 10, 70)
+	fx.text(c.x, c.y - 34, String(c.nombre), Items.RQ_C[q], 10, false, 1.2, false, false)
+	map_dirty = true
+
+## un cofre por sala con enemigos: se queda cerrado hasta que mueran los que estaban en ella al empezar
+func _cofres_sala() -> void:
+	if L.has("prueba") or L.has("ciudad"):
+		return
+	var por_sala := {}
+	var ro: PackedInt32Array = L.room_of
+	for e in enemies:
+		var cx := cell_of(e.x)
+		var cy := cell_of(e.y - 3)
+		if cx < 0 or cy < 0 or cx >= DungeonGen.GW or cy >= DungeonGen.GH:
+			continue
+		var k := ro[cy * DungeonGen.GW + cx]
+		if k < 0 or k == L.start_room or k == int(reto.get("room", -1)):
+			continue
+		if not por_sala.has(k):
+			por_sala[k] = []
+		por_sala[k].append(e)
+	for k in por_sala:
+		var r: Dictionary = L.rooms[k]
+		var sitio = _sitio_cofre_sala(r)
+		if sitio == null:
+			continue
+		chests.append({"cx": sitio.x, "cy": sitio.y, "kind": "wood", "sala": k, "nombre": "Cofre de la sala", "room": k, "se": false,
+			"x": (sitio.x + .5) * TS, "y": (sitio.y + 1) * TS - 4, "open": false, "open_t": 0.0, "best": 0, "guards": por_sala[k], "msg_t": -9.0})
+
+## junto a la pared norte de la sala si se puede (se ve mejor); si no, cualquier casilla libre
+func _sitio_cofre_sala(r: Dictionary) -> Variant:
+	var cands := []
+	for x in range(r.x + 1, r.x + r.w - 1):
+		cands.append(Vector2i(x, r.y))
+	for i in range(cands.size() - 1, 0, -1):
+		var j := int(rnd() * (i + 1))
+		var tmp = cands[i]; cands[i] = cands[j]; cands[j] = tmp
+	for y in range(r.y + 1, r.y + r.h - 1):
+		for x in range(r.x + 1, r.x + r.w - 1):
+			cands.append(Vector2i(x, y))
+	for c in cands:
+		var tt := tile_at(c.x, c.y)
+		if tt != DungeonGen.FLOOR:
+			continue
+		var x: float = (c.x + .5) * TS
+		var y: float = (c.y + 1) * TS - 4
+		if not fits(x, y, 8) or _cofre_cerca(c.x, c.y, 3):
+			continue
+		if L.fount != null and JS.hypot(x - CX, y - CY) < FRAD + 20:
+			continue
+		var malo := false
+		for b in range(-1, 2):
+			for a in range(-1, 2):
+				var t2 := tile_at(c.x + a, c.y + b)
+				if t2 == DungeonGen.DOWN or t2 == DungeonGen.UP or t2 == DungeonGen.DOOR:
+					malo = true
+		if not malo:
+			return c
+	return null
+
+## guardianes del cofre que siguen vivos
+func guardias_vivos(c: Dictionary) -> int:
+	var n := 0
+	for e in c.guards:
+		if not e.dying and enemies.has(e):
+			n += 1
+	return n
+
+# ---------- nombres de los enemigos ----------
+const NOM_PILA := ["Osric", "Bermudo", "Fruela", "Gonzalo", "Tello", "Nuño", "Sancho", "Ordoño", "Rodrigo", "Ramiro", "Mendo", "Pelayo",
+	"Íñigo", "Vela", "Fortún", "Garci", "Munio", "Lope", "Alvar", "Odón", "Gaspar", "Teobaldo", "Brunilda", "Urraca", "Elvira", "Toda", "Jimena", "Oria"]
+const NOM_HUMANO := ["el Roto", "el Tuerto", "el Manco", "el Cruel", "el Bravo", "el Rojo", "el Viejo", "el Mozo", "el Sordo", "el Negro",
+	"Sin Tierra", "el Saqueador", "el Desertor", "el Ahorcado", "Mano de Hierro", "el Cuervo", "el Malo", "Diente Partido"]
+const NOM_HUESO := ["el Descarnado", "el Olvidado", "Sin Tumba", "el Hueco", "el Polvoriento", "el Sepultado", "el Sin Nombre", "el Roído",
+	"de la Fosa", "el Mondo", "Calavera Rota", "el Desenterrado"]
+const NOM_DEMONIO := ["Azrok", "Belzar", "Ghorm", "Xaroth", "Mulgrim", "Vexa", "Ossk", "Zhul", "Karnak", "Ubrax", "Thessa", "Morgul"]
+const NOM_DEMONIO2 := ["el Ardiente", "de las Brasas", "el Hambriento", "del Pozo", "el Sin Alma", "el Retorcido", "Lengua de Fuego", "el Cenizo"]
+
+## nombre propio de un enemigo: el título de élites, jefes y campeones; los demás, uno inventado y fijo
+## (sale de su semilla, sin gastar números del azar de la simulación)
+func nombre_de(e: Ent.Enemy) -> String:
+	if e.rare or e.jefe or e.type == "champ" or e.boss != "":
+		return e.title
+	if e.nombre == "":
+		var h := absi(hash(e.seed))
+		if e.mon != "" and e.mon != "esqueleto":
+			e.nombre = "%s %s" % [NOM_DEMONIO[h % NOM_DEMONIO.size()], NOM_DEMONIO2[(h >> 8) % NOM_DEMONIO2.size()]]
+		elif e.mon == "esqueleto":
+			e.nombre = "%s %s" % [NOM_PILA[h % NOM_PILA.size()], NOM_HUESO[(h >> 8) % NOM_HUESO.size()]]
+		else:
+			e.nombre = "%s %s" % [NOM_PILA[h % NOM_PILA.size()], NOM_HUMANO[(h >> 8) % NOM_HUMANO.size()]]
+	return e.nombre
+
+# ---------- salas secretas (SalaSecreta) ----------
+var secreta_pedida = null    # {s, sale} mientras la vista pregunta «¿Entrar?»
+var _secreta_aviso_t := -9.0
+
+## en cada sala secreta: una élite más dura de lo normal, dos escoltas y dos cofres dorados que guarda ella
+func _secretas_init() -> void:
+	secreta_pedida = null
+	for s in L.get("secretas", []):
+		var r: Dictionary = s.sala
+		var cx: float = (r.x + r.w / 2.0) * TS
+		var cy: float = (r.y + r.h / 2.0 + .5) * TS
+		var rr := rnd()
+		var e := spawn_enemy("sargwen" if wave >= 10 and rr < .3 else ("slayer" if rr < .6 else "knight"), cx, cy)
+		_hacer_elite(e)
+		e.hp = JS.roundi(e.hp * 1.6); e.max_hp = e.hp; e.ghost = e.hp
+		e.dmg = JS.roundi(e.dmg * 1.2)
+		e.xp = JS.roundi(e.xp * 1.5)
+		e.secreta = true
+		for i in 2:
+			var o := {"x": cx + (-40.0 if i == 0 else 40.0), "y": cy + 10}
+			unstick(o, 8)
+			var es := spawn_enemy(enemy_type_for(wave), o.x, o.y)
+			es.secreta = true
+		for cxy in [Vector2i(r.x + 1, r.y), Vector2i(r.x + r.w - 2, r.y)]:
+			chests.append({"cx": cxy.x, "cy": cxy.y, "kind": "gold", "secreta": true, "nombre": "Cofre del tesoro oculto", "room": null, "se": false,
+				"x": (cxy.x + .5) * TS, "y": (cxy.y + 1) * TS - 4, "open": false, "open_t": 0.0, "best": 0, "guards": [e], "msg_t": -9.0})
+
+## la puerta secreta (de fuera o de dentro) que tiene el héroe al lado: {s, sale, d}
+func secreta_cerca() -> Variant:
+	if p == null or p.dead or L.is_empty():
+		return null
+	var mejor = null
+	var bd := SalaSecreta.PUERTA_R
+	for s in L.get("secretas", []):
+		for sale in [false, true]:
+			var pt := SalaSecreta.punto(s.puerta_dentro, s.dentro) if sale else SalaSecreta.punto(s.puerta, s.fuera)
+			var d := JS.hypot(pt.x - p.x, pt.y - (p.y - 6))
+			if d < bd:
+				bd = d
+				mejor = {"s": s, "sale": sale, "d": d}
+	return mejor
+
+func _pedir_secreta(ps: Dictionary) -> void:
+	secreta_pedida = ps
+
+## la vista ya ha fundido a negro: el héroe (y sus aliados) pasan al otro lado de la puerta
+func cruzar_secreta() -> void:
+	var ps = secreta_pedida
+	secreta_pedida = null
+	if ps == null:
+		return
+	var s: Dictionary = ps.s
+	var a: Vector2i = s.fuera if ps.sale else s.dentro
+	var m: Vector2i = s.puerta if ps.sale else s.puerta_dentro
+	var dir := a - m
+	p.x = (a.x + .5) * TS + dir.x * 6
+	p.y = (a.y + .5) * TS + 10 + dir.y * 6
+	unstick(p)
+	p.seg_x = p.x
+	p.seg_y = p.y
+	p.seq = null; p.roll_t = 0; p.blocking = false; p.hurt_t = 0
+	p.face = atan2(dir.y, dir.x)
+	for al in allies:
+		al.x = p.x + (rnd() - .5) * 30
+		al.y = p.y + 14 + rnd() * 10
+		unstick(al)
+	pcell = -1
+	map_dirty = true
+	if not ps.sale:
+		fx.banner("Una sala oculta", "Algo la guarda")
+
+func cancelar_secreta() -> void:
+	secreta_pedida = null

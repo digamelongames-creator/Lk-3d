@@ -46,7 +46,7 @@ func _init() -> void:
 	ok(p.eq.boots == null, "no se pone lo de otra clase")
 	# Set del Caballero Oscuro: todas las piezas existen, con aura solo si no es básica
 	var basica0 := Items.make_gear(sim.rng, 0, "knight", "helm")
-	ok(basica0.name == "Yelmo del Caballero Oscuro", "nombre del set (%s)" % basica0.name)
+	ok(basica0.name.begins_with("Yelmo de") and basica0.name.ends_with(" del Caballero Oscuro"), "nombre del set, con el material de la básica (%s)" % basica0.name)
 	ok(not Armadura3D.tiene(Items.make_gear(sim.rng, 1, "mage", "boots")), "las otras clases no llevan el set")
 	for s in Armadura3D.huecos():
 		for d in Armadura3D.PIEZAS[s]:

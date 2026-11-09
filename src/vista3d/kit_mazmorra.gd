@@ -15,7 +15,7 @@ const CELDA := 2.0       # metros por casilla (una casilla de la simulación = 3
 const ALTO_MURO := 3.0
 
 ## piezas de casilla (van al GridMap). Las que tienen variantes se eligen al azar por casilla.
-const DE_CASILLA := ["muro", "nucleo", "nucleo_b", "cara", "cara_b", "cara_columna", "cara_nicho", "cara_arco_ciego",
+const DE_CASILLA := ["muro", "nucleo", "nucleo_b", "cara", "cara_b", "cara_columna", "cara_nicho", "cara_arco_ciego", "cara_puerta",
 	"cara_reja", "cara_rota", "cara_hiedra", "columna_esquina", "suelo", "suelo_b", "suelo_sala", "pilar", "arco",
 	"agua", "puente", "tumba", "escombro", "mueble", "escalera_baja", "escalera_sube"]
 const VARIANTES := {"nucleo": ["nucleo", "nucleo_b"], "suelo": ["suelo", "suelo_b"]}

@@ -173,6 +173,8 @@ class Enemy extends RefCounted:
 	var armor := false
 	var name := ""
 	var title := ""
+	var nombre := ""             # nombre propio (Sim.nombre_de): se ve al pasar el ratón o al golpearlo
+	var golpe_t := -9.0          # cuándo lo golpeó el héroe por última vez (para enseñar su nombre)
 	var act := ""                # "" (nada), wind, strike, guard, repo, dodge, throw
 	var act_t := 0.0
 	var cool := .3
@@ -272,6 +274,7 @@ class Enemy extends RefCounted:
 	var cuerpo := 0.0            # radio del cuerpo de los monstruos grandes (golpes y empuje)
 	var ms := {}                 # estado de sus habilidades (giro, tirón, embestidas…)
 	var se_room := -1            # sala sellada del Soul Eater
+	var secreta := false         # vive en una sala secreta (SalaSecreta)
 	var sealed := false
 	var imp := false             # diablillo del Demon Overseer
 	var boss := ""

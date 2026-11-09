@@ -1,1 +1,1 @@
-{"AFFIXES":{"dmg":{"stat":"dmg","flat":1},"hp":{"stat":"maxHp","flat":8},"spd":{"stat":"spd","pct":0.03},"as":{"stat":"atkSpd","pct":0.04}},"ALLOC_MODS":{"hp":{"stat":"maxHp","flat":8},"agi":{"stat":"spd","pct":0.005},"agi2":{"stat":"atkSpd","pct":0.005}}}
+{"AFFIXES":{"dmg":{"stat":"dmg","flat":1},"hp":{"stat":"maxHp","flat":8},"spd":{"stat":"spd","pct":0.03},"as":{"stat":"atkSpd","pct":0.04},"arm":{"stat":"armorPts","flat":2}},"ALLOC_MODS":{"hp":{"stat":"maxHp","flat":8},"agi":{"stat":"spd","pct":0.005},"agi2":{"stat":"atkSpd","pct":0.005}}}

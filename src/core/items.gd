@@ -44,7 +44,18 @@ const RI_LEG := {
 	"archer": {"sword": "Arco de Guillermo", "helm": "Capucha del Bosque Viejo", "shield": "Carcaj sin Fondo", "chest": "Jubón del Montero", "gloves": "Brazales del Halcón", "boots": "Botas del Rastreador"},
 	"dl": {"helm": "Corona del Abismo", "chest": "Túnica del Eclipse", "gloves": "Puños del Señor Oscuro", "belt": "Fajín de las Mil Almas", "boots": "Botas del Trono Negro"},
 	"mage": {"chest": "Abrigo de Ascuas Eternas", "belt": "Cinturón del Alquimista", "legs": "Pantalones del Brasero", "gloves": "Guantes de Prometeo", "boots": "Zapatos de Ceniza"}}
-const STAT_NM := {"dmg": "Daño", "spd": "Velocidad de movimiento", "hp": "Vida", "as": "Velocidad de ataque"}
+const STAT_NM := {"dmg": "Daño", "spd": "Velocidad de movimiento", "hp": "Vida", "as": "Velocidad de ataque", "arm": "Armadura"}
+## material de las piezas básicas según lo bien que salgan sus números (de peor a mejor)
+const RI_MATERIAL := {
+	"metal": ["de hierro oxidado", "de hierro", "de bronce", "de acero", "de acero templado"],
+	"cuero": ["de cuero roído", "de cuero", "de cuero curtido", "de cuero tachonado", "de piel de lobo"],
+	"tela": ["de arpillera", "de lana", "de lino", "de paño fino", "de seda"],
+	"madera": ["de rama verde", "de olmo", "de fresno", "de tejo", "de tejo viejo"]}
+const RI_MAT_DE := {"Espada": "metal", "Espadón": "metal", "Yelmo": "metal", "Escudo": "metal", "Coraza": "metal", "Guanteletes": "metal",
+	"Grebas": "metal", "Corona": "metal", "Cinturón": "cuero", "Botas": "cuero", "Brazales": "cuero", "Carcaj": "cuero", "Fajín": "cuero",
+	"Capucha": "cuero", "Jubón": "cuero", "Túnica": "tela", "Abrigo": "tela", "Pantalones": "tela", "Guantes": "tela", "Zapatos": "tela", "Arco": "madera"}
+## piezas que protegen: llevan siempre armadura entre sus números
+const SLOT_ARMADURA := ["chest", "helm", "shield", "belt", "boots", "legs"]
 
 # ---------- runas ----------
 const RN_ROM := ["", "I", "II", "III", "IV", "V"]
@@ -138,6 +149,7 @@ static func stat_txt(a: String, v: int) -> String:
 		"as": return "+%d Velocidad de ataque (+%d%%)" % [v, v * 4]
 		"dmg": return "+%d Daño" % v
 		"spd": return "+%d Velocidad de movimiento (+%d%%)" % [v, v * 3]
+		"arm": return "+%d Armadura (+%d)" % [v, v * 2]
 	return "+%d Vida (+%d)" % [v, v * 8]
 
 static func sock_n(cls: String, s: String, q: int) -> int:
@@ -146,34 +158,60 @@ static func sock_n(cls: String, s: String, q: int) -> int:
 static func _pick(rng: RandomNumberGenerator, a: Array):
 	return a[int(rng.randf() * a.size())]
 
-static func make_gear(rng: RandomNumberGenerator, q: int, cls: String, s: String = "", no_sock: bool = false) -> Dictionary:
+## simple: como antes del 10 nov (un número de 1 a 3, sin armadura ni extra): el equipo inicial
+static func make_gear(rng: RandomNumberGenerator, q: int, cls: String, s: String = "", no_sock: bool = false, simple: bool = false) -> Dictionary:
 	var C: Dictionary = set_of(cls)
 	if s == "":
 		s = _pick(rng, C.slots)
-	var name: String = RI_BASE[cls][s]
-	if RI_SET.has(cls) and q < 3: name += " " + RI_SET[cls]   # el set que se ve puesto (Armadura3D)
-	elif q == 1: name += " " + _pick(rng, RI_MAG)
-	elif q == 2: name += " " + _pick(rng, RI_DOR)
-	elif q == 3: name = RI_LEG[cls][s]
+	var base: String = RI_BASE[cls][s]
+	var protege: bool = SLOT_ARMADURA.has(s) and s != C.weapon and not (cls == "archer" and s == "shield") and not simple
 	var bonus := {}
 	if q == 3:
 		bonus = {"dmg": 3, "spd": 3, "hp": 3, "as": 3}
+		if protege:
+			bonus["arm"] = 4
 	else:
+		# más variedad (10 nov): números de 1 a 4 (dorado de 2 a 5), armadura en las piezas que protegen
+		# y, a veces, una estadística de más
 		var main := "dmg" if s == C.weapon else String({"chest": "hp", "belt": "hp", "boots": "spd", "gloves": "as"}.get(s, ""))
 		var st := []
 		if main != "":
 			st.append(main)
-		while st.size() < q + 1:
+		if protege:
+			st.append("arm")
+		var n := q + 1 + (1 if rng.randf() < (.3 if q == 0 else .2) and not simple else 0)
+		while st.size() < n:
 			var a: String = _pick(rng, ["dmg", "spd", "hp", "as"])
 			if not st.has(a):
 				st.append(a)
 		for a in st:
-			bonus[a] = (2 + int(rng.randf() * 2)) if q == 2 else (1 + int(rng.randf() * 3))
+			bonus[a] = (1 + int(rng.randf() * 3)) if simple else ((2 + int(rng.randf() * 4)) if q == 2 else (1 + int(rng.randf() * 4)))
+	var name := base
+	if q == 0:
+		name += " " + material(base, bonus)
+	if RI_SET.has(cls) and q < 3: name += " " + RI_SET[cls]   # el set que se ve puesto (Armadura3D)
+	elif q == 1: name += " " + _pick(rng, RI_MAG)
+	elif q == 2: name += " " + _pick(rng, RI_DOR)
+	elif q == 3: name = RI_LEG[cls][s]
 	var socks := []
 	if not no_sock:
 		socks.resize(sock_n(cls, s, q))
 	item_id += 1
 	return {"id": item_id, "gear": true, "cls": cls, "slot": s, "q": q, "name": name, "bonus": bonus, "socks": socks}
+
+## material de una pieza básica: cuanto mejores sus números, mejor el material («Espada de acero templado»)
+static func material(base: String, bonus: Dictionary) -> String:
+	var l: Array = RI_MATERIAL[RI_MAT_DE.get(base, "metal")]
+	var n := maxi(1, bonus.size())
+	var k := clampf((puntos({"bonus": bonus}) / float(n) - 1.0) / 3.0, 0, 1)   # media de 1 a 4 → 0 a 1
+	return l[clampi(roundi(k * (l.size() - 1)), 0, l.size() - 1)]
+
+## suma de los números de una pieza
+static func puntos(it: Dictionary) -> int:
+	var t := 0
+	for a in it.get("bonus", {}):
+		t += int(it.bonus[a])
+	return t
 
 static func rune_item(id: String, n: int = 1) -> Dictionary:
 	item_id += 1
@@ -338,5 +376,5 @@ static func init_gear(h, rng: RandomNumberGenerator) -> void:
 	var k: String = h.cls_key()
 	h.eq = {}
 	for s in set_of(k).slots:
-		h.eq[s] = make_gear(rng, 0, k, s, true)
+		h.eq[s] = make_gear(rng, 0, k, s, true, true)
 	h.bag = []
