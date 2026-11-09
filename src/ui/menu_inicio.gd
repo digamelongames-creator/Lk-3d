@@ -1,13 +1,13 @@
 class_name MenuInicio
 extends Control
 ## Pantalla de inicio y menú de pausa (main3d.gd).
-##   inicio: Nueva partida (elige la clase), Piso de prueba, Opciones, Créditos y Salir.
+##   inicio: Nueva partida (elige la clase), Piso de prueba (elige la sala), Opciones, Créditos y Salir.
 ##   pausa (Esc en la partida): Continuar, Opciones y Volver al menú.
 ##   opciones: pantalla completa, zoom por defecto, brillo, sonido, velocidad al andar, sombras, niebla y postprocesado (Opciones).
 ## El fondo es la mazmorra 3D que monta main3d.gd detrás; aquí solo va el viñeteado y los paneles.
 
 signal empezar(clase: String)
-signal piso_prueba
+signal piso_prueba(sala: int)   # sala del piso de prueba donde se empieza (PisoPrueba.salas_menu)
 signal creditos
 signal salir
 signal continuar
@@ -55,7 +55,7 @@ void fragment() {
 	add_child(_titulo)
 	_paginas.inicio = _columna([
 		["Nueva partida", func(): mostrar("clase")],
-		["Piso de prueba", func(): piso_prueba.emit()],
+		["Piso de prueba", func(): mostrar("pruebas")],
 		["Opciones", func(): _abrir_opciones()],
 		[_txt_sonido(), func(): _cambiar_sonido()],
 		["Créditos", func(): creditos.emit()],
@@ -68,6 +68,7 @@ void fragment() {
 		["Volver al menú", func(): volver_menu.emit()],
 	], "Pausa")
 	_paginas.clase = _pagina_clase()
+	_paginas.pruebas = _pagina_pruebas()
 	_paginas.opciones = _pagina_opciones()
 	for k in _paginas:
 		add_child(_paginas[k])
@@ -97,7 +98,7 @@ func mostrar(p: String) -> void:
 	(_velo.material as ShaderMaterial).set_shader_parameter("fuerza", 1.15 if en_pausa else 1.0)
 	(_velo.material as ShaderMaterial).set_shader_parameter("lado", 0.0 if en_pausa else 1.0)
 	# inicio y clase a la izquierda (el héroe se ve a la derecha); opciones y pausa, en el centro
-	for k in ["inicio", "clase"]:
+	for k in ["inicio", "clase", "pruebas"]:
 		_a_la_izquierda(_paginas[k], true)
 	visible = true
 	# el primer botón con el foco, para poder usar el teclado o el mando
@@ -110,7 +111,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 		return
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_ESCAPE:
 		match pagina:
-			"clase": mostrar("inicio")
+			"clase", "pruebas": mostrar("inicio")
 			"opciones": mostrar(_de)
 			"pausa": continuar.emit()
 		get_viewport().set_input_as_handled()
@@ -244,6 +245,37 @@ func _pagina_clase() -> Control:
 		col.add_child(d)
 		b.add_child(col)
 		caja.add_child(b)
+	var sep := Control.new()
+	sep.custom_minimum_size = Vector2(0, 6)
+	caja.add_child(sep)
+	caja.add_child(boton("Volver", func(): mostrar("inicio"), 42))
+	return caja
+
+## «Piso de prueba»: las salas del piso de prueba; se empieza dentro de la elegida
+func _pagina_pruebas() -> Control:
+	var caja := VBoxContainer.new()
+	caja.set_anchors_preset(Control.PRESET_CENTER)
+	caja.offset_left = -210
+	caja.offset_right = 210
+	caja.offset_top = -330
+	caja.grow_vertical = Control.GROW_DIRECTION_END
+	caja.add_theme_constant_override("separation", 5)
+	var cab := _cabecera("Salas de prueba")
+	cab.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	caja.add_child(cab)
+	var l := PisoPrueba.salas_menu()
+	# la de efectos, la primera (es la nueva); luego el resto en su orden
+	var orden := []
+	for i in l.size():
+		if l[i][1] == "efectos":
+			orden.push_front(i)
+		else:
+			orden.append(i)
+	for i in orden:
+		var n: String = l[i][0]
+		if l[i][1] == "efectos":
+			n += "  · mago"
+		caja.add_child(boton(n, func(): piso_prueba.emit(i), 36))
 	var sep := Control.new()
 	sep.custom_minimum_size = Vector2(0, 6)
 	caja.add_child(sep)

@@ -1,0 +1,9 @@
+{
+ "bola_fuego": {"nombre": "Bola de fuego (mago, clic derecho)", "hoja": "bola_fuego", "forma": "proyectil", "tam": 1.9, "brillo": 1.0, "velocidad": 1.0, "alto": 0.0, "cabeza": 0.33, "bucle": true, "luz": "#ff8c33", "luz_energia": 2.6, "luz_alcance": 5.0, "sonido": "fuego", "al_acabar": "explosion_fuego"},
+ "explosion_fuego": {"nombre": "Explosión de la bola de fuego", "hoja": "explosion_fuego", "forma": "golpe", "tam": 3.4, "brillo": 0.75, "velocidad": 1.0, "alto": 0.35, "luz": "#ff802e", "luz_energia": 9.0, "luz_alcance": 7.0, "sonido": "explosion"},
+ "mago_estallido": {"nombre": "Explosión (mago, clic izquierdo)", "hoja": "mago_estallido", "reserva": "explosion_fuego", "forma": "golpe", "tam": 2.6, "brillo": 0.85, "velocidad": 1.0, "alto": 1.2, "luz": "#ff802e", "luz_energia": 7.0, "luz_alcance": 6.0, "sonido": "explosion"},
+ "mago_nova": {"nombre": "Nova ígnea (mago, habilidad 1)", "hoja": "mago_nova", "forma": "suelo", "tam": 1.1, "brillo": 0.9, "velocidad": 1.0, "alto": 0.06, "giro": 0.4, "bucle": true, "luz": "#ff6a1c", "luz_energia": 2.2, "luz_alcance": 7.0, "sonido": "fuego"},
+ "mago_llamarada": {"nombre": "Llamarada (mago, habilidad 2)", "hoja": "mago_llamarada", "forma": "suelo", "tam": 1.15, "brillo": 1.0, "velocidad": 1.0, "alto": 0.08, "luz": "#ffa040", "luz_energia": 8.0, "luz_alcance": 8.0, "sonido": "explosion", "pegado": "mago_llamas"},
+ "mago_llamas": {"nombre": "Llamas sobre los aturdidos", "hoja": "mago_llamas", "forma": "aura", "tam": 1.7, "brillo": 0.8, "velocidad": 1.0, "alto": 0.8, "bucle": true, "luz": "", "luz_energia": 0.0, "luz_alcance": 0.0, "sonido": ""},
+ "mago_teletransporte": {"nombre": "Teletransporte (mago, habilidad 3)", "hoja": "mago_teletransporte", "forma": "golpe", "tam": 2.4, "brillo": 1.0, "velocidad": 1.0, "alto": 1.15, "luz": "#ffc060", "luz_energia": 5.0, "luz_alcance": 5.0, "sonido": "carga"}
+}

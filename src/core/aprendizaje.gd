@@ -192,7 +192,7 @@ static func clave_de(e: Ent.Enemy, sala: int) -> String:
 
 ## despierta: elige la táctica de este combate
 func empezar(sim, e: Ent.Enemy) -> void:
-	if e.apr_activo:
+	if e.apr_activo or e.muneco:
 		return
 	if e.apr_clave == "":
 		e.apr_clave = clave_de(e, sim.room_at_px(e.x, e.y))
