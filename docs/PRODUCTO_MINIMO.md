@@ -31,7 +31,7 @@ El producto mínimo es **el primer juego completo que se podría enseñar o subi
 | Guardado con ranuras; salir en la mazmorra cuenta como morir | Por hacer | Guardado con número de versión |
 | Menú, opciones, pausa y créditos | Hecho | — |
 | Sonido | Sintetizado | Paquete definitivo (opcional) |
-| Licencias para Steam | En marcha | Confirmar el plan de Tripo |
+| Licencias para Steam | En marcha | Tripo resuelto (Premium); faltan texturas sin confirmar |
 
 ## Qué queda fuera (para después)
 
@@ -69,8 +69,12 @@ Las tiendas y el almacén de Inca, tanda 2, se hacen ya con estas reglas.
 5. Pisos 6–10: se prueban y se ajustan.
 6. Repaso para la demo: licencias, créditos y rendimiento en el PC mínimo.
 
+## PC mínimo (10 nov 2026)
+
+Gráfica tipo GTX 1060 y 8 GB de RAM. Diego cree que con 4 GB de RAM bastaría; se comprobará midiendo el consumo real.
+
 ## Preguntas abiertas
 
-- ¿Qué PC mínimo se pone como objetivo (para Steam y para el rendimiento)?
 - ¿Qué hace especial a un legendario? Ahora, afijo a afijo, un dorado bueno le gana.
-- ¿El equipo debe mejorar con la oleada? Ahora da lo mismo en el piso 1 que en el 10.
+- El equipo mejorará con la oleada (decidido el 10 nov); falta decidir cómo.
+- Los jefes pegarán más que una élite (decidido el 10 nov); falta decidir cuánto.

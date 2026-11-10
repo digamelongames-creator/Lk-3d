@@ -10,7 +10,7 @@ Todo lo que el juego usa y no está hecho desde cero en este repositorio, con lo
 |---|---|
 | Sí, sin dar créditos | Poly Haven (CC0) y el kit de la mazmorra hecho por script |
 | Sí, dando créditos | Los 5 paquetes de Sketchfab (CC BY 4.0), las fuentes (OFL 1.1) y Godot (MIT) |
-| **Por confirmar** | Personajes de Tripo, texturas `Pared_1`, `Suelo1`, `Suelo_2` y los gráficos 2D de Last Knight |
+| **Por confirmar** | Texturas `Pared_1`, `Suelo1`, `Suelo_2` y los gráficos 2D de Last Knight |
 | No (descartados) | Fougères castle (CC BY-NC), Armor Set (CC BY-NC-SA) |
 
 Antes de publicar hay que resolver lo que está **por confirmar**.
@@ -49,11 +49,11 @@ Dominio público: se puede vender sin dar créditos (se citan igualmente). Todo 
 
 Licencia: https://polyhaven.com/license
 
-### Personajes: Tripo AI + Adobe Mixamo (**por confirmar**)
+### Personajes: Tripo AI + Adobe Mixamo
 
 Afecta al esqueleto (el héroe), la Bufona, los demonios y Prueba2 (`assets/monstruos/*.glb`, que salen de `C:\SPRITE_FACTORY`).
 
-- **Tripo:** según su ayuda oficial, con el plan gratuito Tripo se queda todos los derechos de los modelos generados, y el uso comercial solo viene con un plan de pago. **Hay que confirmar con qué plan se generó cada modelo.** Si fue con el gratuito, antes de vender hay que regenerarlos con un plan de pago o cambiarlos. Guía: https://www.tripo3d.ai/help/privacy-policy/how-to-use-tripo-models-commercially
+- **Tripo:** según su ayuda oficial, con el plan gratuito Tripo se queda todos los derechos de los modelos generados, y el uso comercial solo viene con un plan de pago. **Diego tiene el plan Premium (de pago) de Tripo (dicho el 10 nov 2026), que permite el uso comercial.** Ojo: si algún modelo se generó antes de tener el plan de pago, con el gratuito, conviene regenerarlo antes de vender. Guardar el justificante del plan. Guía: https://www.tripo3d.ai/help/privacy-policy/how-to-use-tripo-models-commercially
 - **Mixamo:** el rig y las animaciones se pueden usar gratis en juegos comerciales y no hace falta dar créditos. Lo único prohibido es distribuir los archivos de personajes o animaciones sueltos. Metidos en el juego no hay problema. https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html
 
 ### Hecho para el juego
@@ -75,7 +75,7 @@ El juego tiene que incluir el aviso de copyright y la licencia de Godot, además
 
 | Qué | Dónde | Qué falta |
 |---|---|---|
-| Plan de Tripo de los personajes | `assets/monstruos/` | Confirmar que es de pago (si no, regenerar o cambiar) |
+| Plan de Tripo de los personajes | `assets/monstruos/` | Premium (de pago) desde el 10 nov 2026; revisar solo los modelos hechos antes con el plan gratuito |
 | Texturas Pared_1, Suelo1, Suelo_2 | `assets/texturas/muros`, `assets/texturas/suelos` | Saber de dónde salen y con qué licencia |
 | Gráficos 2D de Last Knight (iconos, sprites, cofres, retratos) | `assets/web/img`, `assets/web/gen` | Saber de dónde salen; la interfaz usa los iconos |
 
