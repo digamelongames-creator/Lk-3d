@@ -43,6 +43,7 @@ static func limpiar() -> void:
 	_lib = null
 	_mallas.clear()
 	_mats.clear()
+	_shaders_corte.clear()
 
 static func id(nombre: String) -> int:
 	return mesh_library().find_item_by_name(nombre)
@@ -75,11 +76,112 @@ static func _cargar_glb() -> void:
 	var raiz: Node = (load(RUTA_GLB) as PackedScene).instantiate()
 	for mi in raiz.find_children("*", "MeshInstance3D", true, false):
 		var m: Mesh = (mi as MeshInstance3D).mesh.duplicate()
+		var del_muro := _es_del_muro(String(mi.name))
 		for s in m.get_surface_count():
 			var orig := m.surface_get_material(s)
-			m.surface_set_material(s, material(orig.resource_name if orig != null else ""))
+			var nm := orig.resource_name if orig != null else ""
+			m.surface_set_material(s, material_corte(nm) if del_muro else material(nm))
 		_mallas[String(mi.name)] = m
 	raiz.free()
+
+## piezas que forman el muro o cuelgan de él: todas se recortan juntas al tapar al héroe
+## (si no, al irse la piedra quedaban la placa oscura de las juntas, las rejas o la hiedra tapándolo)
+const DEL_MURO := ["muro", "nucleo", "cara", "columna_esquina", "pilar", "arco", "antorcha", "estandarte"]
+static func _es_del_muro(n: String) -> bool:
+	for p in DEL_MURO:
+		if n == p or n.begins_with(p + "_"):
+			return true
+	return false
+
+## el mismo material, pero con el hueco del muro que tapa al héroe (la piedra ya lo lleva)
+static func material_corte(nombre: String) -> Material:
+	if nombre == "piedra":
+		return material(nombre)
+	var k := nombre + "|corte"
+	if _mats.has(k):
+		return _mats[k]
+	var base := material(nombre)
+	var m: Material = base
+	if base is StandardMaterial3D:
+		var b: StandardMaterial3D = base
+		var sm := ShaderMaterial.new()
+		sm.shader = _shader_corte_liso(b.cull_mode == BaseMaterial3D.CULL_DISABLED)
+		sm.set_shader_parameter("color", b.albedo_color)
+		sm.set_shader_parameter("rugosidad", b.roughness)
+		sm.set_shader_parameter("metal", b.metallic)
+		sm.set_shader_parameter("usa_color_vertice", b.vertex_color_use_as_albedo)
+		if b.emission_enabled:
+			sm.set_shader_parameter("emision", b.emission)
+			sm.set_shader_parameter("emision_k", b.emission_energy_multiplier)
+		if b.albedo_texture != null:
+			sm.set_shader_parameter("ruido", b.albedo_texture)
+			sm.set_shader_parameter("con_ruido", true)
+		m = sm
+	_mats[k] = m
+	return m
+
+static var _shaders_corte := {}
+static func _shader_corte_liso(dos_caras: bool) -> Shader:
+	if _shaders_corte.has(dos_caras):
+		return _shaders_corte[dos_caras]
+	var s := Shader.new()
+	s.code = "shader_type spatial;\n" + ("render_mode cull_disabled;\n" if dos_caras else "") + CORTE_GLSL + """
+uniform vec4 color : source_color = vec4(1.0);
+uniform float rugosidad = .9;
+uniform float metal = 0.0;
+uniform bool usa_color_vertice = true;
+uniform vec3 emision : source_color = vec3(0.0);
+uniform float emision_k = 0.0;
+uniform bool con_ruido = false;
+uniform sampler2D ruido : hint_default_white, filter_linear_mipmap, repeat_enable;
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	if (hueco_muro(wp)) discard;
+	vec3 c = color.rgb;
+	if (usa_color_vertice) { c *= COLOR.rgb; }
+	if (con_ruido) { c *= texture(ruido, wp.xz * .3 + wp.y * .2).rgb; }
+	ALBEDO = c;
+	ROUGHNESS = rugosidad;
+	METALLIC = metal;
+	EMISSION = emision * emision_k;
+}
+"""
+	_shaders_corte[dos_caras] = s
+	return s
+
+## el hueco del muro que tapa al héroe, compartido por todos los materiales del muro.
+## Hueco limpio: dentro no queda nada; el borde es algo irregular con un ruido fijo en el mundo
+## (no se mueve con la pantalla ni con la cámara, así que no parpadea).
+## Zona: la pared que queda entre la cámara y el héroe, unos 4 m a cada lado de él; abajo queda el zócalo.
+const CORTE_GLSL := """
+global uniform vec3 pos_heroe;
+global uniform vec2 dir_camara;
+uniform float cortar = 1.0;
+varying vec3 wp;
+float h3_corte(vec3 p) {
+	return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+}
+float ruido_corte(vec3 p) {
+	vec3 i = floor(p);
+	vec3 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(h3_corte(i), h3_corte(i + vec3(1.0, 0.0, 0.0)), f.x), mix(h3_corte(i + vec3(0.0, 1.0, 0.0)), h3_corte(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+		mix(mix(h3_corte(i + vec3(0.0, 0.0, 1.0)), h3_corte(i + vec3(1.0, 0.0, 1.0)), f.x), mix(h3_corte(i + vec3(0.0, 1.0, 1.0)), h3_corte(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z);
+}
+bool hueco_muro(vec3 p) {
+	// dir_camara: del héroe hacia la cámara, en el suelo
+	vec2 r = vec2(p.x - pos_heroe.x, p.z - pos_heroe.z);
+	float hacia = dot(r, dir_camara);
+	float de_lado = dot(r, vec2(dir_camara.y, -dir_camara.x));
+	float delante = smoothstep(-.6, .4, hacia) * (1.0 - smoothstep(6.0, 8.0, hacia));
+	float lado = 1.0 - smoothstep(3.4, 4.6, abs(de_lado));
+	float alto = smoothstep(.3, .6, p.y);
+	float corte = delante * lado * alto * cortar;
+	return corte > .3 + ruido_corte(p * 2.5) * .4;
+}
+"""
 
 ## material de Godot para cada material de Blender
 static func material(nombre: String) -> Material:
@@ -141,19 +243,16 @@ static func _piedra(c: Color, rug: float) -> StandardMaterial3D:
 	m.uv1_scale = Vector3(.6, .6, .6)
 	return m
 
-## muro que se vuelve transparente (tramado) cuando tapa al héroe, como en Diablo.
+## muro con un hueco limpio donde tapa al héroe, como en Diablo (ver CORTE_GLSL).
 ## Usa los parámetros globales pos_heroe y dir_camara (project.godot > shader_globals).
 static func material_muro() -> ShaderMaterial:
 	var s := Shader.new()
 	s.code = """
 shader_type spatial;
-global uniform vec3 pos_heroe;
-global uniform vec2 dir_camara;
+""" + CORTE_GLSL + """
 uniform vec3 color : source_color = vec3(.47, .44, .42);
 uniform sampler2D ruido : hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform sampler2D relieve : hint_normal, filter_linear_mipmap, repeat_enable;
-uniform float cortar = 1.0;
-varying vec3 wp;
 varying vec3 wn;
 void vertex() {
 	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -165,16 +264,7 @@ vec4 triplanar(sampler2D t, vec3 p, vec3 n) {
 	return texture(t, p.zy) * w.x + texture(t, p.xz) * w.y + texture(t, p.xy) * w.z;
 }
 void fragment() {
-	// tapa al héroe si está entre él y la cámara (dir_camara: del héroe hacia la cámara, en el suelo)
-	vec2 r = vec2(wp.x - pos_heroe.x, wp.z - pos_heroe.z);
-	float hacia = dot(r, dir_camara);
-	float de_lado = dot(r, vec2(dir_camara.y, -dir_camara.x));
-	float delante = smoothstep(-.5, 1.0, hacia) * (1.0 - smoothstep(5.0, 8.0, hacia));
-	float lado = 1.0 - smoothstep(2.5, 4.5, abs(de_lado));
-	float alto = smoothstep(.3, 1.0, wp.y);
-	float corte = delante * lado * alto * cortar;
-	float tramado = fract(sin(dot(floor(FRAGCOORD.xy), vec2(12.9898, 78.233))) * 43758.5453);
-	if (tramado < corte) discard;
+	if (hueco_muro(wp)) discard;
 	float n = triplanar(ruido, wp * .35, wn).r;
 	float n2 = triplanar(ruido, wp * 1.3 + 7.0, wn).r;
 	vec3 c = color * COLOR.rgb * (.7 + n * .45) * (.85 + n2 * .3);

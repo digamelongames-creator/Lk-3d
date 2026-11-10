@@ -661,6 +661,16 @@ func _reach(x0: float, y0: float, x1: float, y1: float) -> bool:
 			return false
 	return true
 
+## ¿hay un muro de verdad entre dos puntos? Los golpes cuerpo a cuerpo (los tuyos y los de los
+## enemigos) no atraviesan las esquinas. Muebles, barriles y el vacío no cuentan.
+func muro_entre(x0: float, y0: float, x1: float, y1: float) -> bool:
+	var n := maxi(1, int(ceilf(JS.hypot(x1 - x0, y1 - y0) / 3)))
+	for i in range(1, n):
+		var tt := tile_at(cell_of(x0 + (x1 - x0) * i / n), cell_of(y0 + (y1 - y0) * i / n))
+		if tt != DungeonGen.ABISMO and DungeonGen.is_opaque(tt):
+			return true
+	return false
+
 func has_los(x0: float, y0: float, x1: float, y1: float) -> bool:
 	return line_test(x0, y0, x1, y1, true)
 
@@ -1760,6 +1770,8 @@ func _do_hit() -> void:
 		var abre := atan2(e.cuerpo, maxf(d, 1.0))   # un cuerpo ancho se alcanza con más ángulo
 		if absf(da) > (1.6 if a3 and has("k_verd_a") else 1.3) + abre and d > 12 + e.cuerpo:
 			continue
+		if muro_entre(p.x, p.y - 3, e.x, e.y - 3):   # el tajo no atraviesa muros ni esquinas
+			continue
 		hits += 1
 		e.golpe_t = t
 		var rp: bool = rip and e == p.rip_target
@@ -1944,6 +1956,9 @@ func _basico(src) -> bool:
 
 func hurt_player(dmg: float, from_x: float, from_y: float, src, kind: String = "") -> String:
 	if p.inv > 0 or p.roll_t > 0 or p.dead or p.pool_t > 0:
+		return ""
+	# un golpe cuerpo a cuerpo no pasa a través de un muro (ni de una esquina)
+	if kind == "" and src is Ent.Enemy and muro_entre(from_x, from_y - 3, p.x, p.y - 3):
 		return ""
 	# esquiva, resistencias, armadura, bloqueo sin escudo y efectos de las runas
 	dmg = runes.hurt(dmg, src, kind, from_x, from_y)
