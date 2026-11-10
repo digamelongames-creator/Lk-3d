@@ -96,6 +96,52 @@ static var _agarres := {}
 
 static func limpiar() -> void:
 	_agarres.clear()
+	_extra.clear()
+
+# ----------------------------------------------------------------------
+#  animaciones sueltas de Mixamo para el héroe (tools/blender/animaciones_glb.py → heroe_anims.glb + .json):
+#  lanzar_bola, lanzar_estallido, lanzar_menor, lanzar_mayor, combo_ataque, combo_tajos, ataque_salto, dolor_escudo
+# ----------------------------------------------------------------------
+static var _extra := {}   # {"anims": {nombre: Animation}, "datos": {nombre: {duracion, golpe}}}
+
+static func extra() -> Dictionary:
+	if not _extra.is_empty():
+		return _extra
+	_extra = {"anims": {}, "datos": {}}
+	var ruta := "res://assets/monstruos/heroe_anims.glb"
+	if not ResourceLoader.exists(ruta):
+		return _extra
+	var esc: Node = (load(ruta) as PackedScene).instantiate()
+	var aps := esc.find_children("*", "AnimationPlayer", true, false)
+	if aps.size():
+		var ap: AnimationPlayer = aps[0]
+		for n in ap.get_animation_list():
+			_extra.anims[n] = ap.get_animation(n).duplicate()
+	esc.free()
+	var f := FileAccess.open("res://assets/monstruos/heroe_anims.json", FileAccess.READ)
+	if f != null:
+		var j = JSON.parse_string(f.get_as_text())
+		if j is Dictionary:
+			_extra.datos = j
+	return _extra
+
+## copia las animaciones sueltas al AnimationPlayer de este modelo (las pistas son las mismas que las del esqueleto)
+func anadir_animaciones() -> void:
+	if anim == null:
+		return
+	var lib := anim.get_animation_library("")
+	if lib == null:
+		return
+	var x := extra()
+	for n in x.anims:
+		if not lib.has_animation(n):
+			lib.add_animation(n, x.anims[n])
+
+## momento del golpe de una animación (fracción del clip): de la ficha para «attack», del .json para las sueltas
+func golpe_de(n: String) -> float:
+	if n == "attack":
+		return float(ficha.get("golpe", .5))
+	return float(extra().datos.get(n, {}).get("golpe", .5))
 static func agarre(id: String = "esqueleto", mano: String = "main_hand", tipo: String = "espada") -> Dictionary:
 	var k := "%s/%s/%s" % [id, mano, tipo]
 	if _agarres.has(k):

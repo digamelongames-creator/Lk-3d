@@ -93,6 +93,14 @@ func _init() -> void:
 	var j = JSON.parse_string("{\n" + ",\n".join(lineas) + "\n}\n")
 	ok(j is Dictionary and j.size() == cat.size(), "formato del catálogo")
 
+	# animaciones sueltas de Mixamo en el héroe; los combos nuevos solo en el piso de prueba
+	var mh: Modelo3D = main.actores._modelo_heroe
+	for n in ["lanzar_bola", "lanzar_estallido", "lanzar_menor", "lanzar_mayor", "combo_ataque", "combo_tajos", "ataque_salto", "dolor_escudo"]:
+		ok(mh != null and mh.anim.has_animation(n), "animación " + n)
+	ok(main.actores.combos_prueba, "combos nuevos activos en el piso de prueba")
+	main.actores.gesto("lanzar_bola", .5)
+	ok(mh.actual == "lanzar_bola", "gesto de lanzar")
+
 	# caballero de la muerte y señor oscuro: cada habilidad saca su efecto
 	for cl in ["dk", "dl"]:
 		main._ir_menu()

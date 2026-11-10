@@ -390,6 +390,7 @@ func _process(dt: float) -> void:
 	actores.actualizar(dt)
 	_camara(dt)
 	hechizos.camara = camara
+	actores.combos_prueba = prueba > 0   # los combos nuevos del caballero, de momento solo en el piso de prueba
 	hechizos.actualizar(dt)
 	if sim.p != null:
 		RenderingServer.global_shader_parameter_set("pos_heroe", MazmorraGridMap.a3d(sim.p.x, sim.p.y))

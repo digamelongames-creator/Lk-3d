@@ -20,6 +20,11 @@ var heroe: Node3D
 var _modelo_heroe: Modelo3D
 var _hp_antes := -1.0
 var _combo_antes := -2
+## gesto suelto del héroe (lanzar una magia): mientras dure, manda sobre correr, quieto y el tajo
+var _gesto_hasta := 0
+## combos nuevos del caballero (combo_ataque, combo_tajos, ataque_salto), de momento solo en el piso de prueba
+var combos_prueba := false
+const COMBO := ["combo_ataque", "combo_tajos", "ataque_salto"]
 var _mano_der: Node3D
 var _mano_izq: Node3D
 var _cabeza: Node3D
@@ -604,17 +609,26 @@ func _animar_heroe(p: Ent.Hero) -> void:
 		elif p.caida_t > 0:
 			if m.actual != "hurt":
 				m.reproducir("hurt", .7, .05, true)
+		elif Time.get_ticks_msec() < _gesto_hasta:
+			pass   # lanzando una magia (gesto())
 		elif p.atk_t > 0:
 			# cada golpe del combo vuelve a empezar el tajo
 			# el clip se recorta: empieza poco antes del impacto para que la espada toque justo cuando la simulación hace el daño
-			if m.actual != "attack" or p.combo_step != _combo_antes:
-				var t_imp: float = m.duracion("attack") * float(m.ficha.get("golpe", .5))
+			var tajo := "attack"
+			if combos_prueba and p.cls == "knight" and not p.dk and not p.dl:
+				tajo = COMBO[posmod(p.combo_step, COMBO.size())]
+				if not m.anim.has_animation(tajo):
+					tajo = "attack"
+			if m.actual != tajo or p.combo_step != _combo_antes:
+				var t_imp: float = m.duracion(tajo) * m.golpe_de(tajo)
 				var t_dano: float = (float(p.seq.hit) if p.seq != null else 3.0) * Sim.AFT
-				m.reproducir_desde("attack", t_imp - t_dano * VEL_TAJO, VEL_TAJO)
+				m.reproducir_desde(tajo, t_imp - t_dano * VEL_TAJO, VEL_TAJO)
 			_combo_antes = p.combo_step
-		elif _hp_antes >= 0 and p.hp < _hp_antes - .5 and m.actual != "attack":
-			m.reproducir("hurt", 1.6, .05, true)
-		elif m.actual == "hurt" and not m.terminada():
+		elif _hp_antes >= 0 and p.hp < _hp_antes - .5 and not m.actual in ["attack"] + COMBO:
+			# los caballeros (caballero, caballero de la muerte y señor oscuro) con el de espada y escudo
+			var dolor := "dolor_escudo" if p.cls == "knight" and m.anim.has_animation("dolor_escudo") else "hurt"
+			m.reproducir(dolor, 1.6 if dolor == "hurt" else 1.3, .05, true)
+		elif m.actual in ["hurt", "dolor_escudo"] and not m.terminada():
 			pass
 		elif p.roll_t > 0 or corre:
 			m.reproducir("run", 1.3 if p.roll_t > 0 else maxf(.3, sim.vel_mov))   # los pasos al ritmo de «Velocidad al andar»
@@ -757,6 +771,8 @@ func _nuevo_heroe() -> Node3D:
 	var n := Node3D.new()
 	n.name = "Heroe"
 	_modelo_heroe = Modelo3D.crear(heroe_id)
+	if _modelo_heroe != null:
+		_modelo_heroe.anadir_animaciones()
 	if _modelo_heroe != null:
 		n.add_child(_modelo_heroe)
 		# el arma que traiga el modelo de la fábrica se esconde: la pone el equipo (_vestir)
@@ -1157,3 +1173,12 @@ func mano_heroe() -> Vector3:
 	if heroe != null:
 		return heroe.global_position + Vector3(0, 1.2, 0)
 	return Vector3.ZERO
+
+
+## gesto suelto del héroe (lanzar_bola, lanzar_estallido, lanzar_menor, lanzar_mayor): el clip entero en «dur» segundos
+func gesto(n: String, dur: float = .7) -> void:
+	var m := _modelo_heroe
+	if m == null or m.anim == null or not m.anim.has_animation(n):
+		return
+	m.reproducir(n, m.duracion(n) / maxf(.1, dur), .08, true)
+	_gesto_hasta = Time.get_ticks_msec() + int(dur * 1000)

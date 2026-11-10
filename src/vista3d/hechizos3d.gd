@@ -278,12 +278,16 @@ func _enganches() -> void:
 		if f.has("v3d"):
 			continue
 		f["v3d"] = true
+		_gesto("lanzar_bola", .45)
 		var ff: Dictionary = f
 		efecto("bola_fuego", MazmorraGridMap.a3d(f.x, f.y + ALTO_BOLA), {"dir": Vector3(f.vx, 0, f.vy).normalized(),
 			"seguir": func():
 				return null if ff.get("dead", false) or not C.fballs.has(ff) else MazmorraGridMap.a3d(ff.x, ff.y + ALTO_BOLA)})
-	# explosión del clic izquierdo: cuando estalla
+	# explosión del clic izquierdo: el gesto al lanzarla y el estallido cuando estalla
 	for a in C.aoes:
+		if not a.has("v3d_gesto"):
+			a["v3d_gesto"] = true
+			_gesto("lanzar_estallido", .5)
 		if a.boom > 0 and not a.has("v3d"):
 			a["v3d"] = true
 			efecto("mago_estallido", MazmorraGridMap.a3d(a.x, a.y))
@@ -342,11 +346,18 @@ func _enganches() -> void:
 		var cd: float = p.sk[i].get("cd", 0.0)
 		var antes = _cd_antes[i]
 		if antes != null and float(antes) <= 0.0 and cd > 0.0:
-			lanzar()
+			lanzar(String(p.skills[i]) if i < p.skills.size() else "")
 		_cd_antes[i] = cd
 
-## el aura de lanzar sobre el héroe (círculo, resplandor y brillo en la mano), con el tinte de su clase
-func lanzar() -> void:
+## el aura de lanzar sobre el héroe (círculo, resplandor y brillo en la mano), con el tinte de su clase,
+## y el gesto del héroe: levantar muertos «lanzar_mayor», los caballeros «lanzar_menor», el mago «lanzar_estallido»
+func lanzar(habilidad: String = "") -> void:
+	if habilidad == "raise":
+		_gesto("lanzar_mayor", 1.0)
+	elif sim.p.cls == "knight":
+		_gesto("lanzar_menor", .6)
+	elif sim.p.cls == "mage" and habilidad != "blink":
+		_gesto("lanzar_estallido", .6)
 	efecto(LANZAR[0], _pos_heroe(), {"seguir": _pos_heroe, "mudo": true})
 	efecto(LANZAR[1], _pos_heroe(), {"seguir": _pos_heroe, "mudo": true})
 	efecto(LANZAR[2], _pos_mano(), {"seguir": _pos_mano})
@@ -374,6 +385,10 @@ func _sigue(clave: String) -> bool:
 		"charco": return sim.p.pool_t > 0
 		"pacto": return sim.skill_on_id("pact")
 	return false
+
+func _gesto(n: String, dur: float) -> void:
+	if actores != null:
+		actores.gesto(n, dur)
 
 func _pos_heroe() -> Vector3:
 	return MazmorraGridMap.a3d(sim.p.x, sim.p.y)

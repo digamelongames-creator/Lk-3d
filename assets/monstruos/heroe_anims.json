@@ -1,0 +1,42 @@
+{
+ "lanzar_estallido": {
+  "archivo": "Cast burst .fbx",
+  "duracion": 2.3,
+  "golpe": 0.348
+ },
+ "lanzar_bola": {
+  "archivo": "Cast fireball.fbx",
+  "duracion": 2.3,
+  "golpe": 0.348
+ },
+ "lanzar_mayor": {
+  "archivo": "Cast major.fbx",
+  "duracion": 2.967,
+  "golpe": 0.551
+ },
+ "lanzar_menor": {
+  "archivo": "Cast minor.fbx",
+  "duracion": 1.033,
+  "golpe": 0.032
+ },
+ "ataque_salto": {
+  "archivo": "Sword And Shield  jump Attack (1).fbx",
+  "duracion": 2.033,
+  "golpe": 0.426
+ },
+ "combo_ataque": {
+  "archivo": "Sword And Shield Attack combo.fbx",
+  "duracion": 1.3,
+  "golpe": 0.487
+ },
+ "dolor_escudo": {
+  "archivo": "Sword And Shield Ihurt.fbx",
+  "duracion": 0.7,
+  "golpe": 0.048
+ },
+ "combo_tajos": {
+  "archivo": "Sword And Shield Slashcombo.fbx",
+  "duracion": 3.533,
+  "golpe": 0.198
+ }
+}
