@@ -62,7 +62,7 @@ Las tiendas y el almacén de Inca, tanda 2, se hacen ya con estas reglas.
 
 ## Orden de trabajo
 
-1. Diego prueba lo pendiente (Inca tanda 1, rama `pasillos-contorno`, combate rígido, tandas de diversión).
+1. ~~Diego prueba lo pendiente~~ Hecho el 10 nov (faltan el mímico y la sala del aprendizaje).
 2. Equilibrio: se ajusta la hoja `equilibrio_last_knight_3d.xlsx` y se pasan los valores al código.
 3. Se prepara la simulación para el cooperativo (las 5 reglas).
 4. Inca, tanda 2, y guardado con ranuras.
@@ -75,6 +75,5 @@ Gráfica tipo GTX 1060 y 8 GB de RAM. Diego cree que con 4 GB de RAM bastaría; 
 
 ## Preguntas abiertas
 
-- ¿Qué hace especial a un legendario? Ahora, afijo a afijo, un dorado bueno le gana.
-- El equipo mejorará con la oleada (decidido el 10 nov); falta decidir cómo.
-- Los jefes pegarán más que una élite (decidido el 10 nov); falta decidir cuánto.
+- Decidido el 10 nov: las piezas mejoran +10 % por afijo según la oleada donde caen; los legendarios llevan un efecto único (uno por pieza del caballero); el jefe pega ×2,2 (antes ×1,4).
+- Decidido el 10 nov: los enemigos que aprenden siguen activos en las partidas normales.
