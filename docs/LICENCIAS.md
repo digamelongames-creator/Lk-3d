@@ -11,3 +11,4 @@ Nada con licencia no comercial.
 | Personajes y monstruos | `assets/monstruos/*.glb` | SPRITE_FACTORY de Diego (Tripo + Mixamo) | Diego | Tripo Premium (de pago, uso comercial) y animaciones de Mixamo (uso comercial permitido en juegos) |
 | Sonidos (golpes, muertes, bloqueo, oro, explosión, jefe…) | `assets/sonidos/*.wav` | Sintetizados por script (`tools/sonidos.py`) | Claude para Diego | Propio |
 | HUD (orbes, marcos, inventario, huecos, panel, barra de experiencia) | `assets/ui/*.png` (convertidas con `tools/hud_piezas.py`) | Generadas con ChatGPT (imágenes) | Diego | Las condiciones de OpenAI ceden al usuario lo que genera, con uso comercial |
+| Efectos de las magias y de los legendarios (hojas 4×4) | `assets/vfx/*.png` (originales en `tools/vfx_originales/`, convertidas con `tools/vfx_hoja.py`) | Generadas con ChatGPT (imágenes), a mano o con Pixmith | Diego | Las condiciones de OpenAI ceden al usuario lo que genera, con uso comercial |

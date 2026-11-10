@@ -124,6 +124,7 @@ var start_gear: Array = []    # lo fijo del equipo inicial (las piezas básicas)
 var stats := new_stats()
 ## enemigos que aprenden (Aprendizaje): sin archivo hasta que main3d le da uno (las pruebas no tocan el disco)
 var apr := Aprendizaje.new()
+var leg := Legendarios.new(self)   # efectos únicos de los legendarios (10 nov 2026)
 var start_wave := 1
 var _last_pos := Vector2(INF, INF)
 
@@ -208,6 +209,7 @@ func enter_level(level: Dictionary) -> void:
 	CX = L.fount.x if L.fount != null else -9999.0
 	CY = L.fount.y if L.fount != null else -9999.0
 	enemies = []
+	leg.reset()
 	allies = []
 	corpses = []
 	pickups = []
@@ -1222,7 +1224,7 @@ func _gear_drop(q: int) -> Dictionary:
 	if rnd() >= .5:
 		var others := Items.CLASSES.filter(func(c): return c != own)
 		k = others[int(rnd() * others.size())]
-	return Items.make_gear(rng, q, k)
+	return Items.make_gear(rng, q, k, "", false, false, wave)
 
 ## madera 1 runa, hierro 2 (una de rango II o más), dorado 3 (una de III o más), maldito 2
 func _chest_runes(c: Dictionary) -> Array:
@@ -1454,6 +1456,7 @@ func step(dt: float, inp: Inp) -> String:
 		compute_flow(pcx, pcy)
 	_update_hero(dt, inp)
 	_vigilar_caida_heroe()
+	leg.paso(dt)
 	runes.tick(dt)
 	_chest_tick(dt)
 	_update_pickups(dt)
@@ -1787,6 +1790,7 @@ func _do_hit() -> void:
 			fx.text(e.x, e.y - 40, (str(dmg) + "!") if crit else str(dmg), COL_CRIT if crit else COL_GOLPE, 18 if crit else 11, crit)
 		if crit:
 			hubo_crit = true
+			leg.critico(e, dmg)
 		if not e.armor and not blk:
 			_interrumpe(e, .16)
 		if rp and p.st.parryStun > 0:
@@ -1807,6 +1811,8 @@ func _do_hit() -> void:
 		if e.hp <= 0:
 			kill_enemy(e, p.face)
 	_romper_golpe(cx, cy)
+	if a3:
+		leg.tajo3()
 	if hits:
 		stats.hits += hits
 		p.chain += hits
@@ -1856,6 +1862,7 @@ func kill_enemy(e: Ent.Enemy, ang: float) -> void:
 				kill_enemy(o, atan2(o.y - e.y, o.x - e.x))
 	arbol.on_kill(e)
 	runes.on_kill(e)
+	leg.muere(e)
 	var champ := e.type == "champ"
 	if champ and wave % 5 == 0:
 		p.skp += 1
@@ -1988,11 +1995,14 @@ func hurt_player(dmg: float, from_x: float, from_y: float, src, kind: String = "
 		p.parry_t = p.st.parryWin
 		p.parry_src = src
 		runes.on_block(src, dmg)
+		leg.bloqueo(src)
+		leg.herido()
 		return "block"
 	if src != null:
 		src.dealt += minf(dmg, p.hp)
 	p.hp = maxf(0, p.hp - dmg)
 	p.hurt_t = .18
+	leg.herido()
 	# el golpe recibido no corta el tajo ni congela el juego (decidido por Diego, 8 nov)
 	p.chain = 0
 	fx.shake(6 * Ritmo.VIBRA_DANO)
@@ -4648,8 +4658,9 @@ func drink_potion(which = null) -> void:
 		Items.bag_del(p, pot)
 	p.pot_t = t
 	if not runes.rv("dragonBlood"):
-		heal(p, p.st.potionHeal, "#ff8a7a", 12)
+		heal(p, p.st.potionHeal * leg.pocion_x(), "#ff8a7a", 12)
 	runes.on_potion()
+	leg.bebe()
 	fx.burst(p.x, p.y, 18, ["#ff4a3a", "#ff8a7a", "#ffd0c0"], 14, 70)
 	for i in 10:
 		fx.part({"x": p.x + (rnd() - .5) * 14, "y": p.y, "z": 4 + rnd() * 20, "vx": 0, "vy": 0, "vz": 30, "float": true, "life": .6, "col": "#ff4a3a" if rnd() < .5 else "#ffb0a0"})
@@ -4843,7 +4854,7 @@ const JEFES := [
 	{"id": "bufona", "n": "La Bufona Loca", "siervo": "esqueleto"},
 ]
 const JEFE_VIDA := 7.0
-const JEFE_DANO := 1.4
+const JEFE_DANO := 2.2   # 10 nov 2026 (antes 1,4): el jefe pega más que una élite
 const ONDA_R := 95.0       # px
 const ONDA_AVISO := .9     # s
 const EXPLOTA_R := 70.0
@@ -5434,7 +5445,7 @@ func _abrir_cofre_entrada(c: Dictionary) -> void:
 	var r := rnd() * (1 / maxf(.5, p.st.findMul))
 	var q := 3 if r < .05 else (2 if r < .4 else 1)
 	c.best = q
-	var it := Items.make_gear(rng, q, p.cls_key(), hueco_mas_flojo())
+	var it := Items.make_gear(rng, q, p.cls_key(), hueco_mas_flojo(), false, false, wave)
 	_fan(c.x, c.y, [it], 1, true)
 	drop_gold(c.x, c.y + 4, (15 + rnd() * 20) * (1 + wave * .1), false)
 	fx.burst(c.x, c.y, 12, ["#fff3c0", Items.RQ_C[q]], 10, 70)
@@ -5556,6 +5567,24 @@ func _secretas_init() -> void:
 		for cxy in [Vector2i(r.x + 1, r.y), Vector2i(r.x + r.w - 2, r.y)]:
 			chests.append({"cx": cxy.x, "cy": cxy.y, "kind": "gold", "secreta": true, "nombre": "Cofre del tesoro oculto", "room": null, "se": false,
 				"x": (cxy.x + .5) * TS, "y": (cxy.y + 1) * TS - 4, "open": false, "open_t": 0.0, "best": 0, "guards": [e], "msg_t": -9.0})
+
+## índice de la sala secreta que contiene el punto (px), o -1 (10 nov: el teletransporte no entra en ellas
+## y desde fuera no se ve lo de dentro)
+func sala_secreta_en(x: float, y: float) -> int:
+	if L.is_empty():
+		return -1
+	var cx := cell_of(x)
+	var cy := cell_of(y)
+	var l: Array = L.get("secretas", [])
+	for i in l.size():
+		var r: Dictionary = l[i].sala
+		if cx >= r.x and cx < r.x + r.w and cy >= r.y and cy < r.y + r.h:
+			return i
+	return -1
+
+## sala secreta donde está el héroe (o -1)
+func heroe_en_secreta() -> int:
+	return -1 if p == null else sala_secreta_en(p.x, p.y - 3)
 
 ## la puerta secreta (de fuera o de dentro) que tiene el héroe al lado: {s, sale, d}
 func secreta_cerca() -> Variant:

@@ -648,7 +648,8 @@ func _blink(h: Ent.Hero, s: Dictionary) -> void:
 	var ux := (bx - h.x) / L0
 	var uy := (by - h.y) / L0
 	var k := 0
-	while not sim.fits(bx, by) and k < 60:
+	var sala_h := sim.sala_secreta_en(h.x, h.y - 3)   # no se puede caer dentro de una sala secreta desde fuera (10 nov)
+	while (not sim.fits(bx, by) or sim.sala_secreta_en(bx, by - 3) != sala_h) and k < 60:
 		k += 1
 		bx -= ux * 4
 		by -= uy * 4

@@ -1,0 +1,8 @@
+{
+ "cols": 4,
+ "filas": 4,
+ "fotogramas": 16,
+ "fps": 20,
+ "bucle": true,
+ "origen": "leg_rastro_fuego.png"
+}

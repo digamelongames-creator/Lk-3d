@@ -6,6 +6,7 @@ class_name Comparar
 const C_MAS := Color8(143, 224, 138)
 const C_MENOS := Color8(255, 122, 96)
 const C_IGUAL := Color8(159, 208, 255)
+const C_LEG := Color8(63, 224, 176)   # legendario: turquesa (#3fe0b0)
 
 static func lineas(it: Dictionary, cur, tam: int = 11) -> Array:
 	var out := []
@@ -39,4 +40,10 @@ static func lineas(it: Dictionary, cur, tam: int = 11) -> Array:
 		out.append([st + "   ▼ −" + str(-ds), C_MENOS, tam - 1])
 	else:
 		out.append([st, Color8(150, 140, 120), tam - 1])
+	# efecto único de los legendarios (10 nov 2026)
+	var ef := Legendarios.texto(it)
+	if ef != "":
+		out.append(["★ " + ef, C_LEG, tam])
+	if cur != null and Legendarios.de(cur) != "" and Legendarios.de(cur) != Legendarios.de(it):
+		out.append(["Pierdes: " + Legendarios.texto(cur), C_MENOS, tam - 1])
 	return out

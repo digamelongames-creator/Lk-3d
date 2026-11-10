@@ -488,6 +488,9 @@ func _actualizar_enemigos(dt: float) -> void:
 		var n: Node3D = d.n
 		# lejos del héroe y sin despertar: ni se ve ni se anima (hay muchos enemigos por piso)
 		var lejos: bool = e.state == "idle" and Vector2(e.x - sim.p.x, e.y - sim.p.y).length() * MazmorraGridMap.PX_M > LEJOS_M
+		# los de una sala secreta no se ven desde fuera de ella (10 nov)
+		if not lejos and e.secreta and sim.sala_secreta_en(e.x, e.y - 3) != sim.heroe_en_secreta():
+			lejos = true
 		if lejos != d.get("lejos", false):
 			d.lejos = lejos
 			n.visible = not lejos

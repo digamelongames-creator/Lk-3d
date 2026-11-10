@@ -159,7 +159,8 @@ static func _pick(rng: RandomNumberGenerator, a: Array):
 	return a[int(rng.randf() * a.size())]
 
 ## simple: como antes del 10 nov (un número de 1 a 3, sin armadura ni extra): el equipo inicial
-static func make_gear(rng: RandomNumberGenerator, q: int, cls: String, s: String = "", no_sock: bool = false, simple: bool = false) -> Dictionary:
+## ol: oleada donde cae la pieza: cada afijo gana un 10 % por oleada (10 nov 2026)
+static func make_gear(rng: RandomNumberGenerator, q: int, cls: String, s: String = "", no_sock: bool = false, simple: bool = false, ol: int = 1) -> Dictionary:
 	var C: Dictionary = set_of(cls)
 	if s == "":
 		s = _pick(rng, C.slots)
@@ -186,6 +187,9 @@ static func make_gear(rng: RandomNumberGenerator, q: int, cls: String, s: String
 				st.append(a)
 		for a in st:
 			bonus[a] = (1 + int(rng.randf() * 3)) if simple else ((2 + int(rng.randf() * 4)) if q == 2 else (1 + int(rng.randf() * 4)))
+	if ol > 1 and not simple:
+		for a in bonus:
+			bonus[a] = escalar(int(bonus[a]), ol)
 	var name := base
 	if q == 0:
 		name += " " + material(base, bonus)
@@ -197,7 +201,15 @@ static func make_gear(rng: RandomNumberGenerator, q: int, cls: String, s: String
 	if not no_sock:
 		socks.resize(sock_n(cls, s, q))
 	item_id += 1
-	return {"id": item_id, "gear": true, "cls": cls, "slot": s, "q": q, "name": name, "bonus": bonus, "socks": socks}
+	var it := {"id": item_id, "gear": true, "cls": cls, "slot": s, "q": q, "name": name, "bonus": bonus, "socks": socks, "ol": ol}
+	if q == 3 and Legendarios.CLASES.has(cls) and Legendarios.EFECTO.has(s):
+		it["efecto"] = Legendarios.EFECTO[s]
+	return it
+
+const MEJORA_OLEADA := .1
+## número de un afijo en la oleada «ol»: +10 % por oleada, redondeado
+static func escalar(v: int, ol: int) -> int:
+	return maxi(v, roundi(v * (1.0 + MEJORA_OLEADA * (ol - 1))))
 
 ## material de una pieza básica: cuanto mejores sus números, mejor el material («Espada de acero templado»)
 static func material(base: String, bonus: Dictionary) -> String:

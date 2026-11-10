@@ -27,7 +27,7 @@ const ESTILOS := {
 const ARRIBA := [["Poly Haven", "", "muestra_polyhaven"], ["Modular Dungeon Kit", "dungeon_kit", "muestra_dungeon_kit"],
 	["Low Poly Dungeon", "low_poly", "muestra_low_poly"], ["Gothic Interior", "gotico", "muestra_gotico"], ["Ancient Ruins", "", "muestra_ruinas"]]
 const ABAJO := [["Almacén", "", "almacen"], ["Guardia", "", "guardia"], ["Tesoro", "", "tesoro"], ["Cueva", "", "cueva"],
-	["Aprendizaje", "", "arena"], ["Efectos", "", "efectos"]]
+	["Aprendizaje", "", "arena"], ["Efectos", "", "efectos"], ["Mímico", "", "mimico"]]
 const LADO := 9          # casillas de cada sala
 const PASO_SALAS := 11   # sala + 2 de roca
 const Y_ARRIBA := 3
@@ -100,6 +100,11 @@ static func generar(n: int) -> Dictionary:
 			var c := Vector2i(salas[k].x + 4, salas[k].y + 4)
 			salas[k].puertas.append(c)
 			chests.append({"cx": c.x, "cy": c.y, "kind": "wood", "room": k})
+		elif salas[k].proposito == "mimico":   # un baúl de verdad y un mímico al lado, iguales por fuera
+			for par in [[2, "wood"], [6, "mimic"]]:
+				var c := Vector2i(salas[k].x + par[0], salas[k].y + 4)
+				salas[k].puertas.append(c)
+				chests.append({"cx": c.x, "cy": c.y, "kind": par[1], "room": k})
 	# adornos según el propósito; lo sólido pasa a ser DECOR (no se puede pisar)
 	var pisable := func(c: Vector2i) -> bool:
 		return c.x >= 0 and c.y >= 0 and c.x < W and c.y < H and G[c.y * W + c.x] != DungeonGen.ROCK
@@ -382,6 +387,32 @@ static func _ronda_arena(sim, s: Dictionary, ronda: int) -> void:
 	sim.p.hp = sim.p.st.maxHp
 	sim.fx.hud()
 	sim.fx.banner("Ronda %d · miniboss y 4 esbirros · F3: lo que han aprendido" % ronda, "Sala del aprendizaje")
+
+# ======================================================================
+#  sala del mímico: si ya no queda mímico (ni cofre ni bicho), sale otro a los 3 s (10 nov 2026)
+# ======================================================================
+static func mimico(sim, dt: float) -> void:
+	var s := {}
+	for x in sim.L.get("salas_prueba", []):
+		if x.proposito == "mimico":
+			s = x
+	if s.is_empty():
+		return
+	for c in sim.chests:
+		if c.kind == "mimic":
+			return
+	for e in sim.enemies:
+		if e.mimic and not e.dying:
+			return
+	var A: Dictionary = sim.L.get_or_add("mimico_estado", {"t": 3.0})
+	A.t -= dt
+	if A.t > 0:
+		return
+	A.t = 3.0
+	var cx: int = s.x + 6
+	var cy: int = s.y + 4
+	sim.chests.append({"cx": cx, "cy": cy, "kind": "mimic", "room": null, "se": false, "x": (cx + .5) * DungeonGen.TS, "y": (cy + 1) * DungeonGen.TS - 4,
+		"open": false, "open_t": 0.0, "best": 0, "guards": [], "msg_t": -9.0})
 
 # ======================================================================
 #  sala de efectos: muñecos para probar los hechizos (Hechizos3D)

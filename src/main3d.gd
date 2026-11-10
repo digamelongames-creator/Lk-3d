@@ -362,8 +362,9 @@ func _process(dt: float) -> void:
 		var r := sim.step(dt, inp)
 		if prueba > 0:
 			# el piso de prueba no tiene enemigos (ni los que aparecen por el camino), salvo la sala del aprendizaje
-			sim.enemies = sim.enemies.filter(func(e): return e.en_arena)
+			sim.enemies = sim.enemies.filter(func(e): return e.en_arena or e.mimic)
 			PisoPrueba.arena(sim, dt)
+			PisoPrueba.mimico(sim, dt)
 			PisoPrueba.efectos(sim)
 		if r == "descend":
 			_bajar()
@@ -374,6 +375,11 @@ func _process(dt: float) -> void:
 				_abrir_escalera()
 		elif r == "secreta":
 			_abrir_secreta()
+		elif r == "over" and prueba > 0:
+			# en el piso de prueba se revive en el sitio, con la vida llena, para no perder la prueba (10 nov)
+			sim.revive()
+			sim.p.hp = sim.p.st.maxHp
+			sim.fx.hud()
 		elif r == "over":
 			state = "over"
 			_muerte.visible = true
@@ -388,6 +394,8 @@ func _process(dt: float) -> void:
 		_zoom_t -= dt
 		_zoom_label.modulate.a = clampf(_zoom_t / .5, 0, 1)
 	actores.actualizar(dt)
+	if mazmorra != null and not sim.L.is_empty():
+		mazmorra.tapas_secretas(sim.heroe_en_secreta())
 	_camara(dt)
 	hechizos.camara = camara
 	actores.combos_prueba = prueba > 0   # los combos nuevos del caballero, de momento solo en el piso de prueba

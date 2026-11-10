@@ -43,6 +43,9 @@ const PROPOSITOS := {
 		{"p": "dungeon_kit", "piezas": ["brasero"], "n": [4, 4], "donde": "esquina", "solido": true, "fuego": [.24, 1.0]},
 		{"p": "dungeon_kit", "piezas": ["estandarte_1", "estandarte_2", "estandarte_3"], "n": [2, 3], "donde": "colgado", "alto": 2.0},
 	],
+	"mimico": [   # sala del mímico: braseros para que se vean bien los dos baúles
+		{"p": "dungeon_kit", "piezas": ["brasero"], "n": [4, 4], "donde": "esquina", "solido": true, "fuego": [.24, 1.0]},
+	],
 	"efectos": [   # oscura y despejada, para que se vean bien los hechizos
 		{"p": "dungeon_kit", "piezas": ["estandarte_1", "estandarte_2", "estandarte_3"], "n": [3, 3], "donde": "colgado", "alto": 2.0},
 	],

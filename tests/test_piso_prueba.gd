@@ -33,7 +33,7 @@ func _init() -> void:
 	ok(no_munecos.is_empty(), "sin enemigos, salvo los muñecos de la sala de efectos (%d)" % no_munecos.size())
 	var L: Dictionary = sim.L
 	var salas: Array = L.salas_prueba
-	ok(salas.size() == 12, "pasillo + 5 salas de paquete + 4 de propósito + aprendizaje + efectos (%d)" % salas.size())
+	ok(salas.size() == 13, "pasillo + 5 salas de paquete + 4 de propósito + aprendizaje + efectos + mímico (%d)" % salas.size())
 	var d: PackedInt32Array = L.dist
 	var W := DungeonGen.GW
 	for s in salas:
@@ -52,7 +52,8 @@ func _init() -> void:
 			adornos += 1
 	ok(adornos > 300, "piezas montadas (%d)" % adornos)
 	# el cofre del tesoro se abre y suelta botín
-	ok(sim.chests.size() == 1, "un cofre (%d)" % sim.chests.size())
+	ok(sim.chests.size() == 3, "el cofre del tesoro y los dos baúles de la sala del mímico (%d)" % sim.chests.size())
+	ok(sim.chests.filter(func(c): return c.kind == "mimic").size() == 1, "uno de ellos es el mímico")
 	var antes := sim.loot.size()
 	ok(antes >= 4, "armas de prueba en la sala de guardia (%d)" % antes)
 	for i in 30:
@@ -62,7 +63,7 @@ func _init() -> void:
 		if n.has_meta("weapon_set"):
 			con_modelo += 1
 	ok(con_modelo >= 2, "armas del botín con modelo (%d)" % con_modelo)
-	ok(main.actores._cofres.size() == 1 and main.actores._cofres.values()[0].get_child(1).get_child_count() == 1, "cofre con el modelo y la tapa en la bisagra")
+	ok(main.actores._cofres.size() == 3 and main.actores._cofres.values()[0].get_child(1).get_child_count() == 1, "cofre con el modelo y la tapa en la bisagra")
 	var cf: Dictionary = sim.chests[0]
 	sim.p.x = cf.x
 	sim.p.y = cf.y + 12
@@ -72,6 +73,33 @@ func _init() -> void:
 		sim.step(1.0 / 60, inp)
 	ok(cf.open, "el cofre se abre")
 	ok(sim.loot.size() > antes or sim.pickups.size() > 0, "el cofre suelta algo")
+	# sala del mímico: muerde al acercarse, sigue vivo en el piso de prueba y, cuando muere, sale otro
+	var mc: Dictionary = sim.chests.filter(func(c): return c.kind == "mimic")[0]
+	sim.p.x = mc.x
+	sim.p.y = mc.y + 12
+	for i in 30:
+		await process_frame
+	var mim := sim.enemies.filter(func(e): return e.mimic)
+	ok(mim.size() == 1, "el mímico muerde y se queda en el piso de prueba (%d)" % mim.size())
+	if mim.size():
+		sim.kill_enemy(mim[0], 0.0)
+		mim[0].dying = 1.0
+	sim.p.x = (sim.L.start.cx + .5) * DungeonGen.TS
+	sim.p.y = (sim.L.start.cy + .5) * DungeonGen.TS + 10
+	for i in 2000:
+		await process_frame
+		if sim.chests.filter(func(c): return c.kind == "mimic").size():
+			break
+	ok(sim.chests.filter(func(c): return c.kind == "mimic").size() == 1, "sale otro mímico")
+	# morir en el piso de prueba: se revive en el sitio con la vida llena
+	sim.p.hp = 0
+	sim.p.dead = true
+	sim.p.death_t = 0
+	for i in 2000:
+		await process_frame
+		if not sim.p.dead:
+			break
+	ok(not sim.p.dead and sim.p.hp == sim.p.st.maxHp and main.state == "play", "se revive en el sitio")
 	# créditos
 	main.mostrar_creditos(true)
 	ok(main.state == "creditos" and main._creditos.visible, "F1 abre los créditos")

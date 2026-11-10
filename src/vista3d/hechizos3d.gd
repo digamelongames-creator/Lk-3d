@@ -156,7 +156,7 @@ func efecto(id: String, pos: Vector3, op: Dictionary = {}) -> Dictionary:
 			l.light_color = tc
 	var e := {"id": id, "nodo": n, "luz": l, "t": randf() * 2.0 if d.get("bucle", false) else 0.0, "pos": pos,
 		"dir": op.get("dir", Vector3.ZERO), "base": float(op.get("base", 1.0)), "seguir": op.get("seguir", null),
-		"dur": float(op.get("dur", INF)), "fin": false, "giro0": randf() * TAU}
+		"dur": float(op.get("dur", INF)), "fin": false, "giro0": randf() * TAU, "espejo": bool(op.get("espejo", false))}
 	_vivos.append(e)
 	if String(d.get("sonido", "")) != "" and not op.get("mudo", false):
 		_sonido(StringName(d.sonido), pos)
@@ -244,6 +244,9 @@ func _poner(e: Dictionary, dt: float) -> void:
 				e.pos + Vector3(0, maxf(alto, .03), 0))
 		_:   # golpe y aura
 			_de_cara(nodo, Vector3.ZERO, lado)
+			if e.espejo:   # dibujo dado la vuelta (el tajo cuando el héroe mira a la izquierda de la pantalla)
+				var b := nodo.global_transform.basis
+				nodo.global_transform.basis = Basis(-b.x, b.y, b.z)
 			nodo.global_position = e.pos + Vector3(0, alto, 0)
 	if e.luz != null:
 		var l: OmniLight3D = e.luz
@@ -371,8 +374,9 @@ func _enganches() -> void:
 	# tajo del verdugo: el tercer tajo del combo, con la habilidad activa, deja un tajo rojo enorme
 	if p.atk_t > 0 and p.combo_step != _paso_antes and p.combo_step == 2 and not p.dk and not p.dl and sim.skill_on_id("verdugo"):
 		var delante := MazmorraGridMap.a3d(p.x + cos(p.face) * 22, p.y + sin(p.face) * 22)
-		efecto("cab_verdugo", delante)
+		efecto("cab_verdugo", delante, {"espejo": mira_izquierda()})
 	_paso_antes = p.combo_step if p.atk_t > 0 else -1
+	_legendarios()
 	# --- al lanzar cualquier habilidad: el aura de lanzar sobre el héroe ---
 	_cd_antes.resize(p.sk.size())
 	for i in p.sk.size():
@@ -381,6 +385,56 @@ func _enganches() -> void:
 		if antes != null and float(antes) <= 0.0 and cd > 0.0:
 			lanzar(String(p.skills[i]) if i < p.skills.size() else "")
 		_cd_antes[i] = cd
+
+## ¿el héroe mira hacia la izquierda de la pantalla? (para dar la vuelta a los dibujos de tajos, que miran a la derecha)
+func mira_izquierda() -> bool:
+	if camara == null:
+		return false
+	var cara := Vector3(cos(sim.p.face), 0, sin(sim.p.face))
+	return cara.dot(camara.global_transform.basis.x) < 0
+
+## efectos únicos de los legendarios (Legendarios, 10 nov 2026)
+func _legendarios() -> void:
+	var LG: Legendarios = sim.leg
+	if LG == null:
+		return
+	for o in LG.ondas:   # onda de fuego de la espada: vuela mientras exista
+		if o.has("v3d"):
+			continue
+		o["v3d"] = true
+		var oo: Dictionary = o
+		efecto("leg_onda_fuego", MazmorraGridMap.a3d(o.x, o.y), {"dir": Vector3(o.vx, 0, o.vy).normalized(),
+			"seguir": func(): return MazmorraGridMap.a3d(oo.x, oo.y) if LG.ondas.has(oo) else null})
+	for f in LG.fuegos:   # rastro de fuego de las botas
+		if f.has("v3d"):
+			continue
+		f["v3d"] = true
+		var ff: Dictionary = f
+		efecto("leg_rastro_fuego", MazmorraGridMap.a3d(f.x, f.y), {"mudo": true,
+			"seguir": func(): return MazmorraGridMap.a3d(ff.x, ff.y) if LG.fuegos.has(ff) else null})
+	for r in LG.rayos:   # rayo de los guanteletes: de un enemigo al siguiente
+		if r.has("v3d"):
+			continue
+		r["v3d"] = true
+		var a := MazmorraGridMap.a3d(r.x0, r.y0)
+		var b := MazmorraGridMap.a3d(r.x1, r.y1)
+		efecto("leg_rayo", (a + b) * .5, {"dir": b - a, "base": maxf(a.distance_to(b), .5), "dur": .3})
+		efecto("leg_rayo_golpe", b, {"mudo": true})
+	for ev in LG.eventos:
+		match String(ev.id):
+			"aturdido":   # estrellas sobre el enemigo aturdido por el escudo
+				var en: Ent.Enemy = ev.e
+				var fin: float = sim.t + float(ev.t)
+				efecto("leg_aturdido", MazmorraGridMap.a3d(en.x, en.y), {"mudo": true, "seguir": func():
+					return MazmorraGridMap.a3d(en.x, en.y) if sim.t < fin and not en.dying else null})
+			"cura":
+				efecto("leg_curacion", _pos_heroe(), {"seguir": _pos_heroe})
+			"escudo":   # burbuja de la coraza mientras le quede escudo
+				efecto("leg_escudo", _pos_heroe(), {"seguir": func(): return _pos_heroe() if sim.p.shield > 0 else null})
+			"furia":
+				var fin2: float = sim.t + float(ev.t)
+				efecto("leg_furia", _pos_heroe(), {"mudo": true, "seguir": func(): return _pos_heroe() if sim.t < fin2 else null})
+	LG.eventos.clear()
 
 ## el aura de lanzar sobre el héroe (círculo, resplandor y brillo en la mano), con el tinte de su clase,
 ## y el gesto del héroe: levantar muertos «lanzar_mayor», los caballeros «lanzar_menor», el mago «lanzar_estallido»

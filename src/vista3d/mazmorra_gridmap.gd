@@ -62,6 +62,7 @@ func construir(L: Dictionary) -> void:
 	for c in adornos.get_children():
 		c.queue_free()
 	luces.clear()
+	tapas.clear()
 	_llamas.clear()
 	var W := DungeonGen.GW
 	var H := DungeonGen.GH
@@ -116,6 +117,7 @@ func _puertas_secretas(L: Dictionary) -> void:
 	if i_puerta < 0:
 		return
 	for s in L.get("secretas", []):
+		_tapa(s.sala)
 		for par in [[s.puerta, s.fuera], [s.puerta_dentro, s.dentro]]:
 			var m: Vector2i = par[0]
 			var k := DIRS.find(par[1] - m)
@@ -124,6 +126,30 @@ func _puertas_secretas(L: Dictionary) -> void:
 			caras[k].set_cell_item(Vector3i(m.x, 0, m.y), i_puerta, _ori(caras[k], GIROS[k]))
 			var d: Vector2i = par[1] - m
 			_luz(centro(par[1]) - Vector3(d.x, 0, d.y) * .4 + Vector3(0, 1.4, 0), Color(.55, .65, 1.0), .9, 3.5)
+
+## tapa negra a la altura de los muros sobre una sala secreta: desde fuera no se ve lo de dentro
+## (10 nov, decidido por Diego). Se quita mientras el héroe está dentro (tapas_secretas).
+var tapas: Array[MeshInstance3D] = []
+
+func _tapa(r: Dictionary) -> void:
+	var m := MeshInstance3D.new()
+	var caja := BoxMesh.new()
+	var c := KitMazmorra.CELDA
+	caja.size = Vector3(r.w * c, .1, r.h * c)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color.BLACK
+	caja.material = mat
+	m.mesh = caja
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	m.position = Vector3((r.x + r.w / 2.0) * c, KitMazmorra.ALTO_MURO + .06, (r.y + r.h / 2.0) * c)
+	adornos.add_child(m)
+	tapas.append(m)
+
+## la tapa de la sala donde está el héroe (dentro: índice; fuera: -1) se quita; las demás, puestas
+func tapas_secretas(dentro: int) -> void:
+	for i in tapas.size():
+		tapas[i].visible = i != dentro
 
 ## un muro solo hace falta donde la roca toca algo pisable (las 8 vecinas); la roca de dentro se queda vacía
 func _junto_a_suelo(G: PackedByteArray, cx: int, cy: int) -> bool:
