@@ -102,7 +102,7 @@ func _init() -> void:
 	ok(mh.actual == "lanzar_bola", "gesto de lanzar")
 
 	# caballero de la muerte y señor oscuro: cada habilidad saca su efecto
-	for cl in ["dk", "dl"]:
+	for cl in ["dk", "dl", "archer", "knight"]:
 		main._ir_menu()
 		await process_frame
 		main.menu.piso_prueba.emit(efectos, cl)
@@ -112,7 +112,9 @@ func _init() -> void:
 		H = main.hechizos
 		ok(main.clase == cl, "sala de efectos como " + cl)
 		var esperado := {"dk": [["raise", "dk_levantar"], ["drain", "dk_drenaje"], ["whirl", "dk_torbellino"]],
-			"dl": [["cloud", "dl_nube"], ["pool", "dl_charco"], ["pact", "dl_pacto"]]}
+			"dl": [["cloud", "dl_nube"], ["pool", "dl_charco"], ["pact", "dl_pacto"]],
+			"archer": [["rain", "arq_lluvia"], ["farrow", "arq_flecha_fuego"], ["multi", "arq_flecha"]],
+			"knight": [["valor", "cab_valor"], ["banner", "cab_estandarte"]]}
 		for par in esperado[cl]:
 			var i: int = sim.p.skills.find(par[0])
 			if i < 0:

@@ -1,0 +1,8 @@
+{
+ "cols": 4,
+ "filas": 4,
+ "fotogramas": 16,
+ "fps": 14,
+ "bucle": true,
+ "origen": "cab_valor.png"
+}

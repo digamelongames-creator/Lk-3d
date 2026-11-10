@@ -53,7 +53,7 @@ def _a_rgba(rgb):
 # ----------------------------------------------------------------------
 #  convertir lo de ChatGPT
 # ----------------------------------------------------------------------
-def convertir(ruta, nombre, cols=4, filas=4, fps=None, bucle=False, centrar=False):
+def convertir(ruta, nombre, cols=4, filas=4, fps=None, bucle=False, centrar=False, margen=.03):
     """fps None: el del GIF (si es GIF) o 20"""
     fuente = Image.open(ruta)
     if getattr(fuente, "n_frames", 1) > 1:   # GIF animado: cada fotograma, una celda
@@ -73,7 +73,7 @@ def convertir(ruta, nombre, cols=4, filas=4, fps=None, bucle=False, centrar=Fals
         for c in range(cols):
             y0, y1 = round(r * H / filas), round((r + 1) * H / filas)
             x0, x1 = round(c * W / cols), round((c + 1) * W / cols)
-            m = max(2, round((x1 - x0) * .03))   # fuera las líneas de la rejilla
+            m = max(1, round((x1 - x0) * margen))   # fuera las líneas de la rejilla (--margen=0 si el dibujo toca el borde)
             cel = img[y0 + m:y1 - m, x0 + m:x1 - m].copy()
             if centrar:
                 peso = cel.max(axis=2)
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     elif a[0] == "convertir" and len(a) >= 3:
         op = {k.lstrip("-").split("=")[0]: (k.split("=")[1] if "=" in k else True) for k in a[3:]}
         convertir(a[1], a[2], int(op.get("cols", 4)), int(op.get("filas", 4)), int(op["fps"]) if "fps" in op else None,
-                  bool(op.get("bucle", False)), bool(op.get("centrar", False)))
+                  bool(op.get("bucle", False)), bool(op.get("centrar", False)), float(op.get("margen", .03)))
     else:
         print(__doc__)
         sys.exit(1)

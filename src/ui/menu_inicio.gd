@@ -257,7 +257,7 @@ func _pagina_pruebas() -> Control:
 	caja.set_anchors_preset(Control.PRESET_CENTER)
 	caja.offset_left = -210
 	caja.offset_right = 210
-	caja.offset_top = -400
+	caja.offset_top = -420
 	caja.grow_vertical = Control.GROW_DIRECTION_END
 	caja.add_theme_constant_override("separation", 5)
 	var cab := _cabecera("Salas de prueba")
@@ -274,7 +274,7 @@ func _pagina_pruebas() -> Control:
 	for i in orden:
 		var n: String = l[i][0]
 		if l[i][1] == "efectos":   # una entrada por clase con magias dibujadas
-			for c in [["mage", "mago"], ["knight", "caballero (combos nuevos)"], ["dk", "caballero de la muerte"], ["dl", "señor oscuro"]]:
+			for c in [["mage", "mago"], ["knight", "caballero (combos nuevos)"], ["archer", "arquero"], ["dk", "caballero de la muerte"], ["dl", "señor oscuro"]]:
 				var cl: String = c[0]
 				caja.add_child(boton(n + "  · " + c[1], func(): piso_prueba.emit(i, cl), 36))
 			continue
