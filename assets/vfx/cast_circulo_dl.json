@@ -1,0 +1,8 @@
+{
+ "cols": 4,
+ "filas": 4,
+ "fotogramas": 16,
+ "fps": 24,
+ "bucle": false,
+ "origen": "cast_circulo_dl.png"
+}

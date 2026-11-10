@@ -19,13 +19,14 @@ var rains: Array = []       # lluvias de flechas: {x, y, r, t, max, tick, delay,
 var up_arrows: Array = []   # flechas que suben al lanzar la lluvia
 var clouds: Array = []      # nubes de muerte del Señor Oscuro
 var fxs: Array = []         # efectos de sprite (explosión de la flecha de fuego)
+var orbes: Array = []       # orbes de muerte del Señor Oscuro: {x, y, vx, vy, life, dmg, t, dead, boom}
 var in_skill := false       # true mientras se lanza una habilidad (no un ataque básico)
 
 func _init(s: Sim) -> void:
 	sim = s
 
 func reset() -> void:
-	aoes = []; fballs = []; arrows = []; rains = []; up_arrows = []; clouds = []; fxs = []
+	aoes = []; fballs = []; orbes = []; arrows = []; rains = []; up_arrows = []; clouds = []; fxs = []
 
 func _p() -> Ent.Hero:
 	return sim.p
@@ -516,6 +517,10 @@ func use_skill(id: String, s: Dictionary) -> bool:
 	var h := _p()
 	in_skill = true
 	match id:
+		"orb":   # orbe de muerte: lento, persigue al enemigo más cercano y estalla al tocarlo
+			var a := h.face
+			orbes.append({"x": h.x + cos(a) * 14, "y": h.y - 18 + sin(a) * 8, "vx": cos(a) * sim.skp("orb", "spd"), "vy": sin(a) * sim.skp("orb", "spd"),
+				"life": sim.skp("orb", "life"), "dmg": h.st.dmg * sim.skp("orb", "mult"), "t": 0.0, "dead": false})
 		"blink":
 			_blink(h, s)
 			in_skill = false
@@ -723,6 +728,7 @@ func tick(dt: float) -> void:
 			for i in 6:
 				fx.stain(f.x + (sim.rnd() - .5) * 14, f.y + 18 + (sim.rnd() - .5) * 8, "#1a100a" if i % 2 else "#2a1608", 2)
 	fballs = fballs.filter(func(f): return not f.dead)
+	_tick_orbes(dt)
 	# flechas
 	for a in arrows:
 		a.t += dt
@@ -836,3 +842,46 @@ func tick(dt: float) -> void:
 	for f in fxs:
 		f.t -= dt
 	fxs = fxs.filter(func(f): return f.t > 0)
+
+
+# ======================================================================
+#  orbe de muerte del Señor Oscuro (Diego, 10 nov): lento, persigue al enemigo más cercano y estalla
+#  en sangre y sombra al tocarlo; daña a todos los de alrededor (radio «r» de la ficha)
+# ======================================================================
+func _tick_orbes(dt: float) -> void:
+	for o in orbes:
+		o.t += dt
+		o.life -= dt
+		var spd := sim.skp("orb", "spd")
+		var obj: Ent.Enemy = null
+		var bd := 320.0
+		for e: Ent.Enemy in sim.enemies:
+			if e.dying or e.state == "idle" and e.hp >= e.max_hp and JS.hypot(e.x - o.x, e.y - 16 - o.y) > 160:
+				continue
+			var d := JS.hypot(e.x - o.x, e.y - 16 - o.y)
+			if d < bd:
+				bd = d
+				obj = e
+		if obj != null:   # gira poco a poco hacia él
+			var want := atan2(obj.y - 16 - o.y, obj.x - o.x)
+			var cur := atan2(o.vy, o.vx)
+			var giro := wrapf(want - cur, -PI, PI)
+			cur += clampf(giro, -3.2 * dt, 3.2 * dt)
+			o.vx = cos(cur) * spd
+			o.vy = sin(cur) * spd
+		o.x += o.vx * dt
+		o.y += o.vy * dt
+		var boom: bool = o.life <= 0 or DungeonGen.is_opaque(sim.tile_at(int(floorf(o.x / Sim.TS)), int(floorf((o.y + 16) / Sim.TS))))
+		if not boom:
+			for e: Ent.Enemy in sim.enemies:
+				if not e.dying and JS.hypot(e.x - o.x, (e.y - 16) - o.y) < 14 + e.cuerpo:
+					boom = true
+					break
+		if boom:
+			o.dead = true
+			var r := sim.skp("orb", "r")
+			for e: Ent.Enemy in sim.enemies.duplicate():
+				if not e.dying and JS.hypot(e.x - o.x, (e.y - 16) - o.y) < r + e.cuerpo:
+					magic_hit(e, o.dmg, atan2(e.y - 16 - o.y, e.x - o.x), 120, false)
+			sim.fx.shake(2)
+	orbes = orbes.filter(func(o): return not o.dead)

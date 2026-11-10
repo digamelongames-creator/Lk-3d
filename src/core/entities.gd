@@ -45,6 +45,7 @@ class Hero extends RefCounted:
 	var fire_at := 0.0
 	var shot_ang := 0.0
 	var cast_t := 0.0
+	var quieto_t := 0.0   # quieto al lanzar una habilidad (decidido por Diego, 10 nov: todas las clases)
 	var next_fb_crit := false
 	var blink_second := false
 	# caballero y Caballero de la Muerte

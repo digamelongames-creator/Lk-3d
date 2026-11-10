@@ -52,10 +52,11 @@ func _init() -> void:
 	# habilidades del mago: 1 nova, 2 llamarada, 3 teletransporte
 	sim.p.mana = 999
 	sim.use_skill(sim.p.skills.find("nova"))
+	ok(sim.p.quieto_t > 0, "quieto al lanzar una habilidad")
 	for _f in 3:
 		await process_frame
 	ok(H.vivos("mago_nova") == 1, "nova: anillo en el suelo")
-	ok(H.vivos("cast_circulo") >= 1 and H.vivos("cast_resplandor") >= 1 and H.vivos("cast_mano") >= 1, "aura de lanzar al usar una habilidad")
+	ok(H.vivos("cast_circulo_mage") >= 1 and H.vivos("cast_resplandor_mage") >= 1 and H.vivos("cast_mano") >= 1, "aura de lanzar al usar una habilidad")
 	var m: Ent.Enemy = sim.enemies.filter(func(e): return e.muneco)[0]
 	sim.p.x = m.x + 30   # al lado de un muñeco, para que la llamarada lo alcance
 	sim.p.y = m.y
@@ -112,7 +113,7 @@ func _init() -> void:
 		H = main.hechizos
 		ok(main.clase == cl, "sala de efectos como " + cl)
 		var esperado := {"dk": [["raise", "dk_levantar"], ["drain", "dk_drenaje"], ["whirl", "dk_torbellino"]],
-			"dl": [["cloud", "dl_nube"], ["pool", "dl_charco"], ["pact", "dl_pacto"]],
+			"dl": [["cloud", "dl_nube"], ["pool", "dl_charco"], ["pact", "dl_pacto"], ["orb", "dl_orbe"]],
 			"archer": [["rain", "arq_lluvia"], ["farrow", "arq_flecha_fuego"], ["multi", "arq_flecha"]],
 			"knight": [["valor", "cab_valor"], ["banner", "cab_estandarte"]]}
 		for par in esperado[cl]:

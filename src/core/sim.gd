@@ -189,7 +189,8 @@ func new_game(start_wave: int = 1, seed: String = "", ck: String = "dk") -> void
 	p.dl = ck == "dl"
 	p.cls = "knight" if (p.dk or p.dl) else ck
 	p.skills = C.skills.duplicate()
-	p.sk = [{"t": 0.0, "cd": 0.0}, {"t": 0.0, "cd": 0.0}, {"t": 0.0, "cd": 0.0}]
+	p.sk = []
+	for _i in p.skills.size(): p.sk.append({"t": 0.0, "cd": 0.0})   # una por habilidad (el señor oscuro tiene 4: el orbe)
 	Items.init_gear(p, rng)
 	runes.agg(p)
 	p.hp = p.st.maxHp
@@ -1527,6 +1528,7 @@ func _update_hero(dt: float, inp: Inp) -> void:
 		p.roll_dy = dy / l
 		p.roll_t = ROLL_T
 		p.roll_cd = p.st.rollCdMax
+		p.quieto_t = 0   # la voltereta corta el gesto
 		p.seq = null
 		p.atk_t = 0
 		p.ar_t = 0
@@ -1569,7 +1571,7 @@ func _update_hero(dt: float, inp: Inp) -> void:
 		elif p.blocking: slow = .4
 		elif p.seq != null: slow = 0.0   # quieto mientras dura el tajo (decidido por Diego, 8 nov)
 		elif p.ar_t > 0: slow = 0.0
-		elif p.cast_t > 0: slow = .85
+		elif p.quieto_t > 0 or p.cast_t > 0 or p.shot_t > 0: slow = 0.0   # quieto al lanzar o disparar, todas las clases (Diego, 10 nov)
 		if en_escalera(p.x, p.y): slow *= ESC_LENTO
 		mv(p, mx * p.st.spd * slow * vel_mov * dt, my * p.st.spd * slow * vel_mov * dt)
 		if p.moving and p.seq == null and not p.blocking and not (p.cast_t > 0) and not (p.shot_t > 0) and not (p.ar_t > 0):
@@ -1580,6 +1582,7 @@ func _update_hero(dt: float, inp: Inp) -> void:
 		p.lunge -= dt
 		if LUNGE:
 			mv(p, cos(p.face) * 130 * dt, sin(p.face) * 130 * dt)
+	p.quieto_t -= dt
 	p.hurt_t -= dt; p.roll_cd -= dt; p.atk_t -= dt; p.inv -= dt; p.combo_t -= dt; p.parry_t -= dt
 	for s in p.sk:
 		s.t = maxf(0, s.t - dt)
@@ -2077,6 +2080,8 @@ func use_skill(i: int) -> void:
 	cls.use_skill(id, s)
 	s.t = skp(id, "dur") * p.st.skillDur
 	s.cd = skp(id, "cd") * (1 - p.st.cdr)
+	if not id in ["whirl", "pool"]:   # las que se lanzan dejan quieto un momento (el torbellino y el charco se mueven)
+		p.quieto_t = 1.0 if id == "raise" else .6
 	if id == "drain":
 		p.drain_tick = 0
 		if has("d_drain_b"):

@@ -330,7 +330,7 @@ func _entrar_prueba(n: int) -> void:
 		sim.unstick(sim.p)
 		_camara(1.0)
 	if not PisoPrueba.sala_efectos(sim).is_empty() and _sala >= 0 and PisoPrueba.salas_menu()[_sala][1] == "efectos":
-		fx.banner("Muñecos para probar las magias · F4: ajustar los efectos · F6: probar", "Sala de efectos")
+		fx.banner("Muñecos para probar las magias · F4: ajustar los efectos · F6: probar · 4: orbe (señor oscuro)", "Sala de efectos")
 	else:
 		fx.banner("Sin enemigos · F1: créditos", PisoPrueba.nombre(n))
 
@@ -725,6 +725,7 @@ func _setup_input() -> void:
 	add.call("lk_skill1", [key.call(KEY_1)])
 	add.call("lk_skill2", [key.call(KEY_2)])
 	add.call("lk_skill3", [key.call(KEY_3)])
+	add.call("lk_skill4", [key.call(KEY_4)])   # 4.ª habilidad (el orbe de muerte del señor oscuro)
 	add.call("lk_use", [key.call(KEY_SPACE)])
 	add.call("lk_potion", [key.call(KEY_Q)])
 	add.call("lk_map", [key.call(KEY_M)])
@@ -796,7 +797,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 		return
 	if ev.is_action_pressed("lk_attack"): _attack_edge = true
 	if ev.is_action_pressed("lk_dash"): _dash_edge = true
-	for i in 3:
+	for i in 4:
 		if ev.is_action_pressed("lk_skill%d" % (i + 1)):
 			_skill_edge = i
 	if ev.is_action_pressed("lk_use"): _interact_edge = true

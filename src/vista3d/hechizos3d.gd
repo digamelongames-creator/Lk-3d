@@ -181,9 +181,9 @@ func _soltar(e: Dictionary) -> void:
 	if e.luz != null and is_instance_valid(e.luz):
 		e.luz.free()
 
-## cuántos efectos hay vivos (pruebas)
+## cuántos efectos hay vivos (pruebas); id acabado en «*» cuenta los que empiezan así
 func vivos(id: String = "") -> int:
-	return _vivos.filter(func(e): return id == "" or e.id == id).size()
+	return _vivos.filter(func(e): return id == "" or e.id == id or (id.ends_with("*") and e.id.begins_with(id.trim_suffix("*")))).size()
 
 # ======================================================================
 #  cada fotograma
@@ -212,6 +212,8 @@ func _poner(e: Dictionary, dt: float) -> void:
 		if p == null:
 			e.fin = true
 			return
+		if String(d.get("forma", "")) == "proyectil" and (p - e.pos).length() > .001:
+			e.dir = (p - e.pos).normalized()   # el dibujo sigue a la trayectoria (arcos, persecuciones)
 		e.pos = p
 	var n := float(h.fotogramas)
 	var fr: float = e.t * float(h.fps) * float(d.get("velocidad", 1.0))
@@ -294,6 +296,16 @@ func _enganches() -> void:
 		if not a.has("v3d_gesto"):
 			a["v3d_gesto"] = true
 			_gesto("lanzar_estallido", .5)
+			# una bola de fuego pequeña sale de la mano y vuela en arco hasta donde estalla
+			var aa: Dictionary = a
+			var ini := _pos_mano()
+			var fin := MazmorraGridMap.a3d(a.x, a.y, 6.0)
+			var alto_arco := clampf(ini.distance_to(fin) * .35, .8, 3.0)
+			efecto("mago_bola_arco", ini, {"dir": (fin - ini).normalized(), "seguir": func():
+				if aa.boom > 0 or not C.aoes.has(aa):
+					return null
+				var k := clampf(1.0 - float(aa.t) / maxf(.01, float(aa.max)), 0.0, 1.0)
+				return ini.lerp(fin, k) + Vector3(0, 4.0 * alto_arco * k * (1.0 - k), 0)})
 		if a.boom > 0 and not a.has("v3d"):
 			a["v3d"] = true
 			efecto("mago_estallido", MazmorraGridMap.a3d(a.x, a.y))
@@ -342,6 +354,14 @@ func _enganches() -> void:
 		var cc: Dictionary = c
 		efecto("dl_nube", MazmorraGridMap.a3d(c.x, c.y), {"base": c.r * 2 * MazmorraGridMap.PX_M,
 			"seguir": func(): return MazmorraGridMap.a3d(cc.x, cc.y) if C.clouds.has(cc) else null})
+	# orbe de muerte: flota hacia su presa; al estallar, «al_acabar»
+	for o in C.orbes:
+		if o.has("v3d"):
+			continue
+		o["v3d"] = true
+		var oo: Dictionary = o
+		efecto("dl_orbe", MazmorraGridMap.a3d(o.x, o.y + 18, 18), {"seguir": func():
+			return null if oo.get("dead", false) or not C.orbes.has(oo) else MazmorraGridMap.a3d(oo.x, oo.y + 18, 18)})
 	# charco de sangre: el héroe hecho charco
 	_mientras("charco", p.pool_t > 0, "dl_charco", _pos_heroe, 40.0)
 	# pacto de sangre: llamas de sangre alrededor del héroe mientras dura
@@ -366,6 +386,14 @@ func _enganches() -> void:
 		var diam: float = r.r * 2 * MazmorraGridMap.PX_M
 		efecto("arq_lluvia", MazmorraGridMap.a3d(r.x, r.y), {"base": diam, "seguir": fin})
 		efecto("arq_lluvia_suelo", MazmorraGridMap.a3d(r.x, r.y), {"base": diam, "seguir": fin, "mudo": true})
+	# flechas que suben al lanzar la lluvia
+	for u in C.up_arrows:
+		if u.has("v3d"):
+			continue
+		u["v3d"] = true
+		var uu: Dictionary = u
+		efecto("arq_flecha", MazmorraGridMap.a3d(u.x, u.y, u.z), {"dir": Vector3.UP, "mudo": true,
+			"seguir": func(): return MazmorraGridMap.a3d(uu.x, uu.y, uu.z) if C.up_arrows.has(uu) else null})
 	# --- Caballero ---
 	# gran valor: aura en el cuerpo mientras dura
 	_mientras("valor", sim.skill_on_id("valor"), "cab_valor", _pos_heroe)
@@ -445,8 +473,12 @@ func lanzar(habilidad: String = "") -> void:
 		_gesto("lanzar_menor", .6)
 	elif sim.p.cls == "mage" and habilidad != "blink":
 		_gesto("lanzar_estallido", .6)
-	efecto(LANZAR[0], _pos_heroe(), {"seguir": _pos_heroe, "mudo": true})
-	efecto(LANZAR[1], _pos_heroe(), {"seguir": _pos_heroe, "mudo": true})
+	# el círculo y el resplandor de su clase (cast_circulo_mage…); si no hay, los blancos teñidos
+	var clase := "dk" if sim.p.dk else ("dl" if sim.p.dl else sim.p.cls)
+	for base in [LANZAR[0], LANZAR[1]]:
+		var propio: String = base + "_" + clase
+		var hay: bool = not ficha(propio).is_empty() and hoja_de(ficha(propio)).tex != null
+		efecto(propio if hay else base, _pos_heroe(), {"seguir": _pos_heroe, "mudo": true})
 	efecto(LANZAR[2], _pos_mano(), {"seguir": _pos_mano})
 
 ## efecto que dura mientras «si» sea verdad (y lo siga siendo: _sigue); pos: Callable → Vector3;
