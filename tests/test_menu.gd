@@ -92,7 +92,7 @@ func _init() -> void:
 	for i in l.size():
 		if l[i][1] == "efectos": efectos = i
 	ok(efectos > 0 and PisoPrueba.clase_de_sala(efectos) == "mage" and PisoPrueba.clase_de_sala(0) == "knight", "sala de efectos (mago)")
-	main.menu.piso_prueba.emit(efectos)
+	main.menu.piso_prueba.emit(efectos, "")
 	await process_frame
 	ok(main.prueba == 1 and main.state == "play" and main.clase == "mage", "Piso de prueba · Efectos")
 	for _f in 5:

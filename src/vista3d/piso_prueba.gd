@@ -390,6 +390,8 @@ static func _ronda_arena(sim, s: Dictionary, ronda: int) -> void:
 ## Se ven los números de daño y los efectos; la vida vuelve a llenarse sola.
 const MUNECOS := [Vector2(2.5, 2.5), Vector2(4.5, 2.0), Vector2(6.5, 2.5), Vector2(1.8, 5.0), Vector2(7.2, 5.0)]
 
+const CADAVERES := [Vector2(3.0, 6.5), Vector2(4.5, 7.0), Vector2(6.0, 6.5)]
+
 static func sala_efectos(sim) -> Dictionary:
 	for s in sim.L.get("salas_prueba", []):
 		if s.proposito == "efectos":
@@ -416,6 +418,17 @@ static func efectos(sim) -> void:
 			e.hp = e.max_hp
 			e.ghost = e.max_hp
 	sim.p.mana = sim.p.st.get("maxMana", sim.p.mana)   # maná sin fin para probar
+	# el caballero de la muerte necesita cadáveres para «Levantar muertos»: siempre hay 3 en el suelo
+	if sim.p.dk and sim.allies.is_empty() and sim.corpses.size() < CADAVERES.size():
+		var TS := DungeonGen.TS
+		for c in CADAVERES:
+			var x: float = (s.x + c.x) * TS
+			var y: float = (s.y + c.y) * TS
+			if sim.corpses.any(func(k): return absf(k.x - x) < 4 and absf(k.y - y) < 4):
+				continue
+			var k := {"x": x, "y": y, "face": PI / 2, "champ": false, "rare": false, "hero": "", "mon": "esqueleto"}
+			sim.corpses.append(k)
+			sim.fx.corpse(k)
 	if hay:
 		return
 	var TS := DungeonGen.TS

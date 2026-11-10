@@ -149,6 +149,7 @@ func _ready() -> void:
 	add_child(actores)
 	hechizos = Hechizos3D.new()
 	hechizos.sim = sim
+	hechizos.actores = actores
 	add_child(hechizos)
 	fx.raiz = self
 	fx.sim = sim
@@ -225,9 +226,9 @@ func _ready() -> void:
 	menu = MenuInicio.new()
 	menu.visible = false
 	menu.empezar.connect(func(c: String): _empezar(c, 0))
-	menu.piso_prueba.connect(func(sala: int):
+	menu.piso_prueba.connect(func(sala: int, cl: String):
 		_sala = sala
-		_empezar(PisoPrueba.clase_de_sala(sala), 1))
+		_empezar(cl if cl != "" else PisoPrueba.clase_de_sala(sala), 1))
 	menu.creditos.connect(func(): mostrar_creditos(true))
 	menu.salir.connect(func(): get_tree().quit())
 	menu.continuar.connect(_continuar)

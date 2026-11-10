@@ -1,0 +1,8 @@
+{
+ "cols": 4,
+ "filas": 4,
+ "fotogramas": 16,
+ "fps": 12,
+ "bucle": true,
+ "origen": "dk_drenaje.png"
+}

@@ -25,7 +25,7 @@ func _init() -> void:
 	var main: Node = load("res://scenes/main3d.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
-	main.menu.piso_prueba.emit(0)   # «Piso de prueba» → «Pasillo (entrada)»
+	main.menu.piso_prueba.emit(0, "")   # «Piso de prueba» → «Pasillo (entrada)»
 	await process_frame
 	var sim: Sim = main.sim
 	ok(main.prueba == 1, "entra en el piso de prueba 1")

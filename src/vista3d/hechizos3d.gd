@@ -7,7 +7,10 @@ extends Node3D
 ##   hoja, reserva (hoja a usar si aún no está la buena), forma, tam (m; en «suelo», veces el diámetro
 ##   de la habilidad), brillo, velocidad (× fps de la hoja), alto (m sobre el suelo), bucle, giro (rad/s, suelo),
 ##   cabeza (proyectil: dónde está la punta), luz (color, "" sin luz), luz_energia, luz_alcance, sonido,
-##   al_acabar (efecto que sale donde acaba) y pegado (efecto que sale sobre cada enemigo afectado).
+##   al_acabar (efecto que sale donde acaba), pegado (efecto que sale sobre cada enemigo afectado) y
+##   de_habilidad (suelo: tam va en veces el diámetro de la habilidad), tintes (color por clase: {"mage": "#ff9a40", …}; las imágenes blancas se tiñen con el de la clase del héroe).
+## Al lanzar cualquier habilidad sale el «aura de lanzar» sobre el héroe: LANZAR (círculo en el suelo,
+##   resplandor alrededor del cuerpo y brillo en la mano), con el tinte de su clase.
 ## Formas: proyectil (de cara a la cámara y girado hacia donde vuela), golpe (de cara a la cámara, una vez),
 ##   suelo (tumbado en el suelo) y aura (de cara a la cámara, siguiendo a alguien).
 ## Añadir un efecto con una forma que ya existe = una ficha nueva, sin programar. Lo que sí es código es
@@ -17,13 +20,17 @@ extends Node3D
 
 var sim: Sim
 var camara: Camera3D
+var actores: Actores3D       # para la mano del héroe
+
+const LANZAR := ["cast_circulo", "cast_resplandor", "cast_mano"]
 
 const RUTA_CATALOGO := "res://assets/vfx/catalogo.json"
 const ALTO_BOLA := 20.0      # px: la bola de fuego sale a la altura del pecho (como en la simulación)
 
 var _vivos: Array = []       # {id, nodo, luz, t, pos, dir, base, seguir (Callable → Vector3 o null), dur, fin}
 var _malla: QuadMesh
-var _nova = null             # efecto vivo de la nova
+var _activos := {}           # efectos que duran mientras dura algo (nova, drenaje, torbellino…): clave → efecto
+var _cd_antes := []          # enfriamiento de cada habilidad en el fotograma anterior (para saber cuándo se lanza)
 var _llamarada_antes := false
 var _heroe_antes = null      # posición del héroe en el fotograma anterior (teletransporte)
 
@@ -95,11 +102,12 @@ uniform sampler2D hoja : source_color, filter_linear_mipmap;
 uniform vec2 rejilla = vec2(4.0, 4.0);
 instance uniform float fotograma = 0.0;
 instance uniform float intensidad = 1.0;
+instance uniform vec4 tinte : source_color = vec4(1.0);
 void fragment() {
 	float f = floor(fotograma);
 	vec2 celda = vec2(mod(f, rejilla.x), floor(f / rejilla.x));
 	vec4 c = texture(hoja, (celda + UV) / rejilla);
-	ALBEDO = c.rgb * c.a * intensidad * 1.6;
+	ALBEDO = c.rgb * tinte.rgb * c.a * intensidad * 1.6;
 }"""
 	_material = ShaderMaterial.new()
 	_material.shader = sh
@@ -138,6 +146,13 @@ func efecto(id: String, pos: Vector3, op: Dictionary = {}) -> Dictionary:
 		l.omni_attenuation = 1.6
 		l.shadow_enabled = false
 		add_child(l)
+	var tintes: Dictionary = d.get("tintes", {})
+	if not tintes.is_empty() and sim != null and sim.p != null:
+		var clase := "dk" if sim.p.dk else ("dl" if sim.p.dl else sim.p.cls)   # p.cls es «knight» en los dos
+		var tc := Color(String(tintes.get(clase, tintes.get("otro", "#ffffff"))))
+		n.set_instance_shader_parameter("tinte", tc)
+		if l != null:
+			l.light_color = tc
 	var e := {"id": id, "nodo": n, "luz": l, "t": randf() * 2.0 if d.get("bucle", false) else 0.0, "pos": pos,
 		"dir": op.get("dir", Vector3.ZERO), "base": float(op.get("base", 1.0)), "seguir": op.get("seguir", null),
 		"dur": float(op.get("dur", INF)), "fin": false, "giro0": randf() * TAU}
@@ -151,7 +166,8 @@ func reset() -> void:
 	for e in _vivos:
 		_soltar(e)
 	_vivos.clear()
-	_nova = null
+	_activos.clear()
+	_cd_antes.clear()
 	_llamarada_antes = false
 	_heroe_antes = null
 
@@ -272,12 +288,7 @@ func _enganches() -> void:
 			a["v3d"] = true
 			efecto("mago_estallido", MazmorraGridMap.a3d(a.x, a.y))
 	# nova ígnea: un anillo en el suelo mientras dure (sigue a su centro)
-	if sim.skill_on_id("nova") and (_nova == null or _nova.fin):
-		var NR := sim.skp("nova", "r")
-		_nova = efecto("mago_nova", _centro_nova(), {"base": NR * 2 * MazmorraGridMap.PX_M,
-			"seguir": func(): return _centro_nova() if sim.skill_on_id("nova") else null})
-		if _nova.is_empty():
-			_nova = null
+	_mientras("nova", sim.skill_on_id("nova"), "mago_nova", _centro_nova, sim.skp("nova", "r") * 2)
 	# llamarada: la onda al lanzarla y llamas sobre cada enemigo aturdido
 	var llama := sim.skill_on_id("freeze")
 	if llama and not _llamarada_antes:
@@ -302,6 +313,77 @@ func _enganches() -> void:
 		efecto("mago_teletransporte", MazmorraGridMap.a3d(_heroe_antes.x, _heroe_antes.y))
 		efecto("mago_teletransporte", MazmorraGridMap.a3d(aqui.x, aqui.y), {"mudo": true})
 	_heroe_antes = aqui
+	# --- Caballero de la Muerte ---
+	# levantar muertos: un estallido nigromántico donde se levanta cada aliado
+	for a: Ent.Ally in sim.allies:
+		if not a.get_meta("v3d", false):
+			a.set_meta("v3d", true)
+			efecto("dk_levantar", MazmorraGridMap.a3d(a.x, a.y))
+	# aura de drenaje: en el suelo mientras dure (sigue a su centro)
+	_mientras("drenaje", sim.skill_on_id("drain"), "dk_drenaje", _centro_drenaje, sim.skp("drain", "r") * 2)
+	# torbellino oscuro: un anillo de tajos alrededor del héroe mientras gira
+	_mientras("torbellino", p.spin_t > 0, "dk_torbellino", _pos_heroe, sim.skp("whirl", "r") * 2)
+	# --- Señor Oscuro ---
+	# nube de muerte: cada nube en el suelo mientras exista (algunas siguen al héroe)
+	for c in C.clouds:
+		if c.has("v3d"):
+			continue
+		c["v3d"] = true
+		var cc: Dictionary = c
+		efecto("dl_nube", MazmorraGridMap.a3d(c.x, c.y), {"base": c.r * 2 * MazmorraGridMap.PX_M,
+			"seguir": func(): return MazmorraGridMap.a3d(cc.x, cc.y) if C.clouds.has(cc) else null})
+	# charco de sangre: el héroe hecho charco
+	_mientras("charco", p.pool_t > 0, "dl_charco", _pos_heroe, 40.0)
+	# pacto de sangre: llamas de sangre alrededor del héroe mientras dura
+	_mientras("pacto", sim.skill_on_id("pact"), "dl_pacto", _pos_heroe)
+	# --- al lanzar cualquier habilidad: el aura de lanzar sobre el héroe ---
+	_cd_antes.resize(p.sk.size())
+	for i in p.sk.size():
+		var cd: float = p.sk[i].get("cd", 0.0)
+		var antes = _cd_antes[i]
+		if antes != null and float(antes) <= 0.0 and cd > 0.0:
+			lanzar()
+		_cd_antes[i] = cd
+
+## el aura de lanzar sobre el héroe (círculo, resplandor y brillo en la mano), con el tinte de su clase
+func lanzar() -> void:
+	efecto(LANZAR[0], _pos_heroe(), {"seguir": _pos_heroe, "mudo": true})
+	efecto(LANZAR[1], _pos_heroe(), {"seguir": _pos_heroe, "mudo": true})
+	efecto(LANZAR[2], _pos_mano(), {"seguir": _pos_mano})
+
+## efecto que dura mientras «si» sea verdad (y lo siga siendo: _sigue); pos: Callable → Vector3;
+## diam_px: diámetro de la habilidad en px (para los de suelo; el tam de la ficha va en veces este diámetro)
+func _mientras(clave: String, si: bool, id: String, pos: Callable, diam_px: float = 0.0) -> void:
+	if not si:
+		_activos.erase(clave)
+		return
+	if _activos.has(clave) and not _activos[clave].fin:
+		return
+	var op := {"seguir": func(): return pos.call() if _sigue(clave) else null}
+	if diam_px > 0:
+		op.base = diam_px * MazmorraGridMap.PX_M
+	var r := efecto(id, pos.call(), op)
+	if not r.is_empty():
+		_activos[clave] = r
+
+func _sigue(clave: String) -> bool:
+	match clave:
+		"nova": return sim.skill_on_id("nova")
+		"drenaje": return sim.skill_on_id("drain")
+		"torbellino": return sim.p.spin_t > 0
+		"charco": return sim.p.pool_t > 0
+		"pacto": return sim.skill_on_id("pact")
+	return false
+
+func _pos_heroe() -> Vector3:
+	return MazmorraGridMap.a3d(sim.p.x, sim.p.y)
+
+func _pos_mano() -> Vector3:
+	return actores.mano_heroe() - Vector3(0, float(ficha(LANZAR[2]).get("alto", 0.0)), 0) if actores != null else _pos_heroe() + Vector3(0, 1.2, 0)
+
+func _centro_drenaje() -> Vector3:
+	var c := sim.drain_c()
+	return MazmorraGridMap.a3d(c.x, c.y)
 
 func _centro_nova() -> Vector3:
 	var c := sim.nova_c()
@@ -328,6 +410,11 @@ func probar(id: String) -> void:
 		obj = Vector2(mejor.x, mejor.y)
 	var yo := MazmorraGridMap.a3d(p.x, p.y)
 	var alli := MazmorraGridMap.a3d(obj.x, obj.y)
+	if id in LANZAR:   # los de lanzar, sobre el héroe
+		match LANZAR.find(id):
+			0, 1: efecto(id, yo, {"seguir": _pos_heroe})
+			2: efecto(id, _pos_mano(), {"seguir": _pos_mano})
+		return
 	match String(d.get("forma", "golpe")):
 		"proyectil":
 			# del héroe al objetivo a 280 px/s, como la bola de fuego
@@ -338,7 +425,7 @@ func probar(id: String) -> void:
 			efecto(id, ini, {"dir": (fin - ini).normalized(), "seguir": func():
 				var k := (Time.get_ticks_msec() - t0) / 1000.0 / dur
 				return null if k >= 1.0 else ini.lerp(fin, k)})
-		"suelo":
-			efecto(id, yo, {"base": 6.0, "dur": 3.0})
+		"suelo":   # los de una habilidad, con un diámetro de 6 m de muestra
+			efecto(id, yo, {"base": 6.0 if d.get("de_habilidad", false) else 1.0, "dur": 3.0})
 		_:   # golpe y aura
 			efecto(id, alli, {"dur": 3.0})

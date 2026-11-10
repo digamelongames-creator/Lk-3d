@@ -23,7 +23,7 @@ func _init() -> void:
 	var l := PisoPrueba.salas_menu()
 	for i in l.size():
 		if l[i][1] == "efectos": efectos = i
-	main.menu.piso_prueba.emit(efectos)
+	main.menu.piso_prueba.emit(efectos, "")
 	for _f in 3:
 		await process_frame
 	var sim: Sim = main.sim
@@ -55,6 +55,7 @@ func _init() -> void:
 	for _f in 3:
 		await process_frame
 	ok(H.vivos("mago_nova") == 1, "nova: anillo en el suelo")
+	ok(H.vivos("cast_circulo") >= 1 and H.vivos("cast_resplandor") >= 1 and H.vivos("cast_mano") >= 1, "aura de lanzar al usar una habilidad")
 	var m: Ent.Enemy = sim.enemies.filter(func(e): return e.muneco)[0]
 	sim.p.x = m.x + 30   # al lado de un muñeco, para que la llamarada lo alcance
 	sim.p.y = m.y
@@ -91,6 +92,35 @@ func _init() -> void:
 		lineas.append(" %s: %s" % [JSON.stringify(k), JSON.stringify(cat[k], "", false)])
 	var j = JSON.parse_string("{\n" + ",\n".join(lineas) + "\n}\n")
 	ok(j is Dictionary and j.size() == cat.size(), "formato del catálogo")
+
+	# caballero de la muerte y señor oscuro: cada habilidad saca su efecto
+	for cl in ["dk", "dl"]:
+		main._ir_menu()
+		await process_frame
+		main.menu.piso_prueba.emit(efectos, cl)
+		for _f in 4:
+			await process_frame
+		sim = main.sim
+		H = main.hechizos
+		ok(main.clase == cl, "sala de efectos como " + cl)
+		var esperado := {"dk": [["raise", "dk_levantar"], ["drain", "dk_drenaje"], ["whirl", "dk_torbellino"]],
+			"dl": [["cloud", "dl_nube"], ["pool", "dl_charco"], ["pact", "dl_pacto"]]}
+		for par in esperado[cl]:
+			var i: int = sim.p.skills.find(par[0])
+			if i < 0:
+				ok(false, "%s no tiene %s (%s)" % [cl, par[0], sim.p.skills])
+				continue
+			sim.p.mana = 999
+			sim.p.sk[i].cd = 0
+			sim.p.pool_t = 0
+			sim.use_skill(i)
+			var visto := false
+			for _f in 30:   # algunas salen al acabar el gesto (hasta 0,6 s)
+				await create_timer(.05).timeout
+				if H.vivos(par[1]) > 0:
+					visto = true
+					break
+			ok(visto, "%s: %s → %s" % [cl, par[0], par[1]])
 
 	main.queue_free()
 	await process_frame

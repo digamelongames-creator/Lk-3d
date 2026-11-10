@@ -1147,3 +1147,13 @@ func _reserva(lista: Array[Node3D], n: int, crear: Callable) -> void:
 		lista.append(x)
 	for i in lista.size():
 		lista[i].visible = i < n
+
+
+## dónde está la mano izquierda del héroe (la libre: de ahí sale el brillo al lanzar una magia, Hechizos3D);
+## si el modelo no tiene, a la altura del pecho
+func mano_heroe() -> Vector3:
+	if _mano_izq != null and is_instance_valid(_mano_izq) and _mano_izq.is_inside_tree():
+		return _mano_izq.global_position
+	if heroe != null:
+		return heroe.global_position + Vector3(0, 1.2, 0)
+	return Vector3.ZERO
