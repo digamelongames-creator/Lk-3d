@@ -167,6 +167,7 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.sim = sim
 	hud.fx = fx
+	hud.act = actores
 	ui.add_child(hud)
 	inventory = Inventory.new()
 	inventory.sim = sim

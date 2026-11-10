@@ -115,6 +115,7 @@ func actualizar(dt: float) -> void:
 	_animar_heroe(p)
 	_vestir()
 	_actualizar_enemigos(dt)
+	_apuntar()
 	_nombre_enemigo()
 	# botín y oro: reserva de nodos del tamaño de la lista
 	_actualizar_botin()
@@ -856,8 +857,9 @@ func _nombre_enemigo() -> void:
 		_nombre.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		_nombre.no_depth_test = true
 		add_child(_nombre)
-	var e := _enemigo_bajo_raton()
-	if e == null:
+	# el que señalas con el ratón ya sale arriba en la barra (10 nov): aquí solo el último golpeado
+	var e: Ent.Enemy = null
+	if true:
 		var mejor := NOMBRE_GOLPE_S
 		for o in sim.enemies:
 			if o.dying or o.dead:
@@ -866,7 +868,7 @@ func _nombre_enemigo() -> void:
 			if hace < mejor:
 				mejor = hace
 				e = o
-	if e == null or e.rare or e.jefe:
+	if e == null or e.rare or e.jefe or e == apuntado.get("enemigo"):
 		_nombre.visible = false
 		return
 	var d: Dictionary = _enemigos.get(e.get_instance_id(), {})
@@ -876,6 +878,89 @@ func _nombre_enemigo() -> void:
 	_nombre.text = sim.nombre_de(e)
 	_nombre.position = (d.n as Node3D).position + Vector3(0, 2.3 + (.3 if e.apr_titulo != "" else 0.0), 0)   # encima de «Experto»/«Asesino»
 	_nombre.visible = true
+
+# ---------- lo que señalas con el ratón (10 nov, decidido por Diego) ----------
+## contorno rojo fino en lo señalado (enemigo, cofre, rompible u objeto del suelo) y, para el HUD,
+## `apuntado`: {"nombre", "enemigo" (Ent.Enemy o null)}. Los enemigos llevan barra de vida arriba; lo demás, solo el nombre.
+const CONTORNO_COLOR := Color(1, .08, .04)
+const CONTORNO_GROSOR := .025
+const COSA_RATON_PX := 34.0
+const NOMBRE_ROMPIBLE := {"barril": "Barril", "caja": "Caja", "urna": "Urna"}
+var apuntado := {}
+var _mat_contorno: ShaderMaterial
+var _con_contorno: Node3D = null
+
+func _apuntar() -> void:
+	var nodo: Node3D = null
+	var info := {}
+	var e := _enemigo_bajo_raton()
+	if e != null:
+		var d: Dictionary = _enemigos.get(e.get_instance_id(), {})
+		nodo = d.get("m") if d.get("m") != null else d.get("n")
+		if e.mimic and e.state == "idle":
+			info = {"nombre": "Cofre", "enemigo": null}   # el mímico dormido se hace pasar por cofre
+		else:
+			info = {"nombre": sim.nombre_de(e), "enemigo": e}
+	else:
+		var cosa := _cosa_bajo_raton()
+		if not cosa.is_empty():
+			nodo = cosa.n
+			info = {"nombre": cosa.nombre, "enemigo": null}
+	apuntado = info
+	if nodo != _con_contorno:
+		_contorno(_con_contorno, false)
+		_contorno(nodo, true)
+		_con_contorno = nodo
+
+## pone o quita el contorno en todas las mallas de un nodo (guarda y devuelve el brillo que ya tuvieran)
+func _contorno(n: Node3D, si: bool) -> void:
+	if n == null or not is_instance_valid(n):
+		return
+	if _mat_contorno == null:
+		_mat_contorno = ShaderMaterial.new()
+		_mat_contorno.shader = load("res://assets/shaders/contorno.gdshader")
+		_mat_contorno.set_shader_parameter("color", CONTORNO_COLOR)
+		_mat_contorno.set_shader_parameter("grosor", CONTORNO_GROSOR)
+	var haz: Node = n.get_meta("haz") if n.has_meta("haz") else null   # el haz de luz del botín, sin contorno
+	for mi in n.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if haz != null and (m == haz or haz.is_ancestor_of(m)):
+			continue
+		if si:
+			m.set_meta("overlay_antes", m.material_overlay)
+			m.material_overlay = _mat_contorno
+		elif m.has_meta("overlay_antes"):
+			m.material_overlay = m.get_meta("overlay_antes")
+			m.remove_meta("overlay_antes")
+
+## cofre, rompible u objeto del suelo más cercano al ratón en pantalla: {"n", "nombre"} o vacío
+func _cosa_bajo_raton() -> Dictionary:
+	if not is_inside_tree():
+		return {}
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return {}
+	var raton := get_viewport().get_mouse_position()
+	var mejor := {}
+	var bd := COSA_RATON_PX
+	var probar := func(n: Node3D, nombre: String, alto: float) -> void:
+		if n == null or not is_instance_valid(n) or not n.visible or cam.is_position_behind(n.global_position):
+			return
+		var a := cam.unproject_position(n.global_position)
+		var b := cam.unproject_position(n.global_position + Vector3(0, alto, 0))
+		var dd := Geometry2D.get_closest_point_to_segment(raton, a, b).distance_to(raton)
+		if dd < bd:
+			bd = dd
+			mejor = {"n": n, "nombre": nombre}
+	for c in sim.chests:
+		probar.call(_cofres.get(c.get("vid", -1)), "Cofre grande" if c.get("grande", false) else "Cofre", .8)
+	for i in mini(_rompibles.size(), sim.rompibles.size()):
+		if not sim.rompibles[i].roto:
+			probar.call(_rompibles[i], NOMBRE_ROMPIBLE.get(sim.rompibles[i].kind, "Rompible"), .9)
+	for l in sim.loot:
+		var it: Dictionary = l.item
+		probar.call(_botin_nodos.get(it.get("id", -1)), String(it.get("name", "Objeto")), .4)
+	return mejor
 
 ## el enemigo vivo más cercano al ratón en pantalla (de los pies a la cabeza)
 func _enemigo_bajo_raton() -> Ent.Enemy:
