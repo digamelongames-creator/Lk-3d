@@ -3,11 +3,13 @@
 Responde en español.
 
 ## Forma de trabajar
+- **Al empezar, lee entero `docs/ESTADO.md`**: ahí está cómo trabajamos, qué falta, qué se ha decidido o rechazado y qué está hecho. Es la fuente de verdad del proyecto; si una ficha del Proyecto dice otra cosa, manda `ESTADO.md`.
 - Antes de hacer nada, plantea lo que haga falta decidir como preguntas numeradas (1, 2, 3…) que se contesten con sí o no, por orden, y termina con «¿Qué hacemos?». Diego contesta por número y no se empieza hasta tener las respuestas.
 - Ve al grano: sin introducciones ni resúmenes de lo que vas a hacer.
 - Al explicar cambios de código, enseña solo las funciones o líneas tocadas, con el archivo.
 - Si una tarea es grande o ambigua, haz una sola pregunta antes de empezar.
-- Al terminar un cambio importante, añade 2–3 líneas a `docs/ESTADO.md`.
+- **Al terminar, pon al día `docs/ESTADO.md`**: 2–3 líneas arriba de «Hecho» y, sobre todo, las listas de pendientes (quita lo terminado, añade lo nuevo, apunta decisiones y rechazos).
+- Otros chats trabajan a la vez: `git fetch` y `git rebase origin/main` antes de empezar y antes de subir.
 - **No hagas capturas de pantalla del juego salvo que Diego las pida**: lo prueba él en su PC (aquí no hay tarjeta gráfica y cada captura tarda minutos). Comprueba con las pruebas `tests/`.
 - No dibujes imágenes provisionales por código si Diego va a pasar las suyas.
 

@@ -62,6 +62,9 @@ Las tiendas y el almacén de Inca, tanda 2, se hacen ya con estas reglas.
 
 ## Orden de trabajo
 
+La lista al día de lo que falta está en `docs/ESTADO.md` («Pendiente del producto mínimo»). Esta es la de partida.
+
+
 1. ~~Diego prueba lo pendiente~~ Hecho el 10 nov (faltan el mímico y la sala del aprendizaje).
 2. Equilibrio: se ajusta la hoja `equilibrio_last_knight_3d.xlsx` y se pasan los valores al código.
 3. Se prepara la simulación para el cooperativo (las 5 reglas).

@@ -1,6 +1,85 @@
-# Estado · 8 nov 2026
+# Estado · Last Knight 3D
 
-## Hecho
+Al día: 11 nov 2026. **Este archivo es la fuente de verdad del proyecto**: cómo se trabaja, qué falta, qué se ha decidido y qué está hecho. Las fichas del Proyecto «isometrico» y los documentos antiguos son historia; si no coinciden con esto, manda esto.
+
+## Cómo trabajamos (léelo primero, todos los chats)
+
+**Al empezar**
+1. Lee entero este archivo y `CLAUDE.md`. Si el trabajo toca el producto mínimo, lee también `docs/PRODUCTO_MINIMO.md`.
+2. Antes de pedirle nada a Diego, mira aquí si ya está hecho, decidido o rechazado.
+3. Otros chats trabajan a la vez en el mismo repositorio: `git fetch` y `git rebase origin/main` antes de empezar y antes de subir.
+
+**Con Diego**
+- Antes de hacer nada, todo lo que haya que decidir va como preguntas numeradas (1, 2, 3…) de sí o no, en orden, y se termina con «¿Qué hacemos?». Diego contesta por número. **No se empieza hasta tener las respuestas.** Si pregunta «¿cómo lo harías?» o «¿qué significa?», primero se explica y después van las preguntas.
+- Al grano, sin introducciones. Si una tarea es grande o ambigua, una sola pregunta antes de empezar.
+- **Sin capturas de pantalla ni comprobaciones visuales salvo que Diego las pida**: lo prueba él en su PC. Se comprueba con las pruebas de `tests/` (todas deben decir «todo bien»).
+- No dibujar imágenes provisionales por código si Diego va a pasar las suyas. Las imágenes de efectos se pueden pedir a Pixmith (ChatGPT desde el PC de Diego, carpeta `C:\Carpeta Juego\Magias`).
+- Cada entrega se sube a `main` (o a una rama aparte si Diego lo pide) y además se le pasa el zip del proyecto.
+
+**Al terminar**
+1. Añade lo hecho arriba del apartado «Hecho», con la fecha y si lo decidió Diego.
+2. **Pon al día las listas de pendientes de este archivo**: quita lo terminado, añade lo nuevo y apunta las decisiones y lo rechazado.
+3. Si añades una prueba, apúntala en `CLAUDE.md`. Si añades un recurso de fuera o una imagen, apúntalo en `docs/LICENCIAS.md`.
+
+## Pendiente del producto mínimo (en orden)
+
+Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guardado).
+
+1. **Preparar la simulación para el cooperativo** (rama aparte): órdenes del jugador, varios héroes y objetos y oro aprobados por la simulación (las 5 reglas de `PRODUCTO_MINIMO.md`). Va antes de las tiendas.
+2. **Inca, tanda 2:** herrero, alquimista y runista (género fijo, tenderos provisionales con Prueba2 teñido) y almacén compartido entre personajes.
+3. **Guardado con ranuras y número de versión** («Continuar partida»). Cerrar el juego o volver al menú en la mazmorra cuenta como morir (confirmado por Diego).
+4. **Precios de las tiendas** (la salida del oro), con la hoja `docs/equilibrio_last_knight_3d.xlsx`.
+5. **Pisos 6–10:** probarlos y ajustar la dificultad con la hoja.
+6. **Efectos de las runas** del caballero: `Runes.bolts/slashes/fires` aún no se pintan en 3D.
+7. **Rendimiento:** medir fotogramas y memoria en el PC mínimo (GTX 1060, 8 GB) y recortar sombras o luces si hace falta.
+8. **Repaso para la demo:** créditos, `LICENCIAS.md` (faltan las texturas sin confirmar) y los avisos de recursos sin soltar al cerrar Godot.
+
+## Pendiente de Diego
+
+- Probar: los 7 legendarios (sala de guardia del piso de prueba), la sala «Mímico», el teletransporte junto a una sala secreta, el tajo del verdugo dado la vuelta, la sala del aprendizaje y el contorno fino con la barra de lo señalado.
+- El registro del cierre de Godot al importar (a veces se cierra y a veces no): abrir siempre con `Godot_v4.7.2-stable_win64_console.exe --editor --path . *> registro.txt` y pasarlo cuando pase, o la carpeta `%APPDATA%\Godot\app_userdata\Last Knight 3D\logs`.
+- Las 5 piezas del HUD que faltan: líquido azul, marco de la barra de habilidades, marco redondo del minimapa, hueco mágico y hueco legendario (turquesa).
+- La animación de andar del héroe (la velocidad al andar actual queda como base).
+- Los modelos de `input/raw` (elf, violeta, cuernitos, medusa, vaquita) riggeados en Mixamo: cara propia para los enemigos humanos y los tenderos.
+- Colocar con el panel el escudo y la espada izquierda del esqueleto.
+
+## En curso en otros chats
+
+- El muro que tapa al héroe (sigue el recorte de puntos de la primera versión).
+
+## Decisiones en espera
+
+- Estilo de adornos del piso de prueba (Poly Haven, Modular, Low Poly, Gótico o Ruinas) y pasar el Repartidor a los pisos normales: **en espera** (Diego, 10 nov). Hoy las salas del generador no tienen adornos por propósito.
+
+## Para después del producto mínimo
+
+- Cooperativo en tiempo real (hasta 4), comercio entre jugadores y «publicar partida».
+- Las otras 4 clases pulidas y equilibradas; legendarios con efecto único para ellas; armadura visible para las otras clases.
+- Biblioteca de efectos tipo MU (cada habilidad como una ficha de piezas reutilizables): decidido que sí (10 nov).
+- Inca, tanda 3 (vecinos y ambiente). Pisos a partir del 11.
+- Enemigos que aprenden: ascender (por ejemplo, a jefe de su sala) si matan a muchos jugadores; servidor que junte lo de todos.
+- Escaleras de verdad (salas hundidas o elevadas, alturas en los pisos 3–5), armas con magia, puertas con llave y comida que da una mejora temporal.
+- Arte: piezas de muro según las vecinas y arcos en las puertas (hoy son cajas de `Actores3D`), adornos colgados del low poly con origen «atrás», salas hechas a mano con plantillas, AnimationTree con BoneAttachment3D.
+- Hueco en el HUD para la 4.ª habilidad (orbe de muerte del señor oscuro).
+
+## Decidido (y que se mantiene)
+
+- Combate: el héroe no avanza al atacar y se queda quieto mientras dura el tajo; todas las clases quietas al atacar o lanzar; sin temblor de cámara ni congelado; los básicos no empujan; sin gesto de dolor en enemigos; caen donde mueren.
+- Muerte: sin Revivir en partida; se vuelve a Inca sin mochila ni el oro de la bajada. En el piso de prueba sí se revive en el sitio.
+- Solo se vuelve a Inca tras vencer al jefe del piso o al morir. Las tiendas venden siempre lo mismo.
+- El generador de mazmorras no se toca (10 nov). La velocidad al andar actual es la base.
+- Enemigos que aprenden: activos en las partidas normales. El aviso entre compañeros se queda como está.
+- Equipo +10 % por afijo y oleada; legendarios del caballero con efecto único; jefe ×2,2.
+- Tripo Premium (uso comercial). PC mínimo: GTX 1060 y 8 GB (Diego cree que 4 GB bastarían).
+
+## Rechazado (no volver a proponer igual)
+
+- La trama ordenada en el muro y las siluetas tras los muros. Anclar la cadera en la muerte. Santuarios. Oro y pociones con recogida automática. Dientes nuevos para el mímico y altar para empezar el reto. Temblor de cámara y congelado. Pasillos en diagonal de verdad. Revivir al morir en partida, pergamino de portal y tiendas que se renuevan.
+- De la rama `pasillos-contorno`: pasillos de 1 y 3 casillas, zigzag, antorchas y suelo propio de los pasillos, y el contorno grueso al golpear.
+- Salas secretas alejadas del resto (se tapan y el teletransporte no entra).
+
+## Hecho (lo más nuevo arriba)
+- **ESTADO.md reorganizado (11 nov, decidido por Diego):** cómo trabajamos, pendientes del producto mínimo, pendientes de Diego, en curso, decisiones en espera, para después, decidido, rechazado y hecho. Todos los chats lo leen al empezar y ponen al día los pendientes al terminar (`CLAUDE.md`).
 - **Contorno fino y barra de lo señalado (10 nov; en `main` desde el 11 nov, rama `contorno-fino`):** lo que señalas con el ratón lleva un contorno rojo fino (`assets/shaders/contorno.gdshader`, carcasa invertida en `material_overlay`; se guarda y se devuelve el brillo que ya tuviera la malla). Vale para enemigos, cofres, rompibles y objetos del suelo (`Actores3D._apuntar`). Arriba en el centro, el enemigo señalado sale con una barra de vida y su nombre dentro; lo que no tiene vida, solo el nombre. Si ya está la barra de la élite o el jefe, esta va debajo (`Hud`, `act.apuntado`). El mímico dormido se presenta como «Cofre». El nombre flotante sobre la cabeza queda solo para el último golpeado. Descartados: el contorno grueso al golpear y los pasillos de la rama `pasillos-contorno`.
 - **Legendarios, equipo por oleada y más (10 nov, decidido por Diego).** Los legendarios del caballero llevan un efecto único (`Legendarios`, `src/core/legendarios.gd`): Tizona, onda de fuego en cada tercer tajo; Égida, aturde 1 s al bloquear; Yelmo de Mambrino, +20 % de vida al matar una élite; Coraza de Roldán, escudo de ¼ de la vida al bajar del 30 % (cada 60 s); Guanteletes del Cid, el crítico salta como rayo a 2 enemigos (50 %); Ceñidor de Babieca, pociones ×2 y +20 % de daño 3 s; Botas de Siete Leguas, la voltereta deja fuego 2 s. Sale escrito con ★ en la pieza y en Comparar. Efectos en `Hechizos3D._legendarios()` con 9 hojas nuevas de Pixmith (`leg_*`, `rayo_caida`). Las piezas mejoran +10 % por afijo según la oleada donde caen (`Items.escalar`, `make_gear(..., ol)`), también los cofres y los legendarios. El jefe pega ×2,2 (`JEFE_DANO`).
 - **Salas secretas, piso de prueba y tajo (10 nov).** El teletransporte no cae dentro de una sala secreta desde fuera (`Sim.sala_secreta_en`); desde fuera la sala lleva una tapa negra y sus enemigos no se ven (`MazmorraGridMap.tapas_secretas`). En el piso de prueba se revive en el sitio con la vida llena, y hay una sala «Mímico» (un baúl y un mímico; sale otro a los 3 s). El tajo rojo del verdugo se da la vuelta cuando el héroe mira a la izquierda de la pantalla (`Hechizos3D.mira_izquierda`). Prueba: `tests/test_legendarios.gd` (20 pruebas, todas «todo bien»).
@@ -20,7 +99,7 @@
 - **Piso de prueba 1** (`PisoPrueba`): botón «Piso de prueba» del menú (o `--prueba=N`, `--sala=N`). Sin enemigos. Arriba hay una sala por paquete (Poly Haven, Modular Dungeon Kit, Low Poly, Gótico y Ruinas); las de los kits llevan sus propios muros, suelos y columnas. Abajo hay una sala por propósito (almacén, guardia, tesoro y cueva). Cada sala tiene una luz suave y su nombre encima de la entrada. Prueba: `tests/test_piso_prueba.gd`.
 - **Repartidor** de adornos según el propósito de la sala (`Repartidor.PROPOSITOS`: pared, esquina, centro, colgado y libre; sólido = DECOR). Lo que va pegado a la pared prefiere las paredes que ve la cámara (norte y oeste).
 - **Paquetes de fuera** pasados por `tools/blender/props_glb.py` a `assets/props/*.glb` (escala del juego, origen abajo, menos polígonos y texturas WebP de 1024 px como mucho). `Props3D` da cada pieza por su nombre. Low Poly y Gótico se visten con el ladrillo de Poly Haven. El cofre del tesoro es el de Poly Haven y la tapa se abre. Las armas del botín salen con su modelo del Weapon set, tumbadas en el suelo.
-- **Créditos** (`Creditos`, desde `assets/creditos.json`): al final del juego y, de momento, con F1. Licencias para Steam: `docs/CREDITOS_Y_LICENCIAS.md`. Ojo: falta confirmar el plan de Tripo de los personajes.
+- **Créditos** (`Creditos`, desde `assets/creditos.json`): al final del juego y, de momento, con F1. Licencias para Steam: `docs/CREDITOS_Y_LICENCIAS.md`. Tripo: plan Premium de Diego (uso comercial).
 - Espada del esqueleto colocada por Diego con el panel (8 nov) y `esqueleto.glb` reconvertido con sus 6 animaciones.
 - Set del Caballero Oscuro (modelo de Diego) en lugar de las piezas provisionales: `tools/blender/armadura_set.py` corta `tools/armaduras/caballero_oscuro.glb` en 13 piezas (`assets/armaduras/caballero_oscuro/`, con `centros.json`). `Armadura3D` coloca cada pieza con su ancla, su escala y los ejes medidos de cada hueso: hombreras en los hombros, cañas de las botas en las piernas, pies en los pies. La espada y el escudo del set van en las manos y en el suelo. Solo para el caballero. Las piezas básicas, mágicas y doradas se llaman «… del Caballero Oscuro». Aura más ligera. Registro de licencias en `docs/LICENCIAS.md`.
 - Agarres de armas: `colocar_arma.bat` abre Blender con el personaje y el panel «Agarre» (mano, espada o escudo, arma, animación, espejar, guardar). Se guarda en la ficha (`agarres_3d`) como matriz respecto al hueso; comprobado de punta a punta (panel → conversor → Godot, menos de 5 mm). La espada actual del héroe venía mal de la conversión antigua (`offset` + `length_m` con una malla en diagonal): se arregla al colocarla con el panel y reconvertir.
@@ -51,30 +130,15 @@
 - Tajo del héroe (8 nov): el clip de ataque se recorta y empieza poco antes del impacto (`Modelo3D.reproducir_desde`, `Actores3D.VEL_TAJO` = 2,5), para que la espada toque justo cuando la simulación hace el daño. En el esqueleto la espada toca al 36 % del clip (0,82 s de 2,27), medido por el pico de velocidad de la mano; los esqueletos enemigos usan el mismo dato. Los 3 tajos usan el mismo clip.
 - Muerte de enemigos (8 nov): sin empujón, caen donde mueren (`Sim.kill_enemy` y el tramo `dying` de `_update_enemies`). La animación de muerte de Mixamo sigue moviendo la cadera unos 50 cm al caer (Diego decidió no anclarla).
 
-## Falta
-- Decidir con el piso de prueba qué estilo se queda (realista o dibujado) y pasar el Repartidor a las salas del generador.
-- Pasar los adornos colgados del low poly (antorcha) a origen «atrás» si se usan fuera de la prueba.
-- Colocar con el panel el escudo y, si se quiere, la espada izquierda del esqueleto (ahora sale reflejada de la derecha). Ojo: el caballero con el Set del Caballero Oscuro lleva la espada y el escudo del set, no los del panel.
-- Armadura visible para las otras clases (de momento solo el caballero lleva el set). Si Diego coloca la espada del set con el panel de agarres, usar ese agarre en lugar del de `Armadura3D.AJUSTE`.
-- Pasar los demonios a sus pisos de verdad (2–4) cuando acabe la prueba.
-- Modelos propios para los humanos: riggear en Mixamo los de `input/raw` (elf, violeta, cuernitos, medusa, vaquita).
-- Piezas de muro según las vecinas (rotas, con hiedra, de esquina) y el arco en las puertas del juego, porque las puertas siguen siendo cajas de Actores3D.
-- Más luz por pared: hoy el generador solo pone antorchas en las paredes del norte.
-- Modelos del héroe y los monstruos (los .fbx de SPRITE_FACTORY y Mixamo) con AnimationTree. Los enganches pasan a ser BoneAttachment3D.
-- Pisos 3–5 (alturas y escaleras largas): no hay alturas. El abismo ya tiene paredes de roca, niebla y caída visible (9 nov).
-- Efectos de las habilidades y las runas (rayos, tajos, fuego): `Runes.bolts/slashes/fires` no se pintan.
-- Inca, tanda 2: tenderos (Prueba2 con tintes) y sus tiendas (género fijo), almacén compartido entre personajes y «Continuar partida» con ranuras (salir en mitad de la mazmorra cuenta como morir). Tanda 3: vecinos y ambiente.
-- Salas hechas a mano: cambiar el generador por plantillas de sala unidas por pasillos.
-
-## Abismo de los pisos 3–5 (9 nov)
+### Abismo de los pisos 3–5 (9 nov)
 - Caída visible: el héroe y los enemigos que caen salen del borde y bajan acelerando ~11 m en 1 s (`Sim.CAIDA_T`, `Actores3D.caida`), con el sonido `caida`. Castigo igual: vuelves al último suelo con −20 % de vida.
 - `Abismo3D`: pared de roca de 14 m bajo cada borde (malla con relieve y textura de ruido de Godot, sin licencias), 3 capas de niebla con brillo tenue y fondo. La niebla de altura del entorno (`fog_height` −0,6) oscurece todo lo que queda bajo el suelo.
 
 
-## HUD de Diego, cuerpos, números y detección (10 nov)
+### HUD de Diego, cuerpos, números y detección (10 nov)
 - HUD con las piezas de Diego hechas en ChatGPT (`assets/ui`, `tools/hud_piezas.py <carpeta> assets/ui`; `UiArte` las carga y estira): orbes de vida y maná con estatuas, barra de habilidades con huecos de pinchos sobre panel de mármol, experiencia dorada, panel de mármol arriba a la izquierda, en el minimapa y en las ventanitas; inventario dentro del marco de las estatuas (estirado solo por la viga y las columnas) con huecos por calidad. Faltan piezas: líquido azul (de reserva, el rojo con el tono girado), marco de la barra de habilidades, marco del minimapa, huecos mágico y legendario (de reserva, teñidos) y botones.
 - Detección de los enemigos a la mitad (`Sim.VISTA_PX` 100, `Sim.OIDO_PX` 35). Los números y textos salen encima de quien los recibe (`Fx3D._sobre_quien`). Los cuerpos se quedan todo el piso, como mucho 100 (`Actores3D.MAX_CUERPOS`, se quita el más antiguo) y con la pose congelada.
-## Efectos con hojas de fotogramas de IA (9 nov, rama `vfx-prueba`)
+### Efectos con hojas de fotogramas de IA (9 nov, rama `vfx-prueba`)
 - `Hechizos3D` pinta la bola de fuego del mago (`Clases.fballs`) con una hoja en bucle girada hacia donde vuela, más una luz que la sigue, y una explosión de una vez (con fogonazo de luz y sonido) al chocar. Shader aditivo con `instance uniform` (fotograma e intensidad). La simulación no cambia.
 - Hojas en `assets/vfx/<nombre>.png + .json`, hechas con `python3 tools/vfx_hoja.py convertir <png o gif> <nombre> [--bucle] [--fps=N]` (rejilla 4×4 o GIF animado, sobre fondo negro, de ChatGPT). Los originales de Diego están en `tools/vfx_originales/`; `provisional` dibuja unas por código.
 - «Piso de prueba» del menú abre «Salas de prueba» (todas las salas; se empieza en la elegida). Sala nueva «Efectos» (`--sala=11`): se entra como mago, con 5 muñecos (`Ent.Enemy.muneco`: quietos, sin daño, no mueren, no aprenden) y maná sin fin. `--hechizo` lanza solo (capturas).
@@ -84,16 +148,16 @@
 - Mago completo con imágenes de Diego (10 nov): estallido (llamas que brotan del suelo), nova (anillo en bucle), llamarada (explosión en remolino, en el suelo), llamas sobre los aturdidos y teletransporte. Los nombres de sus archivos no cuadraban: se usó cada imagen según lo que se ve (originales en `tools/vfx_originales/`). El conversor ya pasa a negro lo transparente de los GIF y `--fps` manda sobre el ritmo del GIF.
 - (10 nov, tarde) HUD centrado: orbe de vida, habilidades con la experiencia y orbe de maná juntos en el centro de abajo. Botones de Diego (`boton_normal|encima|pulsado`, y `_chico` para el personaje y el árbol) y panel de mármol en todas las ventanas: menú, opciones, pausa, «Has caído», escalera, «La Mazmorra», personaje, árbol y panel F4 (`UiArte.estilo_panel`, `UiArte.vestir_boton`).
 
-## Cofres, más botín, nombres y salas secretas (10 nov)
+### Cofres, más botín, nombres y salas secretas (10 nov)
 - Cofre al entrar en cada piso (`Sim._cofre_entrada`): una pieza de tu clase, mágica o mejor, para tu hueco más flojo. Un cofre por sala con enemigos (`_cofres_sala`), cerrado hasta que mueren los que había en ella. Los enemigos normales sueltan más (`Sim.BOTIN`: piezas ×2, más pociones y oro) y las élites, una pieza más.
 - Piezas más variadas (`Items.make_gear`): números de 1 a 4 (dorado de 2 a 5), estadística nueva `arm` (armadura, +2 por punto) en las piezas que protegen, a veces una estadística de más y nombre con material en las básicas («Espada de acero templado»). El equipo inicial sale como antes (`simple`). Nombres propios para todos los enemigos (`Sim.nombre_de`); se ven al pasar el ratón o al golpearlos (`Actores3D._nombre_enemigo`).
 - Salas secretas (`SalaSecreta`, `L.secretas`): sala tallada en roca libre del mismo mapa, tras una puerta negra nueva del kit (`cara_puerta`) con luz fría. Espacio junto a ella → «¿Entrar?» → fundido a negro (`main3d._cruzar_secreta`, `Sim.cruzar_secreta`); se sale por la misma puerta. Dentro: élite ×1,6 de vida, dos escoltas y dos cofres dorados. En los pisos de pasarelas (3–5) no hay roca libre y no salen. Prueba: `tests/test_cofres_secretas.gd`.
 
-## Aura al lanzar, caballero de la muerte y señor oscuro (10 nov)
+### Aura al lanzar, caballero de la muerte y señor oscuro (10 nov)
 - Imágenes hechas con Pixmith (ChatGPT desde el PC de Diego, a `C:\Carpeta Juego\Magias`). Al usar cualquier habilidad sale el aura de lanzar sobre el héroe (`Hechizos3D.lanzar`): círculo de runas en el suelo, resplandor alrededor del cuerpo y brillo en la mano izquierda (`Actores3D.mano_heroe`). Son imágenes blancas teñidas por clase (`tintes` en la ficha; shader con `tinte`). Cuidado: `p.cls` es «knight» también en el caballero de la muerte y el señor oscuro (se mira `p.dk` / `p.dl`).
 - Caballero de la muerte: levantar muertos (estallido nigromántico en cada aliado), aura de drenaje (suelo, sigue a `drain_c`) y torbellino (anillo de tajos mientras `spin_t`). Señor oscuro: nube de muerte (cada nube), charco de sangre (mientras `pool_t`) y pacto (llamas de sangre en el cuerpo). El menú de salas tiene «Efectos» para mago, caballero de la muerte y señor oscuro; con el caballero de la muerte siempre hay 3 cadáveres.
 
-## Animaciones de Mixamo sueltas para el héroe (10 nov)
+### Animaciones de Mixamo sueltas para el héroe (10 nov)
 - `python3 tools/blender/animaciones_glb.py <carpeta>` (FBX de Diego en `C:\Carpeta Juego\animaciones`, copias en `tools/animaciones_originales/`) → `assets/monstruos/heroe_anims.glb` + `.json` (duración y golpe). `Modelo3D.anadir_animaciones()` las copia al héroe (mismas pistas que esqueleto.glb). Gestos (`Actores3D.gesto`): bola de fuego `lanzar_bola`, resto del mago `lanzar_estallido`, habilidades de los caballeros `lanzar_menor`, levantar muertos `lanzar_mayor`. Dolor de los caballeros: `dolor_escudo`.
 - Combos nuevos del caballero (`combo_ataque`, `combo_tajos`, `ataque_salto`, uno por tajo) **solo en el piso de prueba** (`Actores3D.combos_prueba`), a petición de Diego; en el menú, «Efectos · caballero (combos nuevos)».
 - Arquero y caballero (10 nov, Pixmith): flechas en vuelo (antes no se veían en 3D; `arq_flecha` y `arq_flecha_fuego`, que al acabar explota), lluvia de flechas (`arq_lluvia` apoyada en el suelo + `arq_lluvia_suelo`), gran valor (`cab_valor`), estandarte (`cab_estandarte` donde está clavado) y tajo del verdugo (`cab_verdugo` en el 3.er tajo con la habilidad activa). Ficha nueva `apoyado` (la base del dibujo en el suelo) y `--margen=0` en el conversor para dibujos que tocan el borde. Ojo: `test_cofres_secretas` falla de vez en cuando (azar en «más pociones»), no es de esto.
