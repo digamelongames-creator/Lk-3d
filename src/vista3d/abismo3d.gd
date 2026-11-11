@@ -3,6 +3,11 @@ class_name Abismo3D
 ## y capas de niebla con un brillo tenue. La niebla de altura del entorno (CamaraIso.ambiente) oscurece todo
 ## lo que queda por debajo del suelo, así que la roca se funde con la niebla según baja.
 ## Todo se crea por piso (sin recursos estáticos) y cuelga del nodo que se le pase.
+## Con un tema con lava (Temas, el Inframundo): la roca es la del tema, abajo hay un mar de lava
+## que corre, cascadas de lava que salen de algunos bordes, luces naranjas bajo los bordes y brasas.
+
+const MAX_LUCES_LAVA := 40
+const MAX_CASCADAS := 14
 
 const HONDO := 14.0      # m que baja la pared de roca
 const NIEBLA_Y := [-2.2, -4.5, -7.5]   # capas de niebla que brillan un poco
@@ -11,7 +16,13 @@ const FILAS := [0.0, .35, .9, 1.6, 2.5, 3.6, 5.0, 6.8, 9.0, 11.5, HONDO]
 const COLUMNAS := 6      # vértices por casilla a lo ancho (cada 0,33 m)
 const RELIEVE := .7      # m que sale o entra la roca
 
-static func crear(G: PackedByteArray, padre: Node3D) -> void:
+static func crear(G: PackedByteArray, padre: Node3D, tema: String = "") -> void:
+	var lava := tema != "" and Temas.dato(tema, "lava") != null
+	var lava_y: float = Temas.dato(tema, "lava_y", -5.5) if lava else 0.0
+	var cae := SurfaceTool.new()
+	cae.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n_cae := 0
+	var bordes := []   # [punto del borde, hacia el vacío] para las luces de la lava
 	var W := DungeonGen.GW
 	var H := DungeonGen.GH
 	var ruido := FastNoiseLite.new()
@@ -40,16 +51,44 @@ static func crear(G: PackedByteArray, padre: Node3D) -> void:
 				var b := centro + mitad - Vector3(-d.y, 0, d.x) * C * .5
 				_pared(st, ruido, a, b)
 				hay = true
+				if lava:
+					var fuera := Vector3(-d.x, 0, -d.y)
+					bordes.append([centro + mitad, fuera])
+					# cascada en algunos bordes (fijo por casilla, para que no cambie al volver)
+					if n_cae < MAX_CASCADAS and absi(hash(Vector3i(cx, cy, d.x * 3 + d.y))) % 11 == 0:
+						_cascada(cae, ruido, a, b, fuera, -lava_y + .5)
+						n_cae += 1
 	if not hay:
 		return
 	st.generate_normals()
 	var mi := MeshInstance3D.new()
 	mi.name = "ParedesAbismo"
 	mi.mesh = st.commit()
-	mi.material_override = _roca()
+	mi.material_override = Temas.material_roca(tema) if lava else _roca()
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	padre.add_child(mi)
-	_niebla(padre, W * C, H * C)
+	if not lava:
+		_niebla(padre, W * C, H * C)
+		return
+	_lava(padre, W * C, H * C, lava_y, tema)
+	if n_cae > 0:
+		var mc := MeshInstance3D.new()
+		mc.name = "CascadasLava"
+		mc.mesh = cae.commit()
+		mc.material_override = Temas.material_lava(tema, true)
+		mc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		padre.add_child(mc)
+	# luces naranjas bajo los bordes: la lava alumbra la roca desde abajo (repartidas, como mucho MAX_LUCES_LAVA)
+	var paso := maxi(1, ceili(bordes.size() / float(MAX_LUCES_LAVA)))
+	for i in range(0, bordes.size(), paso):
+		var l := OmniLight3D.new()
+		l.position = bordes[i][0] + bordes[i][1] * 1.6 + Vector3(0, lava_y * .55, 0)
+		l.light_color = Color(1, .38, .1)
+		l.light_energy = 2.4
+		l.omni_range = 8.5
+		l.omni_attenuation = 1.2
+		l.light_volumetric_fog_energy = .4
+		padre.add_child(l)
 
 ## casilla que tiene algo encima (suelo, agua, puerta… o muro que se dibuja)
 static func _con_cuerpo(G: PackedByteArray, x: int, y: int) -> bool:
@@ -146,6 +185,117 @@ static func _roca() -> StandardMaterial3D:
 	m.uv1_world_triplanar = true
 	m.uv1_scale = Vector3(.4, .4, .4)
 	return m
+
+## cascada de lava: una tira pegada a la pared de roca (mismo relieve, un poco hacia fuera), del borde a la lava
+static func _cascada(st: SurfaceTool, ruido: FastNoiseLite, a: Vector3, b: Vector3, fuera: Vector3, hondo: float) -> void:
+	var filas := 8
+	var cols := 4
+	var rej := []
+	for f in filas + 1:
+		var fila := []
+		var y := -hondo * float(f) / filas
+		for c in cols + 1:
+			var u := .15 + .7 * float(c) / cols   # el medio del borde
+			var p := a.lerp(b, u) + Vector3(0, y, 0)
+			var k := clampf(-y / 1.2, 0, 1)
+			var off := Vector3(ruido.get_noise_3dv(p), ruido.get_noise_3dv(p + Vector3(31, 7, 13)) * .6, ruido.get_noise_3dv(p + Vector3(-17, 3, 41)))
+			p += off * RELIEVE * k * 2.0
+			p.y = y
+			p += fuera * (.12 + .25 * k)
+			fila.append([p, Vector2(float(c) / cols, float(f) / filas)])
+		rej.append(fila)
+	for f in filas:
+		for c in cols:
+			var q := [rej[f][c], rej[f][c + 1], rej[f + 1][c], rej[f + 1][c + 1]]
+			for t in [[0, 2, 1], [1, 2, 3]]:
+				for v in t:
+					st.set_uv(q[v][1])
+					st.add_vertex(q[v][0])
+
+## el mar de lava (no le afecta la niebla) y una capa de calima naranja por encima
+static func _lava(padre: Node3D, ancho: float, largo: float, y: float, tema: String) -> void:
+	var centro := Vector3(ancho / 2, y, largo / 2)
+	var pl := PlaneMesh.new()
+	pl.size = Vector2(ancho + 80, largo + 80)
+	var mi := MeshInstance3D.new()
+	mi.name = "MarDeLava"
+	mi.mesh = pl
+	mi.material_override = Temas.material_lava(tema)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position = centro
+	padre.add_child(mi)
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, fog_disabled;
+uniform sampler2D ruido : repeat_enable, filter_linear;
+varying vec3 mundo;
+void vertex() { mundo = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec2 uv = mundo.xz * .03;
+	float n = texture(ruido, uv + TIME * vec2(.006, .003)).r * texture(ruido, uv * 1.6 - TIME * vec2(.004, .007)).r;
+	ALBEDO = vec3(1.0, .32, .08) * clamp(n * 2.0 - .1, 0.0, 1.0) * .35;
+}
+"""
+	var n := FastNoiseLite.new()
+	n.seed = 9
+	n.frequency = .012
+	n.fractal_octaves = 4
+	var tex := NoiseTexture2D.new()
+	tex.width = 256
+	tex.height = 256
+	tex.seamless = true
+	tex.noise = n
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	mat.set_shader_parameter("ruido", tex)
+	var calima := MeshInstance3D.new()
+	calima.name = "Calima"
+	var pc := PlaneMesh.new()
+	pc.size = pl.size
+	calima.mesh = pc
+	calima.material_override = mat
+	calima.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	calima.position = centro + Vector3(0, 1.4, 0)
+	padre.add_child(calima)
+
+## brasas que suben desde la lava (MazmorraGridMap las mueve con la cámara)
+static func brasas(padre: Node3D) -> Node3D:
+	var f := CPUParticles3D.new()
+	f.name = "Brasas"
+	f.amount = 140
+	f.lifetime = 5.0
+	f.preprocess = 5.0
+	f.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	f.emission_box_extents = Vector3(16, 2.5, 16)
+	f.position = Vector3(0, -2.5, 0)
+	f.direction = Vector3.UP
+	f.spread = 25
+	f.initial_velocity_min = .4
+	f.initial_velocity_max = 1.3
+	f.gravity = Vector3(.15, .25, .05)
+	f.scale_amount_min = .03
+	f.scale_amount_max = .07
+	var q := QuadMesh.new()
+	q.size = Vector2(1, 1)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.vertex_color_use_as_albedo = true
+	m.albedo_color = Color(4, 2, 1)   # HDR: hacen resplandor
+	q.material = m
+	f.mesh = q
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0, .15, .7, 1])
+	g.colors = PackedColorArray([Color(1, .6, .2, 0), Color(1, .55, .15, 1), Color(1, .3, .05, .7), Color(.5, .1, .02, 0)])
+	f.color_ramp = g
+	var raiz := Node3D.new()
+	raiz.name = "BrasasRaiz"
+	raiz.add_child(f)
+	padre.add_child(raiz)
+	return raiz
 
 ## capas de niebla que se mueven despacio y brillan un poco; debajo, un fondo del color de la niebla
 static func _niebla(padre: Node3D, ancho: float, largo: float) -> void:

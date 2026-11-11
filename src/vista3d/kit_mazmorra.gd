@@ -23,8 +23,13 @@ const VARIANTES := {"nucleo": ["nucleo", "nucleo_b"], "suelo": ["suelo", "suelo_
 static var _lib: MeshLibrary
 static var _mallas := {}      # nombre → Mesh con los materiales de Godot
 static var _mats := {}
+static var _libs := {}        # tema → MeshLibrary con los materiales del tema (Temas)
+static var _nombres := {}     # nombre → nombres de los materiales de Blender de cada superficie
+const SUELOS := ["suelo", "suelo_b", "suelo_sala"]
 
-static func mesh_library() -> MeshLibrary:
+static func mesh_library(tema: String = "") -> MeshLibrary:
+	if tema != "" and Temas.hay(tema):
+		return _lib_tema(tema)
 	if _lib != null:
 		return _lib
 	_cargar_glb()
@@ -43,6 +48,9 @@ static func limpiar() -> void:
 	_lib = null
 	_mallas.clear()
 	_mats.clear()
+	_libs.clear()
+	_nombres.clear()
+	Temas.limpiar()
 
 static func id(nombre: String) -> int:
 	return mesh_library().find_item_by_name(nombre)
@@ -75,9 +83,12 @@ static func _cargar_glb() -> void:
 	var raiz: Node = (load(RUTA_GLB) as PackedScene).instantiate()
 	for mi in raiz.find_children("*", "MeshInstance3D", true, false):
 		var m: Mesh = (mi as MeshInstance3D).mesh.duplicate()
+		var nombres := []
 		for s in m.get_surface_count():
 			var orig := m.surface_get_material(s)
-			m.surface_set_material(s, material(orig.resource_name if orig != null else ""))
+			nombres.append(orig.resource_name if orig != null else "")
+			m.surface_set_material(s, material(nombres[s]))
+		_nombres[String(mi.name)] = nombres
 		_mallas[String(mi.name)] = m
 	raiz.free()
 
@@ -143,7 +154,7 @@ static func _piedra(c: Color, rug: float) -> StandardMaterial3D:
 
 ## muro que se vuelve transparente (tramado) cuando tapa al héroe, como en Diablo.
 ## Usa los parámetros globales pos_heroe y dir_camara (project.godot > shader_globals).
-static func material_muro() -> ShaderMaterial:
+static func material_muro(tema: String = "") -> ShaderMaterial:
 	var s := Shader.new()
 	s.code = """
 shader_type spatial;
@@ -153,6 +164,14 @@ uniform vec3 color : source_color = vec3(.47, .44, .42);
 uniform sampler2D ruido : hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform sampler2D relieve : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform float cortar = 1.0;
+// tema (Temas): textura de roca en lugar del ruido, con su relieve y las vetas que brillan
+uniform float usar_tex = 0.0;
+uniform sampler2D tex_color : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex_brillo : hint_default_black, filter_linear_mipmap, repeat_enable;
+uniform float tex_metros = 3.0;
+uniform vec3 brillo_color : source_color = vec3(1.0, .36, .07);
+uniform float brillo_fuerza = 0.0;
 varying vec3 wp;
 varying vec3 wn;
 void vertex() {
@@ -180,9 +199,17 @@ void fragment() {
 	vec3 c = color * COLOR.rgb * (.7 + n * .45) * (.85 + n2 * .3);
 	// las caras de arriba algo más claras y las de abajo de cada bloque más oscuras
 	c *= mix(.9, 1.12, clamp(wn.y, 0.0, 1.0));
+	vec3 tn = triplanar(relieve, wp * .9, wn).rgb;
+	if (usar_tex > .5) {
+		vec3 q = wp / tex_metros;
+		c = color * COLOR.rgb * triplanar(tex_color, q, wn).rgb * mix(.9, 1.1, clamp(wn.y, 0.0, 1.0));
+		tn = triplanar(tex_normal, q, wn).rgb;
+		// las vetas laten despacio
+		float b = triplanar(tex_brillo, q, wn).r;
+		EMISSION = brillo_color * b * brillo_fuerza * (.8 + .2 * sin(TIME * 1.7 + wp.x * .7 + wp.z * .5));
+	}
 	ALBEDO = c;
 	ROUGHNESS = .88;
-	vec3 tn = triplanar(relieve, wp * .9, wn).rgb;
 	NORMAL_MAP = tn;
 	NORMAL_MAP_DEPTH = .8;
 }
@@ -191,6 +218,58 @@ void fragment() {
 	m.shader = s
 	m.set_shader_parameter("ruido", _ruido(.05))
 	m.set_shader_parameter("relieve", _ruido(.12, true))
+	if tema != "" and Temas.hay(tema):
+		m.set_shader_parameter("usar_tex", 1.0)
+		m.set_shader_parameter("color", Temas.dato(tema, "tinte_muro", Color.WHITE))
+		m.set_shader_parameter("tex_color", Temas.tex(tema, "roca", "color"))
+		m.set_shader_parameter("tex_normal", Temas.tex(tema, "roca", "normal"))
+		m.set_shader_parameter("tex_brillo", Temas.tex(tema, "roca", "brillo"))
+		m.set_shader_parameter("tex_metros", float(Temas.dato(tema, "roca_m", 3.0)))
+		m.set_shader_parameter("brillo_color", Temas.dato(tema, "brillo", Color.ORANGE))
+		m.set_shader_parameter("brillo_fuerza", float(Temas.dato(tema, "brillo_e", 2.0)))
+	return m
+
+# ---------- temas (Temas): las mismas piezas con otros materiales ----------
+## mismo número de pieza que la biblioteca normal, para que el GridMap no cambie
+static func _lib_tema(tema: String) -> MeshLibrary:
+	if _libs.has(tema):
+		return _libs[tema]
+	var base := mesh_library()
+	var lib := MeshLibrary.new()
+	for n in DE_CASILLA:
+		var i := base.find_item_by_name(n)
+		if i < 0:
+			continue
+		lib.create_item(i)
+		lib.set_item_name(i, n)
+		lib.set_item_mesh(i, _malla_tema(n, tema))
+	_libs[tema] = lib
+	return lib
+
+static func _malla_tema(n: String, tema: String) -> Mesh:
+	# el suelo: losa lisa, la textura ya trae las piedras y las grietas
+	if n in SUELOS:
+		return _caja(Vector3(CELDA, .2, CELDA), Vector3(0, -.1, 0), Temas.material_suelo(tema))
+	if n == "agua":   # los canales: lava un poco más honda que el suelo
+		return _caja(Vector3(CELDA, .1, CELDA), Vector3(0, -.35, 0), Temas.material_lava(tema))
+	var m: Mesh = _mallas[n].duplicate()
+	var nombres: Array = _nombres.get(n, [])
+	for s in m.get_surface_count():
+		if s < nombres.size():
+			m.surface_set_material(s, material_tema(nombres[s], tema))
+	return m
+
+static func material_tema(nombre: String, tema: String) -> Material:
+	var k := nombre + "|" + tema
+	if _mats.has(k):
+		return _mats[k]
+	var m: Material
+	match nombre:
+		"piedra": m = material_muro(tema)
+		"losa": m = Temas.material_suelo(tema)
+		"junta": m = _liso(Color(.025, .018, .016), 1.0)
+		_: m = material(nombre)
+	_mats[k] = m
 	return m
 
 # ---------- piezas provisionales (lo que el .glb no trae) ----------

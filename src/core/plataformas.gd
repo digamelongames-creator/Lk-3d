@@ -8,7 +8,8 @@ class_name Plataformas
 ## el arte pinta la cara alta bajo la sala y los peldaños (LevelArt._abismo y _escaleras).
 
 const PISO := 3
-const PISOS := [3, 4, Descenso.PISO]
+## 8 y 9: el Inframundo, pasarelas sobre un mar de lava (decidido por Diego, 11 nov; la lava la pone la vista, Temas)
+const PISOS := [3, 4, Descenso.PISO, 8, 9]
 const PISO_ALTURAS := 4   # además del abismo, salas en alto con escaleras
 const TS := DungeonGen.TS
 const PARED := 3          # filas de roca que se conservan encima del suelo (cara alta del muro)

@@ -25,6 +25,7 @@ Al día: 11 nov 2026. **Este archivo es la fuente de verdad del proyecto**: cóm
 
 Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guardado).
 
+0. **Temas de la mazmorra, primero el Inframundo** (va por delante del cooperativo, decidido por Diego el 11 nov): meter las 7 piezas de Tripo cuando las pase Diego, acercar los pisos 8–9 a la imagen 7 (al 95 %) y después los otros temas (Criptas 1–2, Galerías hundidas 3–5, Osario 6–7, Sarcófago del rey caído 10).
 1. **Preparar la simulación para el cooperativo** (rama aparte): órdenes del jugador, varios héroes y objetos y oro aprobados por la simulación (las 5 reglas de `PRODUCTO_MINIMO.md`). Va antes de las tiendas.
 2. **Inca, tanda 2:** herrero, alquimista y runista (género fijo, tenderos provisionales con Prueba2 teñido) y almacén compartido entre personajes.
 3. **Guardado con ranuras y número de versión** («Continuar partida»). Cerrar el juego o volver al menú en la mazmorra cuenta como morir (confirmado por Diego).
@@ -42,12 +43,15 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - La animación de andar del héroe (la velocidad al andar actual queda como base).
 - Los modelos de `input/raw` (elf, violeta, cuernitos, medusa, vaquita) riggeados en Mixamo: cara propia para los enemigos humanos y los tenderos.
 - Colocar con el panel el escudo y la espada izquierda del esqueleto.
+- Probar el **Piso de prueba 7 · Inframundo** («Salas de prueba» o `--prueba=7`) y compararlo con la imagen 7 (`C:\Carpeta Juego\Temas\tema_inframundo_sala.png`).
+- Pasar por Tripo las 7 piezas del Inframundo (`C:\Carpeta Juego\Temas\inframundo\piezas_tripo`): pilar retorcido, muro con calavera, remate en punta, brasero de piedra, estalagmitas, roca de borde y puerta demoníaca.
 
 ## En curso en otros chats
 
 - El muro que tapa al héroe (sigue el recorte de puntos de la primera versión).
 
 ## Decisiones en espera
+
 
 - Estilo de adornos del piso de prueba (Poly Haven, Modular, Low Poly, Gótico o Ruinas) y pasar el Repartidor a los pisos normales: **en espera** (Diego, 10 nov). Hoy las salas del generador no tienen adornos por propósito.
 
@@ -70,6 +74,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - El generador de mazmorras no se toca (10 nov). La velocidad al andar actual es la base.
 - Enemigos que aprenden: activos en las partidas normales. El aviso entre compañeros se queda como está.
 - Equipo +10 % por afijo y oleada; legendarios del caballero con efecto único; jefe ×2,2.
+- Temas por tramo (11 nov): Criptas 1–2, Galerías hundidas 3–5, Osario 6–7, Inframundo 8–9 y Sarcófago del rey caído 10. Texturas con la opción mixta (color y alturas de Pixmith, el resto por script). Los pisos 8–9 son de pasarelas sobre un mar de lava; caer a la lava castiga igual que el abismo (último suelo, −20 % de vida); los canales del Inframundo son de lava (solo se ven: no queman todavía).
 - Tripo Premium (uso comercial). PC mínimo: GTX 1060 y 8 GB (Diego cree que 4 GB bastarían).
 
 ## Rechazado (no volver a proponer igual)
@@ -79,6 +84,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Salas secretas alejadas del resto (se tapan y el teletransporte no entra).
 
 ## Hecho (lo más nuevo arriba)
+- **Piso de prueba 7 · Inframundo (11 nov, pedido por Diego).** Primer tema de la mazmorra (`Temas`): piso generado de pasarelas (el generador no cambia), sin enemigos, con suelo de basalto con grietas de lava que brillan, muros con la roca del tema y vetas que laten, mar de lava que corre bajo las pasarelas, cascadas de lava en algunos bordes, luces naranjas bajo los bordes, calima, brasas que suben, antorchas más rojas, entorno rojo y canales de lava. Texturas de Pixmith (color + mapa de alturas en gris, la opción mixta) pasadas por `tools/texturas.py`. Botón en «Salas de prueba» y `--prueba=7`. Dibujos de 7 piezas para Tripo en `C:\Carpeta Juego\Temas\inframundo\piezas_tripo`. Prueba: `tests/test_temas.gd`. Ese mismo día, Diego dijo sí a todo: **los pisos 8–9 de las partidas ya son de pasarelas sobre lava con el tema** (`Plataformas.PISOS`, `Temas.de` por oleada), mismo castigo al caer y por delante del cooperativo.
 - **ESTADO.md reorganizado (11 nov, decidido por Diego):** cómo trabajamos, pendientes del producto mínimo, pendientes de Diego, en curso, decisiones en espera, para después, decidido, rechazado y hecho. Todos los chats lo leen al empezar y ponen al día los pendientes al terminar (`CLAUDE.md`).
 - **Contorno fino y barra de lo señalado (10 nov; en `main` desde el 11 nov, rama `contorno-fino`):** lo que señalas con el ratón lleva un contorno rojo fino (`assets/shaders/contorno.gdshader`, carcasa invertida en `material_overlay`; se guarda y se devuelve el brillo que ya tuviera la malla). Vale para enemigos, cofres, rompibles y objetos del suelo (`Actores3D._apuntar`). Arriba en el centro, el enemigo señalado sale con una barra de vida y su nombre dentro; lo que no tiene vida, solo el nombre. Si ya está la barra de la élite o el jefe, esta va debajo (`Hud`, `act.apuntado`). El mímico dormido se presenta como «Cofre». El nombre flotante sobre la cabeza queda solo para el último golpeado. Descartados: el contorno grueso al golpear y los pasillos de la rama `pasillos-contorno`.
 - **Legendarios, equipo por oleada y más (10 nov, decidido por Diego).** Los legendarios del caballero llevan un efecto único (`Legendarios`, `src/core/legendarios.gd`): Tizona, onda de fuego en cada tercer tajo; Égida, aturde 1 s al bloquear; Yelmo de Mambrino, +20 % de vida al matar una élite; Coraza de Roldán, escudo de ¼ de la vida al bajar del 30 % (cada 60 s); Guanteletes del Cid, el crítico salta como rayo a 2 enemigos (50 %); Ceñidor de Babieca, pociones ×2 y +20 % de daño 3 s; Botas de Siete Leguas, la voltereta deja fuego 2 s. Sale escrito con ★ en la pieza y en Comparar. Efectos en `Hechizos3D._legendarios()` con 9 hojas nuevas de Pixmith (`leg_*`, `rayo_caida`). Las piezas mejoran +10 % por afijo según la oleada donde caen (`Items.escalar`, `make_gear(..., ol)`), también los cofres y los legendarios. El jefe pega ×2,2 (`JEFE_DANO`).

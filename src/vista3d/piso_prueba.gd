@@ -14,6 +14,9 @@ class_name PisoPrueba
 ## y amueblar() monta lo que el GridMap no pone: muros y suelos de los kits y los adornos.
 
 const NOMBRES := ["Piso de prueba 1"]
+## pisos de prueba de temas (Temas): un piso generado de verdad, sin enemigos, con el tema puesto
+## 7 = el Inframundo (pisos 8–9): pasarelas sobre un mar de lava, como en la imagen 7 de Pixmith
+const DE_TEMA := {7: "inframundo"}
 
 ## kits con muros y suelos propios. Las piezas de muro miden una casilla (2 m) y dan la cara a +Z.
 const ESTILOS := {
@@ -47,12 +50,16 @@ static func clase_de_sala(sala: int) -> String:
 	return "mage" if sala >= 0 and sala < l.size() and l[sala][1] == "efectos" else "knight"
 
 static func nombre(n: int) -> String:
+	if DE_TEMA.has(n):
+		return "Piso de prueba %d · %s" % [n, Temas.nombre(DE_TEMA[n])]
 	return NOMBRES[clampi(n - 1, 0, NOMBRES.size() - 1)]
 
 # ======================================================================
 #  mapa
 # ======================================================================
 static func generar(n: int) -> Dictionary:
+	if DE_TEMA.has(n):
+		return _generar_tema(n, DE_TEMA[n])
 	# se parte de un piso normal para tener todas las claves que espera la simulación, y se cambia el mapa
 	var L := DungeonGen.gen_level("piso-prueba-%d" % n, 1)
 	var W := DungeonGen.GW
@@ -152,6 +159,17 @@ static func generar(n: int) -> Dictionary:
 		"a_mano": mano, "estilo_roca": estilo_roca, "salas_prueba": salas, "props_prueba": props, "prueba": n}, true)
 	return L
 
+## piso de tema: el mapa sale del generador de siempre (sin tocarlo) como un piso de pasarelas
+## sobre el abismo (los pisos 3–5); la vista lo viste con el tema (L.tema3d)
+static func _generar_tema(n: int, tema: String) -> Dictionary:
+	var L := DungeonGen.gen_level("piso-prueba-%d" % n, Plataformas.PISO)
+	if not L.get("plataformas", false):
+		Plataformas.aplicar(L)
+	L.erase("estilo")
+	L["tema3d"] = tema
+	L["prueba"] = n
+	return L
+
 ## el estilo de un muro: el de todo el suelo que toca (8 vecinas); si toca suelos de estilos distintos, el del juego
 static func _estilo_roca(G: PackedByteArray, room_of: PackedInt32Array, salas: Array, cx: int, cy: int, W: int, H: int) -> String:
 	var e := "-"
@@ -207,6 +225,8 @@ static func botin(sim: Sim) -> void:
 #  montaje 3D
 # ======================================================================
 static func amueblar(L: Dictionary, M: MazmorraGridMap) -> void:
+	if not L.has("salas_prueba"):
+		return   # pisos de tema: lo pone todo la vista
 	var W := DungeonGen.GW
 	var G: PackedByteArray = L.grid
 	var salas: Array = L.salas_prueba

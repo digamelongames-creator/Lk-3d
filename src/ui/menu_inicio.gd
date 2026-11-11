@@ -8,6 +8,7 @@ extends Control
 
 signal empezar(clase: String)
 signal piso_prueba(sala: int, clase: String)   # sala del piso de prueba donde se empieza (PisoPrueba.salas_menu) y clase ("" = la de la sala)
+signal piso_tema(n: int)   # piso de prueba de un tema (PisoPrueba.DE_TEMA)
 signal creditos
 signal salir
 signal continuar
@@ -279,6 +280,9 @@ func _pagina_pruebas() -> Control:
 				caja.add_child(boton(n + "  · " + c[1], func(): piso_prueba.emit(i, cl), 36))
 			continue
 		caja.add_child(boton(n, func(): piso_prueba.emit(i, ""), 36))
+	for k in PisoPrueba.DE_TEMA:   # pisos enteros con un tema (Inframundo…)
+		var num: int = k
+		caja.add_child(boton(PisoPrueba.nombre(num), func(): piso_tema.emit(num), 36))
 	var sep := Control.new()
 	sep.custom_minimum_size = Vector2(0, 6)
 	caja.add_child(sep)

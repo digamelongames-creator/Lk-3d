@@ -27,6 +27,13 @@ var adornos: Node3D
 var luces: Array[OmniLight3D] = []
 var _llamas: Array = []   # [OmniLight3D, energía base, fase]
 var _t := 0.0
+var tema := ""            # Temas: texturas, luz y abismo del piso ("" = los de siempre)
+var _brasas: Node3D       # temas con lava: brasas que suben alrededor de la cámara
+const FUEGO := Color(1, .62, .36)
+
+## color de antorchas y braseros (el del tema, si tiene)
+func color_fuego() -> Color:
+	return Temas.dato(tema, "antorcha", FUEGO) if tema != "" else FUEGO
 
 ## px de la simulación (x, y) y altura en px → metros
 static func a3d(x: float, y: float, z: float = 0.0) -> Vector3:
@@ -64,6 +71,12 @@ func construir(L: Dictionary) -> void:
 	luces.clear()
 	tapas.clear()
 	_llamas.clear()
+	_brasas = null
+	tema = Temas.de(L)
+	var lib := KitMazmorra.mesh_library(tema)
+	for g in [suelo, muros, objetos] + caras + esquinas:
+		if g.mesh_library != lib:
+			g.mesh_library = lib
 	var W := DungeonGen.GW
 	var H := DungeonGen.GH
 	var G: PackedByteArray = L.grid
@@ -108,7 +121,9 @@ func construir(L: Dictionary) -> void:
 	_decorador(L)
 	_puertas_secretas(L)
 	if L.get("plataformas", false):
-		Abismo3D.crear(G, adornos)   # paredes de roca bajo los bordes y niebla en el vacío
+		Abismo3D.crear(G, adornos, tema)   # paredes de roca bajo los bordes y niebla (o lava) en el vacío
+	if tema != "" and Temas.dato(tema, "lava") != null:
+		_brasas = Abismo3D.brasas(adornos)
 
 ## puertas negras de las salas secretas (SalaSecreta): la cara del muro que da al suelo pasa a ser una puerta,
 ## con una luz fría y tenue delante para que se distinga de los nichos
@@ -261,13 +276,13 @@ func poner_antorcha(celda: Vector2i, cara: Vector2i, corre: float = 0.0) -> void
 	var a := poner_en_pared("antorcha", celda, cara, 1.55, corre)
 	var llama := a.transform * Vector3(0, .45, .3)   # la copa de la antorcha (ver kit_mazmorra.py)
 	_fuego(llama, .13)
-	var luz := _luz(llama + Vector3(-cara.x, 0, -cara.y) * .5, Color(1, .62, .36), 2.8, 9.0)
+	var luz := _luz(llama + Vector3(-cara.x, 0, -cara.y) * .5, color_fuego(), 2.8, 9.0)
 	_llamas.append([luz, luz.light_energy, randf() * 10])
 
 ## fuego con luz que parpadea (braseros y antorchas de los kits de fuera)
 func fuego_y_luz(p: Vector3, tam: float, energia: float = 2.8, rango: float = 9.0) -> void:
 	_fuego(p, tam)
-	var luz := _luz(p + Vector3(0, .4, 0), Color(1, .62, .36), energia, rango)
+	var luz := _luz(p + Vector3(0, .4, 0), color_fuego(), energia, rango)
 	_llamas.append([luz, luz.light_energy, randf() * 10])
 
 ## pieza suelta de pie en el suelo (brasero, barril, caja…) en un punto en metros
@@ -279,7 +294,7 @@ func poner_en_suelo(nombre: String, pos: Vector3, giro: float = 0.0) -> Node3D:
 	if nombre == "brasero":
 		var arriba := pos + Vector3(0, 1.15, 0)
 		_fuego(arriba, .26)
-		var luz := _luz(arriba + Vector3(0, .6, 0), Color(1, .6, .32), 3.2, 10.0)
+		var luz := _luz(arriba + Vector3(0, .6, 0), color_fuego(), 3.2, 10.0)
 		_llamas.append([luz, luz.light_energy, randf() * 10])
 	return n
 
@@ -393,6 +408,13 @@ func _bulto(p: Vector3, t: Vector3, c: Color, girar: bool = true) -> void:
 ## las llamas parpadean
 func _process(dt: float) -> void:
 	_t += dt
+	if _brasas != null:   # las brasas van con la cámara (solo hay alrededor de lo que se ve)
+		var cam := get_viewport().get_camera_3d()
+		if cam != null:
+			var f := -cam.global_transform.basis.z
+			var p := cam.global_position
+			var k := -p.y / f.y if absf(f.y) > .01 else 0.0
+			_brasas.global_position = p + f * k
 	for f in _llamas:
 		var l: OmniLight3D = f[0]
 		l.light_energy = f[1] * (.85 + .15 * sin(_t * 9 + f[2]) + .08 * sin(_t * 23 + f[2] * 3))

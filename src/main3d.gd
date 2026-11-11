@@ -230,6 +230,9 @@ func _ready() -> void:
 	menu.piso_prueba.connect(func(sala: int, cl: String):
 		_sala = sala
 		_empezar(cl if cl != "" else PisoPrueba.clase_de_sala(sala), 1))
+	menu.piso_tema.connect(func(n: int):
+		_sala = -1
+		_empezar("knight", n))
 	menu.creditos.connect(func(): mostrar_creditos(true))
 	menu.salir.connect(func(): get_tree().quit())
 	menu.continuar.connect(_continuar)
@@ -308,7 +311,9 @@ func _ready() -> void:
 
 func _entrar(L: Dictionary) -> void:
 	fx.reset()
+	Temas.ambiente(entorno.environment, "")   # primero se quita el del piso anterior, luego el de Inca o el del tema
 	Ciudad.ambiente(entorno.environment, Ciudad.es_ciudad(L))
+	Temas.ambiente(entorno.environment, Temas.de(L))
 	sim.enter_level(L)
 	mazmorra.construir(sim.L)
 	actores.nuevo_piso()
@@ -323,7 +328,7 @@ func _entrar_prueba(n: int) -> void:
 	sim.cleared = true   # sin el aviso de «Mazmorra despejada» al empezar
 	PisoPrueba.amueblar(sim.L, mazmorra)
 	PisoPrueba.botin(sim)
-	var salas: Array = sim.L.salas_prueba
+	var salas: Array = sim.L.get("salas_prueba", [])
 	if _sala >= 0 and _sala < salas.size():
 		var s: Dictionary = salas[_sala]
 		sim.p.x = (s.x + 4.5) * DungeonGen.TS
