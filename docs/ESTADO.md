@@ -25,7 +25,8 @@ Al día: 11 nov 2026. **Este archivo es la fuente de verdad del proyecto**: cóm
 
 Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guardado).
 
-0. **Temas de la mazmorra, primero el Inframundo** (va por delante del cooperativo, decidido por Diego el 11 nov): acercar la Prueba puente a la imagen 8 según lo que diga Diego (falta: cascadas de lava del fondo más visibles, cadenas de arriba, jaulas más grandes, puerta más grande en la pared, relieves de estatuas), llevar lo aprendido a los pisos 8–9 y después los otros temas (Criptas 1–2, Galerías hundidas 3–5, Osario 6–7, Sarcófago del rey caído 10).
+0. **Escenas de calidad (decidido por Diego el 11 nov, se hará después de contestar sus preguntas):** (a) sistema para montar escenas a partir de una imagen de referencia: escena en archivo de datos, cámara calculada con puntos de la imagen, colocar por posición en la imagen, comparación automática con nota, ambientes por tema y capturas rápidas; pasar la Prueba puente a ese formato; guardar el método como skill; (b) Prueba puente jugable: cámara con el ángulo de la imagen que sigue al héroe y enemigos en el puente y el rellano. Que una escena así salga dentro de un piso normal queda para más tarde (Diego acepta tocar el generador para eso: «ponme aquí esta sala / un puente»).
+0b. **Temas de la mazmorra**: llevar lo aprendido a los pisos 8–9 y después los otros temas (Criptas 1–2, Galerías hundidas 3–5, Osario 6–7, Sarcófago del rey caído 10).
 1. **Preparar la simulación para el cooperativo** (rama aparte): órdenes del jugador, varios héroes y objetos y oro aprobados por la simulación (las 5 reglas de `PRODUCTO_MINIMO.md`). Va antes de las tiendas.
 2. **Inca, tanda 2:** herrero, alquimista y runista (género fijo, tenderos provisionales con Prueba2 teñido) y almacén compartido entre personajes.
 3. **Guardado con ranuras y número de versión** («Continuar partida»). Cerrar el juego o volver al menú en la mazmorra cuenta como morir (confirmado por Diego).
@@ -44,7 +45,6 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Los modelos de `input/raw` (elf, violeta, cuernitos, medusa, vaquita) riggeados en Mixamo: cara propia para los enemigos humanos y los tenderos.
 - Colocar con el panel el escudo y la espada izquierda del esqueleto.
 - Probar el **Piso de prueba 7 · Inframundo** con las piezas de Tripo (pilares, muros con calavera, puertas demoníacas con braseros, remates, rocas y estalagmitas).
-- Probar la **Prueba puente · Inframundo** (`--prueba=9`, arriba del todo en «Salas de prueba») y decir qué le falta frente a la imagen 8 (`C:\Carpeta Juego\Temas\tema_inframundo_pasillo.png`).
 
 ## En curso en otros chats
 
@@ -68,6 +68,9 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 
 ## Decidido (y que se mantiene)
 
+- Prueba puente e Inframundo (piso 7) dados por buenos por Diego el 11 nov («este es el juego que pensé»); los detalles de la prueba (cascadas, cadenas, jaulas) no se pulen: era una prueba.
+- El generador de mapas se puede tocar para meter salas hechas a mano (puente, salas especiales) cuando toque (11 nov). Hasta entonces sigue sin tocarse.
+
 - Combate: el héroe no avanza al atacar y se queda quieto mientras dura el tajo; todas las clases quietas al atacar o lanzar; sin temblor de cámara ni congelado; los básicos no empujan; sin gesto de dolor en enemigos; caen donde mueren.
 - Muerte: sin Revivir en partida; se vuelve a Inca sin mochila ni el oro de la bajada. En el piso de prueba sí se revive en el sitio.
 - Solo se vuelve a Inca tras vencer al jefe del piso o al morir. Las tiendas venden siempre lo mismo.
@@ -84,6 +87,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Salas secretas alejadas del resto (se tapan y el teletransporte no entra).
 
 ## Hecho (lo más nuevo arriba)
+- **Cómo se hizo el Inframundo (11 nov, pedido por Diego):** `docs/PROCESO_INFRAMUNDO.html`, los 26 pasos con todo el código de los tres commits y las 12 capturas de la prueba puente.
 - **Inframundo con piezas de Tripo, Prueba puente y menú de pruebas (11 nov, pedido por Diego).** Las 13 piezas de Tripo pasan por `props_glb.py` (nuevo: `archivo`, `alto|ancho|fondo` y `brillo`: lo naranja del color brilla) a `assets/props/inframundo.glb` y `puente.glb`. En los pisos del Inframundo (`Inframundo3D`): pilar retorcido en las esquinas de las salas, muro con calavera en lugar de nichos y arcos ciegos, puerta demoníaca con dos braseros de piedra en todas las puertas, remates en los muros y en los bordes, rocas bajo los bordes y estalagmitas en la lava. **Prueba puente** (`PruebaPuente`, `--prueba=9`): la imagen 8 montada a mano (puente de dos tramos, río de lava, puerta en la pared de roca, braseros, puentes lejanos, cascadas, cadenas y jaulas), solo se anda por el puente y el rellano, cámara fija en perspectiva con el ángulo de la imagen (`CamaraIso.fijar`) y sin interfaz. Menú «Salas de prueba» con letra más pequeña y barra para bajar. Arreglos: la clase `Temas` chocaba con la del editor de mapas (`src/core/temas.gd`) y pasa a llamarse `TemaMazmorra`; el suelo del tema brillaba entero (emisión en «sumar»: ahora «multiplicar», solo brillan las grietas).
 - **Piso de prueba 7 · Inframundo (11 nov, pedido por Diego).** Primer tema de la mazmorra (`TemaMazmorra`): piso generado de pasarelas (el generador no cambia), sin enemigos, con suelo de basalto con grietas de lava que brillan, muros con la roca del tema y vetas que laten, mar de lava que corre bajo las pasarelas, cascadas de lava en algunos bordes, luces naranjas bajo los bordes, calima, brasas que suben, antorchas más rojas, entorno rojo y canales de lava. Texturas de Pixmith (color + mapa de alturas en gris, la opción mixta) pasadas por `tools/texturas.py`. Botón en «Salas de prueba» y `--prueba=7`. Dibujos de 7 piezas para Tripo en `C:\Carpeta Juego\Temas\inframundo\piezas_tripo`. Prueba: `tests/test_temas.gd`. Ese mismo día, Diego dijo sí a todo: **los pisos 8–9 de las partidas ya son de pasarelas sobre lava con el tema** (`Plataformas.PISOS`, `TemaMazmorra.de` por oleada), mismo castigo al caer y por delante del cooperativo.
 - **ESTADO.md reorganizado (11 nov, decidido por Diego):** cómo trabajamos, pendientes del producto mínimo, pendientes de Diego, en curso, decisiones en espera, para después, decidido, rechazado y hecho. Todos los chats lo leen al empezar y ponen al día los pendientes al terminar (`CLAUDE.md`).
