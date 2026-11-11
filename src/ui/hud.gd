@@ -5,6 +5,7 @@ extends Control
 ## experiencia en una franja al pie, minimapa arriba a la derecha y el cartel grande en el centro.
 
 var sim: Sim
+var act   # Actores3D: lo que señalas con el ratón (act.apuntado)
 var fx   # Fx3D (o ViewFx en 2D): solo se leen banner_t, banner_top y banner_main
 var ghost_hp := 1.0
 var hit_shake := 0.0
@@ -143,6 +144,24 @@ func _draw() -> void:
 		var sub: String = "Jefe del piso" if e.jefe else (Sim.PODER_N.get(e.poder, "") if e.poder != "" else "")
 		if sub != "":
 			Fonts.outlined(self, font5, Vector2(cx + cw / 2, 40 + bh + 18), sub, 14, ViewFx.col("#d8c8a8"), 1, 3, Color.BLACK)
+	# ---- lo que señalas con el ratón (10 nov): barra de vida con el nombre dentro; lo que no tiene vida,
+	# solo el nombre. Si arriba ya está la barra de la élite o el jefe, esta va un poco más abajo ----
+	var ap: Dictionary = act.apuntado if act != null else {}
+	if not ap.is_empty():
+		var ae = ap.get("enemigo")
+		var aw := 300.0
+		var ah := 22.0
+		var ay := 84.0 if arriba != null else 26.0
+		var ax := W / 2 - aw / 2 - 80
+		var txt := String(ap.get("nombre", ""))
+		if ae != null and ae != arriba:
+			var fr := clampf(ae.hp / ae.max_hp, 0, 1)
+			draw_rect(Rect2(ax - 2, ay - 2, aw + 4, ah + 4), ViewFx.col("#0a0607"))
+			draw_rect(Rect2(ax, ay, aw, ah), ViewFx.col("#26090d"))
+			draw_rect(Rect2(ax, ay, aw * fr, ah), ViewFx.col("#8a1020"))
+			Fonts.outlined(self, font, Vector2(ax + aw / 2, ay + ah / 2 + 6), txt, 17, ViewFx.col("#f2e6d0"), 1, 3, Color.BLACK)
+		elif ae == null:
+			Fonts.outlined(self, font, Vector2(ax + aw / 2, ay + ah / 2 + 6), txt, 18, ViewFx.col("#f2e6d0"), 1, 3, Color.BLACK)
 	# ---- minimapa (arriba a la derecha) ----
 	var s := 3.6
 	var mw := DungeonGen.GW * s
