@@ -61,6 +61,7 @@ var _equipo := -1  # pruebas: --equipo=0..3 pone casco, peto, guantes, cinturón
 var _junto := ""   # pruebas: --junto=demonCaptain pone al héroe al lado de ese monstruo (también jefe o elite)
 var _shot_path := ""
 var _shot_frames := 0
+var modo_escena := "final"   # escenas hechas a mano: geometria | materiales | final (--modo=)
 var _frame := 0
 var _attack_edge := false
 var _dash_edge := false
@@ -129,6 +130,8 @@ func _ready() -> void:
 			con_menu = true
 			_menu_pagina = a.get_slice("=", 1) if "=" in a else ""
 		elif a.begins_with("--inclinacion=") or a.begins_with("--giro=") or a.begins_with("--zoom=") or a == "--perspectiva": opciones_camara.append(a)
+		elif a.begins_with("--modo="):
+			modo_escena = a.get_slice("=", 1)
 		elif a.begins_with("--shot="):
 			var p := a.get_slice("=", 1).split(",")
 			_shot_path = p[0]
@@ -312,7 +315,7 @@ func _ready() -> void:
 func _entrar(L: Dictionary) -> void:
 	fx.reset()
 	camara.fija = false
-	PruebaPuente.quitar(entorno.environment)
+	Escena3D.quitar(entorno.environment)
 	TemaMazmorra.ambiente(entorno.environment, "")   # primero se quita el del piso anterior, luego el de Inca o el del tema
 	Ciudad.ambiente(entorno.environment, Ciudad.es_ciudad(L))
 	TemaMazmorra.ambiente(entorno.environment, TemaMazmorra.de(L))
@@ -330,11 +333,15 @@ func _entrar_prueba(n: int) -> void:
 	sim.cleared = true   # sin el aviso de «Mazmorra despejada» al empezar
 	PisoPrueba.amueblar(sim.L, mazmorra)
 	PisoPrueba.botin(sim)
-	camara.fija = n == PruebaPuente.N
-	if camara.fija:   # la imagen 8 montada a mano, con su cámara fija
-		PruebaPuente.montar(mazmorra, entorno.environment)
-		camara.fijar(PruebaPuente.CAM_DESDE, PruebaPuente.CAM_HACIA, PruebaPuente.CAM_FOV)
-		hud.visible = false   # como en la imagen: sin interfaz
+	var esc := Escena3D.de_numero(n)
+	if esc != "":   # escena hecha a mano (assets/escenas/<nombre>.json), en el modo pedido (--modo=)
+		Escena3D.montar(esc, mazmorra, entorno.environment, modo_escena)
+		var cam := Escena3D.camara(esc)
+		if String(cam.get("tipo", "juego")) == "propia":
+			camara.fijar(Escena3D._v(cam.desde), Escena3D._v(cam.hacia), float(cam.get("fov", 45)))
+		_camara(1.0)
+		if String(Escena3D.datos(esc).get("clase", "")) == "vitrina":
+			hud.visible = false   # como en la imagen: sin interfaz
 		return
 	var salas: Array = sim.L.get("salas_prueba", [])
 	if _sala >= 0 and _sala < salas.size():
@@ -422,8 +429,22 @@ func _process(dt: float) -> void:
 	if _shot_path != "" and _frame == _shot_frames:
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(_shot_path)
+		_informe_escena(_shot_path.get_basename() + "_informe.json")
 		print("captura: ", _shot_path)
 		get_tree().quit()
+
+## informe de rendimiento de la escena (F7 en una escena o con --shot): user://informes/ o junto a la captura
+func _informe_escena(ruta: String = "") -> void:
+	var esc := String(sim.L.get("escena", "")) if sim.L != null else ""
+	if esc == "":
+		return
+	var d := Escena3D.informe(mazmorra, esc, modo_escena)
+	if ruta == "":
+		DirAccess.make_dir_recursive_absolute("user://informes")
+		ruta = "user://informes/%s_%s.json" % [esc, Time.get_datetime_string_from_system().replace(":", "-")]
+	Escena3D.guardar_informe(d, ruta)
+	print("informe: ", ProjectSettings.globalize_path(ruta))
+	fx.banner("Informe guardado: " + ProjectSettings.globalize_path(ruta), "F7")
 
 func _camara(dt: float) -> void:
 	if sim.p == null:
@@ -755,6 +776,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 		if menu.pagina == "opciones":
 			menu._refrescar_opciones()
 		return
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F7 and state == "play":
+		_informe_escena()
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F4 and state == "play" and prueba > 0:
 		panel_efectos.visible = not panel_efectos.visible
 		if panel_efectos.visible:
@@ -883,6 +906,7 @@ func _exit_tree() -> void:
 	sim.apr.cerrar_todos(sim)
 	sim.apr.guardar()
 	KitMazmorra.limpiar()
+	Escena3D.limpiar()
 	Props3D.limpiar()
 	Ciudad.limpiar()
 	Modelo3D.limpiar()

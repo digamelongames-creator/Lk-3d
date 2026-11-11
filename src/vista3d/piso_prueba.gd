@@ -20,7 +20,7 @@ const DE_TEMA := {7: "inframundo"}
 
 ## pisos enteros que salen en el menú de pruebas (además de las salas del piso 1)
 static func pisos_menu() -> Array:
-	return [PruebaPuente.N] + DE_TEMA.keys()
+	return Escena3D.numeros() + DE_TEMA.keys()
 
 ## kits con muros y suelos propios. Las piezas de muro miden una casilla (2 m) y dan la cara a +Z.
 const ESTILOS := {
@@ -54,8 +54,8 @@ static func clase_de_sala(sala: int) -> String:
 	return "mage" if sala >= 0 and sala < l.size() and l[sala][1] == "efectos" else "knight"
 
 static func nombre(n: int) -> String:
-	if n == PruebaPuente.N:
-		return PruebaPuente.nombre()
+	if Escena3D.de_numero(n) != "":
+		return String(Escena3D.datos(Escena3D.de_numero(n)).get("titulo", Escena3D.de_numero(n)))
 	if DE_TEMA.has(n):
 		return "Piso de prueba %d · %s" % [n, TemaMazmorra.nombre(DE_TEMA[n])]
 	return NOMBRES[clampi(n - 1, 0, NOMBRES.size() - 1)]
@@ -64,8 +64,8 @@ static func nombre(n: int) -> String:
 #  mapa
 # ======================================================================
 static func generar(n: int) -> Dictionary:
-	if n == PruebaPuente.N:
-		return PruebaPuente.generar()
+	if Escena3D.de_numero(n) != "":   # escena hecha a mano desde su archivo de datos (assets/escenas)
+		return Escena3D.generar(Escena3D.de_numero(n), n)
 	if DE_TEMA.has(n):
 		return _generar_tema(n, DE_TEMA[n])
 	# se parte de un piso normal para tener todas las claves que espera la simulación, y se cambia el mapa

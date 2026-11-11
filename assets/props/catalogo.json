@@ -1,0 +1,15 @@
+{
+	"inframundo/brasero_piedra": {"donde":["puerta","punto_interes"],"fuego":[0.0,1.22,0.0],"medidas":[0.87,1.3,0.82],"rareza":"comun","tema":"inframundo","tipo":"singular","triangulos":7000,"visible_hasta":60.0},
+	"inframundo/estalagmitas": {"donde":["lava","abismo"],"medidas":[1.69,2.2,1.6],"rareza":"comun","tema":"inframundo","tipo":"ambiente","triangulos":5000,"visible_hasta":50.0},
+	"inframundo/muro_calavera": {"donde":["cara_muro"],"medidas":[1.75,3.0,0.79],"rareza":"comun","tema":"inframundo","tipo":"arquitectura","triangulos":8000,"visible_hasta":70.0},
+	"inframundo/pilar_retorcido": {"donde":["esquina_sala"],"medidas":[1.07,3.6,1.05],"rareza":"comun","tema":"inframundo","tipo":"arquitectura","triangulos":9000,"visible_hasta":70.0},
+	"inframundo/puerta_demoniaca": {"donde":["puerta"],"medidas":[2.99,4.4,1.24],"rareza":"comun","tema":"inframundo","tipo":"singular","triangulos":14000,"visible_hasta":120.0},
+	"inframundo/remate_punta": {"donde":["encima_muro","borde_pasarela","pretil"],"medidas":[0.57,1.5,0.56],"rareza":"comun","tema":"inframundo","tipo":"arquitectura","triangulos":4712,"visible_hasta":50.0},
+	"inframundo/roca_borde": {"donde":["bajo_borde"],"medidas":[2.4,1.33,2.38],"rareza":"comun","tema":"inframundo","tipo":"ambiente","triangulos":6000,"visible_hasta":45.0},
+	"puente/acantilado": {"donde":["pared_roca","fondo"],"medidas":[9.67,16.0,6.69],"rareza":"especial","tema":"inframundo","tipo":"ambiente","triangulos":11999,"visible_hasta":300.0},
+	"puente/cadena": {"donde":["colgado"],"medidas":[0.39,3.0,0.4],"notas":"tramo de 3 m; las cadenas se arman con {\"cadena\": …}","rareza":"especial","tema":"*","tipo":"singular","triangulos":4895,"visible_hasta":120.0},
+	"puente/estalactitas": {"donde":["techo","fondo"],"medidas":[6.0,5.78,5.74],"rareza":"especial","tema":"inframundo","tipo":"ambiente","triangulos":6000,"visible_hasta":120.0},
+	"puente/jaula": {"donde":["colgado"],"medidas":[0.92,2.3,0.94],"rareza":"especial","tema":"*","tipo":"singular","triangulos":9000,"visible_hasta":120.0},
+	"puente/puente_lejano": {"donde":["fondo"],"medidas":[34.0,13.31,7.66],"rareza":"especial","tema":"inframundo","tipo":"ambiente","triangulos":9999,"visible_hasta":300.0},
+	"puente/tramo_puente": {"donde":["puente"],"medidas":[8.22,8.14,6.4],"notas":"tablero a 5,77 m de 8,14; pretiles desde |z| 2,2","rareza":"especial","tema":"inframundo","tipo":"arquitectura","triangulos":19999,"visible_hasta":150.0}
+}

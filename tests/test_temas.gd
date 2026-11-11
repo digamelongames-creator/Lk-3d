@@ -9,6 +9,8 @@ func ok(c: bool, q: String) -> void:
 		fallos += 1
 		print("FALLO ", q)
 
+const PUENTE := 9   # número de la escena «puente» (assets/escenas/puente.json)
+
 func _init() -> void:
 	# las texturas del tema
 	for clave in ["suelo", "roca"]:
@@ -82,10 +84,10 @@ func _init() -> void:
 		await process_frame
 	ok(main.state == "play", "se juega")
 	# prueba puente: mapa a mano, cámara fija, sin interfaz, con las piezas de Tripo
-	main.menu.piso_tema.emit(PruebaPuente.N)
+	main.menu.piso_tema.emit(PUENTE)
 	await process_frame
 	await process_frame
-	ok(main.prueba == PruebaPuente.N, "entra en la prueba puente")
+	ok(main.prueba == PUENTE, "entra en la prueba puente")
 	ok(main.camara.fija and main.camara.projection == Camera3D.PROJECTION_PERSPECTIVE, "cámara fija en perspectiva")
 	ok(not main.hud.visible, "sin interfaz, como en la imagen")
 	var piezas := {}
@@ -96,7 +98,7 @@ func _init() -> void:
 		var paq := "inframundo" if n in ["puerta_demoniaca", "brasero_piedra"] else "puente"
 		ok(piezas.has(Props3D.malla(paq, n)), "en la prueba puente hay " + n)
 	ok(DungeonGen.walk(sim.L.grid[int(sim.p.y / DungeonGen.TS) * DungeonGen.GW + int(sim.p.x / DungeonGen.TS)]), "el héroe empieza sobre el tablero")
-	ok(not DungeonGen.walk(sim.L.grid[(PruebaPuente.CY0 - 1) * DungeonGen.GW + 15]), "fuera del pretil no se pisa")
+	ok(not DungeonGen.walk(sim.L.grid[(20 - 1) * DungeonGen.GW + 15]), "fuera del pretil no se pisa")
 	# de vuelta a un piso normal: el entorno vuelve
 	main._entrar(DungeonGen.gen_level("otro", 1))
 	await process_frame

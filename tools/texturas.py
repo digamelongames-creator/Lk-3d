@@ -17,6 +17,8 @@ Opciones:
     --fuerza=N        relieve más o menos marcado (por defecto 6)
     --px=N            tamaño de salida (por defecto 1024)
     --sin-arreglo     no tocar los bordes aunque no casen al repetir
+    --mosaico[=ruta]  guarda la textura repetida 3×3 (por defecto /tmp/<nombre>_mosaico.jpg) para ver costuras,
+                      patrones que se repiten y si la escala es buena; dice la costura que queda tras el arreglo
 """
 import sys
 import numpy as np
@@ -118,6 +120,15 @@ def main():
     rug = np.clip(.97 - alt * .3, .55, 1)
     if brillo is not None:
         rug = rug * (1 - brillo * .6)
+    if "--mosaico" in op:
+        ruta = op["--mosaico"] if isinstance(op["--mosaico"], str) else f"/tmp/{nombre}_mosaico.jpg"
+        t = Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8)).resize((512, 512), Image.LANCZOS)
+        m = Image.new("RGB", (1536, 1536))
+        for j in range(3):
+            for i in range(3):
+                m.paste(t, (i * 512, j * 512))
+        m.save(ruta, quality=88)
+        print(f"   mosaico 3×3: {ruta} (costura que queda ×{costura(a):.2f})")
     guardar(a, f"{salida}/{nombre}_color.webp", px)
     guardar(normales(alt, fuerza), f"{salida}/{nombre}_normal.webp", px)
     guardar(rug, f"{salida}/{nombre}_rugosidad.webp", px)
