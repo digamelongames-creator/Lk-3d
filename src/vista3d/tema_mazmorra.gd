@@ -83,6 +83,7 @@ static func _pbr(t: String, clave: String, metros: float, cull_no: bool = false)
 		m.emission_enabled = true
 		m.emission = dato(t, "brillo", Color.ORANGE)
 		m.emission_texture = b
+		m.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY   # solo brilla lo que marca la máscara (con ADD brillaba todo)
 		m.emission_energy_multiplier = float(dato(t, "brillo_e", 2.0))
 	m.uv1_triplanar = true
 	m.uv1_world_triplanar = true

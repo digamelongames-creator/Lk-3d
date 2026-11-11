@@ -81,10 +81,27 @@ func _init() -> void:
 	for i in 20:
 		await process_frame
 	ok(main.state == "play", "se juega")
+	# prueba puente: mapa a mano, cámara fija, sin interfaz, con las piezas de Tripo
+	main.menu.piso_tema.emit(PruebaPuente.N)
+	await process_frame
+	await process_frame
+	ok(main.prueba == PruebaPuente.N, "entra en la prueba puente")
+	ok(main.camara.fija and main.camara.projection == Camera3D.PROJECTION_PERSPECTIVE, "cámara fija en perspectiva")
+	ok(not main.hud.visible, "sin interfaz, como en la imagen")
+	var piezas := {}
+	for c in main.mazmorra.adornos.get_children():
+		if c is MeshInstance3D and (c as MeshInstance3D).mesh != null:
+			piezas[(c as MeshInstance3D).mesh] = true
+	for n in ["tramo_puente", "puente_lejano", "acantilado", "cadena", "jaula", "puerta_demoniaca", "brasero_piedra"]:
+		var paq := "inframundo" if n in ["puerta_demoniaca", "brasero_piedra"] else "puente"
+		ok(piezas.has(Props3D.malla(paq, n)), "en la prueba puente hay " + n)
+	ok(DungeonGen.walk(sim.L.grid[int(sim.p.y / DungeonGen.TS) * DungeonGen.GW + int(sim.p.x / DungeonGen.TS)]), "el héroe empieza sobre el tablero")
+	ok(not DungeonGen.walk(sim.L.grid[(PruebaPuente.CY0 - 1) * DungeonGen.GW + 15]), "fuera del pretil no se pisa")
 	# de vuelta a un piso normal: el entorno vuelve
 	main._entrar(DungeonGen.gen_level("otro", 1))
 	await process_frame
 	ok(main.mazmorra.tema == "", "piso normal sin tema")
+	ok(not main.camara.fija, "la cámara vuelve a seguir al héroe")
 	ok(e.background_color == fondo_antes, "el entorno vuelve a ser el de siempre")
 	ok(main.mazmorra.suelo.mesh_library == base, "y la biblioteca normal")
 	print("test_temas: ", "todo bien" if fallos == 0 else "%d fallos" % fallos)

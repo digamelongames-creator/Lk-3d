@@ -10,6 +10,24 @@ var ortografica := true
 var zoom := 17.0         # metros de alto que caben en pantalla (ortográfica)
 var temblor := 0.0
 const DIST := 40.0
+## cámara fija (Prueba puente): en perspectiva, desde un punto hacia otro, sin seguir al héroe
+var fija := false:
+	set(v):
+		fija = v
+		if is_inside_tree():
+			aplicar()
+var _desde := Vector3.ZERO
+var _hacia := Vector3.ZERO
+var _fov := 40.0
+
+func fijar(desde: Vector3, hacia: Vector3, campo: float) -> void:
+	_desde = desde
+	_hacia = hacia
+	_fov = campo
+	var h := Vector2(desde.x - hacia.x, desde.z - hacia.z)
+	giro = atan2(h.x, h.y)   # las teclas andan según la cámara (hacia_camara)
+	fija = true
+	seguir(Vector3.ZERO, 1.0, false)
 
 func _ready() -> void:
 	near = .1
@@ -17,6 +35,12 @@ func _ready() -> void:
 	aplicar()
 
 func aplicar() -> void:
+	if fija:
+		projection = PROJECTION_PERSPECTIVE
+		fov = _fov
+		far = 400
+		return
+	far = 200
 	projection = PROJECTION_ORTHOGONAL if ortografica else PROJECTION_PERSPECTIVE
 	size = zoom
 	fov = 30
@@ -28,6 +52,11 @@ func hacia_camara() -> Vector2:
 ## coloca la cámara mirando a objetivo; suave > 0 la lleva poco a poco
 func seguir(objetivo: Vector3, dt: float, suave: bool = true) -> void:
 	var a := hacia_camara()
+	if fija:
+		position = _desde
+		look_at(_hacia)
+		RenderingServer.global_shader_parameter_set("dir_camara", a)
+		return
 	var vista := Vector3(a.x * cos(inclinacion), sin(inclinacion), a.y * cos(inclinacion))
 	var dist := DIST if ortografica else zoom / (2.0 * tan(deg_to_rad(fov) / 2.0))
 	var destino := objetivo + vista * dist

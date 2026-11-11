@@ -311,6 +311,8 @@ func _ready() -> void:
 
 func _entrar(L: Dictionary) -> void:
 	fx.reset()
+	camara.fija = false
+	PruebaPuente.quitar(entorno.environment)
 	TemaMazmorra.ambiente(entorno.environment, "")   # primero se quita el del piso anterior, luego el de Inca o el del tema
 	Ciudad.ambiente(entorno.environment, Ciudad.es_ciudad(L))
 	TemaMazmorra.ambiente(entorno.environment, TemaMazmorra.de(L))
@@ -328,6 +330,12 @@ func _entrar_prueba(n: int) -> void:
 	sim.cleared = true   # sin el aviso de «Mazmorra despejada» al empezar
 	PisoPrueba.amueblar(sim.L, mazmorra)
 	PisoPrueba.botin(sim)
+	camara.fija = n == PruebaPuente.N
+	if camara.fija:   # la imagen 8 montada a mano, con su cámara fija
+		PruebaPuente.montar(mazmorra, entorno.environment)
+		camara.fijar(PruebaPuente.CAM_DESDE, PruebaPuente.CAM_HACIA, PruebaPuente.CAM_FOV)
+		hud.visible = false   # como en la imagen: sin interfaz
+		return
 	var salas: Array = sim.L.get("salas_prueba", [])
 	if _sala >= 0 and _sala < salas.size():
 		var s: Dictionary = salas[_sala]
