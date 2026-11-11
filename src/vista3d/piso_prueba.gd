@@ -14,9 +14,13 @@ class_name PisoPrueba
 ## y amueblar() monta lo que el GridMap no pone: muros y suelos de los kits y los adornos.
 
 const NOMBRES := ["Piso de prueba 1"]
-## pisos de prueba de temas (Temas): un piso generado de verdad, sin enemigos, con el tema puesto
+## pisos de prueba de temas (TemaMazmorra): un piso generado de verdad, sin enemigos, con el tema puesto
 ## 7 = el Inframundo (pisos 8–9): pasarelas sobre un mar de lava, como en la imagen 7 de Pixmith
 const DE_TEMA := {7: "inframundo"}
+
+## pisos enteros que salen en el menú de pruebas (además de las salas del piso 1)
+static func pisos_menu() -> Array:
+	return DE_TEMA.keys()
 
 ## kits con muros y suelos propios. Las piezas de muro miden una casilla (2 m) y dan la cara a +Z.
 const ESTILOS := {
@@ -51,7 +55,7 @@ static func clase_de_sala(sala: int) -> String:
 
 static func nombre(n: int) -> String:
 	if DE_TEMA.has(n):
-		return "Piso de prueba %d · %s" % [n, Temas.nombre(DE_TEMA[n])]
+		return "Piso de prueba %d · %s" % [n, TemaMazmorra.nombre(DE_TEMA[n])]
 	return NOMBRES[clampi(n - 1, 0, NOMBRES.size() - 1)]
 
 # ======================================================================

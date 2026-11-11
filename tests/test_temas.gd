@@ -1,5 +1,5 @@
 extends SceneTree
-## Temas de la mazmorra: el «Piso de prueba 7 · Inframundo» sale del generador de siempre como piso de pasarelas,
+## TemaMazmorra de la mazmorra: el «Piso de prueba 7 · Inframundo» sale del generador de siempre como piso de pasarelas,
 ## sin enemigos, con las texturas del tema, el mar de lava, cascadas, luces y brasas; al volver a Inca
 ## el entorno vuelve a ser el de antes.
 ## godot --headless --path . -s tests/test_temas.gd
@@ -13,12 +13,12 @@ func _init() -> void:
 	# las texturas del tema
 	for clave in ["suelo", "roca"]:
 		for capa in ["color", "normal", "rugosidad", "brillo"]:
-			ok(Temas.tex("inframundo", clave, capa) != null, "textura %s_%s" % [clave, capa])
-	ok(Temas.tex("inframundo", "lava", "color") != null, "textura de la lava")
+			ok(TemaMazmorra.tex("inframundo", clave, capa) != null, "textura %s_%s" % [clave, capa])
+	ok(TemaMazmorra.tex("inframundo", "lava", "color") != null, "textura de la lava")
 	# el mapa: mismo generador, piso de pasarelas, con el tema
 	var L := PisoPrueba.generar(7)
 	ok(L.get("plataformas", false), "piso de pasarelas sobre el abismo")
-	ok(Temas.de(L) == "inframundo", "lleva el tema del Inframundo")
+	ok(TemaMazmorra.de(L) == "inframundo", "lleva el tema del Inframundo")
 	ok(PisoPrueba.nombre(7) == "Piso de prueba 7 · Inframundo", "nombre: " + PisoPrueba.nombre(7))
 	var G: PackedByteArray = L.grid
 	ok(G.count(DungeonGen.ABISMO) > 200, "hay vacío (lava) bajo las pasarelas (%d)" % G.count(DungeonGen.ABISMO))
@@ -26,9 +26,9 @@ func _init() -> void:
 	for w in [8, 9]:
 		var Lw := DungeonGen.gen_level("tema-%d" % w, w)
 		ok(Lw.get("plataformas", false), "el piso %d es de pasarelas" % w)
-		ok(Temas.de(Lw) == "inframundo", "el piso %d es del Inframundo" % w)
+		ok(TemaMazmorra.de(Lw) == "inframundo", "el piso %d es del Inframundo" % w)
 	for w in [7, 10]:
-		ok(Temas.de(DungeonGen.gen_level("tema-%d" % w, w)) == "", "el piso %d no lleva tema" % w)
+		ok(TemaMazmorra.de(DungeonGen.gen_level("tema-%d" % w, w)) == "", "el piso %d no lleva tema" % w)
 	# biblioteca del tema: mismos números de pieza que la normal
 	var base := KitMazmorra.mesh_library()
 	var lib := KitMazmorra.mesh_library("inframundo")
@@ -36,7 +36,7 @@ func _init() -> void:
 	for n in ["suelo", "suelo_sala", "cara", "nucleo", "arco", "agua"]:
 		ok(lib.find_item_by_name(n) == base.find_item_by_name(n), "misma pieza " + n)
 	var suelo: Mesh = lib.get_item_mesh(lib.find_item_by_name("suelo_sala"))
-	ok(suelo.surface_get_material(0) == Temas.material_suelo("inframundo"), "suelo con la textura del tema")
+	ok(suelo.surface_get_material(0) == TemaMazmorra.material_suelo("inframundo"), "suelo con la textura del tema")
 	var cara: Mesh = lib.get_item_mesh(lib.find_item_by_name("cara"))
 	var con_tex := false
 	for s in cara.get_surface_count():
@@ -70,6 +70,13 @@ func _init() -> void:
 	for n in ["ParedesAbismo", "MarDeLava", "Calima", "CascadasLava", "BrasasRaiz"]:
 		ok(nombres.has(n), "hay " + n)
 	ok(not nombres.has("Niebla0"), "sin la niebla del abismo normal")
+	# piezas de Tripo del Inframundo
+	var cuenta := {}
+	for c in main.mazmorra.adornos.get_children():
+		if not c.is_queued_for_deletion():
+			cuenta[String(c.name).rstrip("0123456789@")] = cuenta.get(String(c.name).rstrip("0123456789@"), 0) + 1
+	for n in ["pilar_retorcido", "muro_calavera", "puerta_demoniaca", "brasero_piedra", "remate_punta", "roca_borde", "estalagmitas"]:
+		ok(cuenta.get(n, 0) > 0, "hay %s (%d)" % [n, cuenta.get(n, 0)])
 	ok(luces > 20 and luces < 200, "luces razonables (%d)" % luces)
 	for i in 20:
 		await process_frame

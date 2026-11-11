@@ -254,16 +254,30 @@ func _pagina_clase() -> Control:
 
 ## «Piso de prueba»: las salas del piso de prueba; se empieza dentro de la elegida
 func _pagina_pruebas() -> Control:
+	# la página ocupa casi todo el alto: cabecera, la lista con barra para bajar y «Volver» abajo
 	var caja := VBoxContainer.new()
-	caja.set_anchors_preset(Control.PRESET_CENTER)
+	caja.set_anchor(SIDE_TOP, .06, true)
+	caja.set_anchor(SIDE_BOTTOM, .94, true)
 	caja.offset_left = -210
 	caja.offset_right = 210
-	caja.offset_top = -420
-	caja.grow_vertical = Control.GROW_DIRECTION_END
-	caja.add_theme_constant_override("separation", 5)
+	caja.add_theme_constant_override("separation", 6)
 	var cab := _cabecera("Salas de prueba")
 	cab.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	cab.add_theme_font_size_override("font_size", 32)
 	caja.add_child(cab)
+	var barra := ScrollContainer.new()
+	barra.name = "Lista"
+	barra.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	barra.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	caja.add_child(barra)
+	var lista := VBoxContainer.new()
+	lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lista.add_theme_constant_override("separation", 3)
+	barra.add_child(lista)
+	var chico := func(texto: String, accion: Callable) -> Button:
+		var b := boton(texto, accion, 28)
+		b.add_theme_font_size_override("font_size", 15)
+		return b
 	var l := PisoPrueba.salas_menu()
 	# la de efectos, la primera (es la nueva); luego el resto en su orden
 	var orden := []
@@ -272,21 +286,19 @@ func _pagina_pruebas() -> Control:
 			orden.push_front(i)
 		else:
 			orden.append(i)
+	# pisos enteros (temas, prueba puente…), arriba del todo: son los nuevos
+	for k in PisoPrueba.pisos_menu():
+		var num: int = k
+		lista.add_child(chico.call(PisoPrueba.nombre(num), func(): piso_tema.emit(num)))
 	for i in orden:
 		var n: String = l[i][0]
 		if l[i][1] == "efectos":   # una entrada por clase con magias dibujadas
 			for c in [["mage", "mago"], ["knight", "caballero (combos nuevos)"], ["archer", "arquero"], ["dk", "caballero de la muerte"], ["dl", "señor oscuro"]]:
 				var cl: String = c[0]
-				caja.add_child(boton(n + "  · " + c[1], func(): piso_prueba.emit(i, cl), 36))
+				lista.add_child(chico.call(n + "  · " + c[1], func(): piso_prueba.emit(i, cl)))
 			continue
-		caja.add_child(boton(n, func(): piso_prueba.emit(i, ""), 36))
-	for k in PisoPrueba.DE_TEMA:   # pisos enteros con un tema (Inframundo…)
-		var num: int = k
-		caja.add_child(boton(PisoPrueba.nombre(num), func(): piso_tema.emit(num), 36))
-	var sep := Control.new()
-	sep.custom_minimum_size = Vector2(0, 6)
-	caja.add_child(sep)
-	caja.add_child(boton("Volver", func(): mostrar("inicio"), 42))
+		lista.add_child(chico.call(n, func(): piso_prueba.emit(i, "")))
+	caja.add_child(boton("Volver", func(): mostrar("inicio"), 40))
 	return caja
 
 var _ctl := {}   # controles de la página de opciones, por clave

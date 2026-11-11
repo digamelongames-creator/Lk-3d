@@ -23,17 +23,21 @@ const A_MANO_MURO := 1
 const A_MANO_SUELO := 2
 const A_MANO_OBJETO := 4
 var _G: PackedByteArray
+var _sala: PackedInt32Array
 var adornos: Node3D
 var luces: Array[OmniLight3D] = []
 var _llamas: Array = []   # [OmniLight3D, energía base, fase]
 var _t := 0.0
-var tema := ""            # Temas: texturas, luz y abismo del piso ("" = los de siempre)
+var tema := ""            # TemaMazmorra: texturas, luz y abismo del piso ("" = los de siempre)
 var _brasas: Node3D       # temas con lava: brasas que suben alrededor de la cámara
+var _piezas_tema := false # Inframundo3D: piezas de Tripo en lugar de algunas del kit
+var _calaveras: Array = []   # [cx, cy, k] caras que pasan a ser muro con calavera (se ponen al final)
+var _lisas := {}             # caras que deben quedar lisas (llevan algo colgado)
 const FUEGO := Color(1, .62, .36)
 
 ## color de antorchas y braseros (el del tema, si tiene)
 func color_fuego() -> Color:
-	return Temas.dato(tema, "antorcha", FUEGO) if tema != "" else FUEGO
+	return TemaMazmorra.dato(tema, "antorcha", FUEGO) if tema != "" else FUEGO
 
 ## px de la simulación (x, y) y altura en px → metros
 static func a3d(x: float, y: float, z: float = 0.0) -> Vector3:
@@ -72,7 +76,10 @@ func construir(L: Dictionary) -> void:
 	tapas.clear()
 	_llamas.clear()
 	_brasas = null
-	tema = Temas.de(L)
+	tema = TemaMazmorra.de(L)
+	_piezas_tema = Inframundo3D.activo(tema)
+	_calaveras.clear()
+	_lisas.clear()
 	var lib := KitMazmorra.mesh_library(tema)
 	for g in [suelo, muros, objetos] + caras + esquinas:
 		if g.mesh_library != lib:
@@ -82,6 +89,7 @@ func construir(L: Dictionary) -> void:
 	var G: PackedByteArray = L.grid
 	_G = G
 	var sala: PackedInt32Array = L.get("room_of", PackedInt32Array())
+	_sala = sala
 	# casillas montadas a mano (pisos de prueba con kits de fuera): bit 1 sin muro, 2 sin suelo, 4 sin objeto
 	var mano: PackedByteArray = L.get("a_mano", PackedByteArray())
 	var i_sala := KitMazmorra.id("suelo_sala")
@@ -113,16 +121,26 @@ func construir(L: Dictionary) -> void:
 			if t != DungeonGen.WATER and not (m & A_MANO_SUELO):
 				var en_sala := sala.size() > 0 and sala[cy * W + cx] >= 0
 				suelo.set_cell_item(celda, i_sala if en_sala and i_sala >= 0 else KitMazmorra.variante("suelo", cx, cy), _giro_azar(cy, cx))
-			if t == DungeonGen.DOOR and i_arco >= 0:
+			if t == DungeonGen.DOOR and _piezas_tema:
+				Inframundo3D.puerta(self, cx, cy, _orientacion_arco(G, cx, cy) != _orientacion_arco_norte())
+			elif t == DungeonGen.DOOR and i_arco >= 0:
 				muros.set_cell_item(celda, i_arco, _orientacion_arco(G, cx, cy))
 			elif pieza.has(t) and pieza[t] >= 0 and not (m & A_MANO_OBJETO):
 				objetos.set_cell_item(celda, pieza[t])
 	_antorchas(L)
 	_decorador(L)
 	_puertas_secretas(L)
+	if _piezas_tema:
+		for c in _calaveras:
+			var cel := Vector3i(c[0], 0, c[1])
+			if caras[c[2]].get_cell_item(cel) == GridMap.INVALID_CELL_ITEM and not _lisas.has(c):
+				Inframundo3D.muro_calavera(self, c[0], c[1], DIRS[c[2]])
+			elif caras[c[2]].get_cell_item(cel) == GridMap.INVALID_CELL_ITEM:
+				caras[c[2]].set_cell_item(cel, KitMazmorra.id("cara"), _ori(caras[c[2]], GIROS[c[2]]))
+		Inframundo3D.amueblar(L, self)
 	if L.get("plataformas", false):
 		Abismo3D.crear(G, adornos, tema)   # paredes de roca bajo los bordes y niebla (o lava) en el vacío
-	if tema != "" and Temas.dato(tema, "lava") != null:
+	if tema != "" and TemaMazmorra.dato(tema, "lava") != null:
 		_brasas = Abismo3D.brasas(adornos)
 
 ## puertas negras de las salas secretas (SalaSecreta): la cara del muro que da al suelo pasa a ser una puerta,
@@ -195,14 +213,21 @@ func _muro(cx: int, cy: int) -> void:
 	for k in 4:
 		var d: Vector2i = DIRS[k]
 		if _pisable(cx + d.x, cy + d.y):
-			caras[k].set_cell_item(celda, KitMazmorra.id(_cara_para(cx, cy, k)), _ori(caras[k], GIROS[k]))
+			var cara := _cara_para(cx, cy, k)
+			if _piezas_tema and Inframundo3D.cara_calavera(cx, cy, k, cara):
+				_calaveras.append([cx, cy, k])   # se pone al final (si no hay puerta secreta ni nada colgado)
+				continue
+			caras[k].set_cell_item(celda, KitMazmorra.id(cara), _ori(caras[k], GIROS[k]))
 	for k in 4:
 		var e: Vector2i = ESQ[k]
 		var a := _pisable(cx + e.x, cy)
 		var b := _pisable(cx, cy + e.y)
 		var diag := _pisable(cx + e.x, cy + e.y)
 		# esquina de dentro de una sala (solo la diagonal es suelo) o esquina que sobresale (los dos lados)
-		if (diag and not a and not b) or (a and b):
+		if _piezas_tema and diag and not a and not b and _sala_en(cx + e.x, cy + e.y):
+			# esquina de dentro de una sala: pilar retorcido en el vértice
+			Inframundo3D.pilar(self, centro(Vector2i(cx, cy)) + Vector3(e.x, 0, e.y) * KitMazmorra.CELDA / 2)
+		elif (diag and not a and not b) or (a and b):
 			esquinas[k].set_cell_item(celda, KitMazmorra.id("columna_esquina"), _ori(esquinas[k], GIROS[k]))
 
 ## qué cara lleva el lado k del muro (cx, cy): columnas cada 3 casillas y, entre medias, variantes al azar
@@ -268,6 +293,7 @@ func _cara_lisa(muro: Vector2i, cara: Vector2i) -> void:
 	var k := DIRS.find(-cara)
 	if k < 0 or caras.is_empty():
 		return
+	_lisas[[muro.x, muro.y, k]] = true
 	var c := Vector3i(muro.x, 0, muro.y)
 	if caras[k].get_cell_item(c) != GridMap.INVALID_CELL_ITEM:
 		caras[k].set_cell_item(c, KitMazmorra.id("cara"), caras[k].get_cell_item_orientation(c))
@@ -277,6 +303,30 @@ func poner_antorcha(celda: Vector2i, cara: Vector2i, corre: float = 0.0) -> void
 	var llama := a.transform * Vector3(0, .45, .3)   # la copa de la antorcha (ver kit_mazmorra.py)
 	_fuego(llama, .13)
 	var luz := _luz(llama + Vector3(-cara.x, 0, -cara.y) * .5, color_fuego(), 2.8, 9.0)
+	_llamas.append([luz, luz.light_energy, randf() * 10])
+
+## orientación del arco cuando el paso va de norte a sur (para saber si una puerta va de este a oeste)
+func _orientacion_arco_norte() -> int:
+	return muros.get_orthogonal_index_from_basis(Basis(Vector3.UP, 0.0))
+
+## la casilla es suelo de una sala (no de un pasillo)
+func _sala_en(x: int, y: int) -> bool:
+	var i := y * DungeonGen.GW + x
+	return _pisable(x, y) and _sala.size() > i and _sala[i] >= 0
+
+## el muro (cx, cy) tiene alguna cara hacia el suelo
+func tiene_cara(cx: int, cy: int) -> bool:
+	for k in 4:
+		if caras[k].get_cell_item(Vector3i(cx, 0, cy)) != GridMap.INVALID_CELL_ITEM:
+			return true
+	return false
+
+## llamas sin luz (cuando varias comparten una) y una luz que parpadea sola
+func fuego_sin_luz(p: Vector3, tam: float) -> void:
+	_fuego(p, tam)
+
+func fuego_luz(p: Vector3, energia: float, rango: float) -> void:
+	var luz := _luz(p, color_fuego(), energia, rango)
 	_llamas.append([luz, luz.light_energy, randf() * 10])
 
 ## fuego con luz que parpadea (braseros y antorchas de los kits de fuera)

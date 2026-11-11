@@ -23,12 +23,12 @@ const VARIANTES := {"nucleo": ["nucleo", "nucleo_b"], "suelo": ["suelo", "suelo_
 static var _lib: MeshLibrary
 static var _mallas := {}      # nombre → Mesh con los materiales de Godot
 static var _mats := {}
-static var _libs := {}        # tema → MeshLibrary con los materiales del tema (Temas)
+static var _libs := {}        # tema → MeshLibrary con los materiales del tema (TemaMazmorra)
 static var _nombres := {}     # nombre → nombres de los materiales de Blender de cada superficie
 const SUELOS := ["suelo", "suelo_b", "suelo_sala"]
 
 static func mesh_library(tema: String = "") -> MeshLibrary:
-	if tema != "" and Temas.hay(tema):
+	if tema != "" and TemaMazmorra.hay(tema):
 		return _lib_tema(tema)
 	if _lib != null:
 		return _lib
@@ -50,7 +50,7 @@ static func limpiar() -> void:
 	_mats.clear()
 	_libs.clear()
 	_nombres.clear()
-	Temas.limpiar()
+	TemaMazmorra.limpiar()
 
 static func id(nombre: String) -> int:
 	return mesh_library().find_item_by_name(nombre)
@@ -164,7 +164,7 @@ uniform vec3 color : source_color = vec3(.47, .44, .42);
 uniform sampler2D ruido : hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform sampler2D relieve : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform float cortar = 1.0;
-// tema (Temas): textura de roca en lugar del ruido, con su relieve y las vetas que brillan
+// tema (TemaMazmorra): textura de roca en lugar del ruido, con su relieve y las vetas que brillan
 uniform float usar_tex = 0.0;
 uniform sampler2D tex_color : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform sampler2D tex_normal : hint_normal, filter_linear_mipmap, repeat_enable;
@@ -218,18 +218,18 @@ void fragment() {
 	m.shader = s
 	m.set_shader_parameter("ruido", _ruido(.05))
 	m.set_shader_parameter("relieve", _ruido(.12, true))
-	if tema != "" and Temas.hay(tema):
+	if tema != "" and TemaMazmorra.hay(tema):
 		m.set_shader_parameter("usar_tex", 1.0)
-		m.set_shader_parameter("color", Temas.dato(tema, "tinte_muro", Color.WHITE))
-		m.set_shader_parameter("tex_color", Temas.tex(tema, "roca", "color"))
-		m.set_shader_parameter("tex_normal", Temas.tex(tema, "roca", "normal"))
-		m.set_shader_parameter("tex_brillo", Temas.tex(tema, "roca", "brillo"))
-		m.set_shader_parameter("tex_metros", float(Temas.dato(tema, "roca_m", 3.0)))
-		m.set_shader_parameter("brillo_color", Temas.dato(tema, "brillo", Color.ORANGE))
-		m.set_shader_parameter("brillo_fuerza", float(Temas.dato(tema, "brillo_e", 2.0)))
+		m.set_shader_parameter("color", TemaMazmorra.dato(tema, "tinte_muro", Color.WHITE))
+		m.set_shader_parameter("tex_color", TemaMazmorra.tex(tema, "roca", "color"))
+		m.set_shader_parameter("tex_normal", TemaMazmorra.tex(tema, "roca", "normal"))
+		m.set_shader_parameter("tex_brillo", TemaMazmorra.tex(tema, "roca", "brillo"))
+		m.set_shader_parameter("tex_metros", float(TemaMazmorra.dato(tema, "roca_m", 3.0)))
+		m.set_shader_parameter("brillo_color", TemaMazmorra.dato(tema, "brillo", Color.ORANGE))
+		m.set_shader_parameter("brillo_fuerza", float(TemaMazmorra.dato(tema, "brillo_e", 2.0)))
 	return m
 
-# ---------- temas (Temas): las mismas piezas con otros materiales ----------
+# ---------- temas (TemaMazmorra): las mismas piezas con otros materiales ----------
 ## mismo número de pieza que la biblioteca normal, para que el GridMap no cambie
 static func _lib_tema(tema: String) -> MeshLibrary:
 	if _libs.has(tema):
@@ -249,9 +249,9 @@ static func _lib_tema(tema: String) -> MeshLibrary:
 static func _malla_tema(n: String, tema: String) -> Mesh:
 	# el suelo: losa lisa, la textura ya trae las piedras y las grietas
 	if n in SUELOS:
-		return _caja(Vector3(CELDA, .2, CELDA), Vector3(0, -.1, 0), Temas.material_suelo(tema))
+		return _caja(Vector3(CELDA, .2, CELDA), Vector3(0, -.1, 0), TemaMazmorra.material_suelo(tema))
 	if n == "agua":   # los canales: lava un poco más honda que el suelo
-		return _caja(Vector3(CELDA, .1, CELDA), Vector3(0, -.35, 0), Temas.material_lava(tema))
+		return _caja(Vector3(CELDA, .1, CELDA), Vector3(0, -.35, 0), TemaMazmorra.material_lava(tema))
 	var m: Mesh = _mallas[n].duplicate()
 	var nombres: Array = _nombres.get(n, [])
 	for s in m.get_surface_count():
@@ -266,7 +266,7 @@ static func material_tema(nombre: String, tema: String) -> Material:
 	var m: Material
 	match nombre:
 		"piedra": m = material_muro(tema)
-		"losa": m = Temas.material_suelo(tema)
+		"losa": m = TemaMazmorra.material_suelo(tema)
 		"junta": m = _liso(Color(.025, .018, .016), 1.0)
 		_: m = material(nombre)
 	_mats[k] = m

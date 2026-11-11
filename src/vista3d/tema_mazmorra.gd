@@ -1,5 +1,5 @@
-class_name Temas
-## Temas de la mazmorra: cada piso se viste con sus texturas, su luz y su niebla sin tocar el mapa.
+class_name TemaMazmorra
+## TemaMazmorra de la mazmorra: cada piso se viste con sus texturas, su luz y su niebla sin tocar el mapa.
 ## Las texturas son de Pixmith (ChatGPT desde el PC de Diego) pasadas por tools/texturas.py
 ## (color, relieve, rugosidad y lo que brilla) en assets/texturas/<tema>/.
 ##

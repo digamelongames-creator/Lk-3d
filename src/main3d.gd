@@ -311,9 +311,9 @@ func _ready() -> void:
 
 func _entrar(L: Dictionary) -> void:
 	fx.reset()
-	Temas.ambiente(entorno.environment, "")   # primero se quita el del piso anterior, luego el de Inca o el del tema
+	TemaMazmorra.ambiente(entorno.environment, "")   # primero se quita el del piso anterior, luego el de Inca o el del tema
 	Ciudad.ambiente(entorno.environment, Ciudad.es_ciudad(L))
-	Temas.ambiente(entorno.environment, Temas.de(L))
+	TemaMazmorra.ambiente(entorno.environment, TemaMazmorra.de(L))
 	sim.enter_level(L)
 	mazmorra.construir(sim.L)
 	actores.nuevo_piso()

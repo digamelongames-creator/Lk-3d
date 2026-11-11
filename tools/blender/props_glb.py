@@ -17,6 +17,7 @@ Las licencias y los autores están en docs/CREDITOS_Y_LICENCIAS.md.
 """
 import bpy
 import bmesh
+import fnmatch
 import glob
 import math
 import os
@@ -33,7 +34,28 @@ ENVOLTORIOS = ("sketchfab_model", "rootnode", "gltf_scenerootnode", ".fbx", "col
 #  piezas: nombre de salida → {"de": [grupos de origen (regex)], "tris": máximo, "origen": base|atras|bisagra,
 #          "escala": factor extra}
 #  Si "piezas" es "*", salen todos los grupos con su nombre limpio.
+#  Modelos sueltos (Tripo, un .glb por pieza): "archivo": patrón del archivo de la carpeta de entrada,
+#  "alto" / "ancho" / "fondo": medida final en metros (en lugar de "escala"),
+#  "brillo": fuerza del brillo de lo que es lava en su color (grietas naranjas), 0 = nada.
 # ---------------------------------------------------------------------------
+_TRIPO_INFRA = {
+    "pilar_retorcido": {"archivo": "lava column*.glb", "alto": 3.6, "tris": 9000, "brillo": 3.0},
+    "muro_calavera": {"archivo": "stone skull wall*.glb", "alto": 3.0, "tris": 8000, "brillo": 2.5},
+    "remate_punta": {"archivo": "stone gothic tower*.glb", "alto": 1.5, "tris": 4000, "brillo": 2.5},
+    "brasero_piedra": {"archivo": "fantasy stone brazier*.glb", "alto": 1.3, "tris": 7000, "brillo": 3.0},
+    "estalagmitas": {"archivo": "lava rock 3d*.glb", "alto": 2.2, "tris": 5000, "brillo": 3.0},
+    "roca_borde": {"archivo": "lava rock platform*.glb", "ancho": 2.4, "tris": 6000, "brillo": 3.0},
+    "puerta_demoniaca": {"archivo": "hell gate arch*.glb", "alto": 4.4, "tris": 14000, "brillo": 3.0},
+}
+_TRIPO_PUENTE = {
+    "tramo_puente": {"archivo": "dungeon stone arch*.glb", "fondo": 6.4, "tris": 20000, "brillo": 3.0},
+    "puente_lejano": {"archivo": "gothic stone bridge*.glb", "ancho": 34.0, "tris": 10000, "brillo": 2.0},
+    "acantilado": {"archivo": "lava rock pillar*.glb", "alto": 16.0, "tris": 12000, "brillo": 3.5},
+    "estalactitas": {"archivo": "lava rock formation*.glb", "ancho": 6.0, "tris": 6000, "brillo": 2.5},
+    "cadena": {"archivo": "rusty chain*.glb", "alto": 3.0, "tris": 3000},
+    "jaula": {"archivo": "rusty spiked cage*.glb", "alto": 2.3, "tris": 9000},
+}
+
 PAQUETES = {
     # ---- Poly Haven (CC0), tamaño real ----
     "polyhaven": {
@@ -94,6 +116,9 @@ PAQUETES = {
         },
         "max_px": 1024,
     },
+    # ---- Tripo (Diego, Premium: uso comercial): un .glb por pieza ----
+    "inframundo": {"fuente": [v["archivo"] for v in _TRIPO_INFRA.values()], "escala": 1.0, "piezas": _TRIPO_INFRA, "max_px": 1024},
+    "puente": {"fuente": [v["archivo"] for v in _TRIPO_PUENTE.values()], "escala": 1.0, "piezas": _TRIPO_PUENTE, "max_px": 1024},
     # ---- Ancient Ruins Pack · Toni García Vilche (CC-BY 4.0) ----
     "ruinas": {"fuente": ["*ancient_ruins_pack.glb"], "escala": 1.25, "piezas": "*", "tris": 6000, "max_px": 1024},
     # ---- Free Modular Low Poly Dungeon Pack · RgsDev (CC-BY 4.0): muro de 2,1 m → 2 m ----
@@ -141,7 +166,10 @@ def importar(rutas):
                 if o is not None and o.type == "MESH":
                     bpy.context.scene.collection.objects.link(o)
         else:
+            antes = set(bpy.context.scene.objects)
             bpy.ops.import_scene.gltf(filepath=r)
+            for o in set(bpy.context.scene.objects) - antes:
+                o["archivo"] = os.path.basename(r)
     bpy.context.view_layer.update()
     # los originales llevan prefijo, para que las piezas de salida puedan quedarse con su nombre limpio
     for o in bpy.context.scene.objects:
@@ -220,6 +248,43 @@ def colocar(o, escala, origen):
     o.location = (0, 0, 0)
 
 
+def brillo_lava(o, fuerza):
+    """lo naranja encendido del color (grietas de lava) pasa a brillar: textura de emisión = color × máscara"""
+    import numpy as np
+    for s_ in o.material_slots:
+        m = s_.material
+        if m is None or not m.use_nodes:
+            continue
+        nt = m.node_tree
+        bsdf = next((n for n in nt.nodes if n.type == "BSDF_PRINCIPLED"), None)
+        if bsdf is None or not bsdf.inputs["Base Color"].links:
+            continue
+        tex = bsdf.inputs["Base Color"].links[0].from_node
+        if tex.type != "TEX_IMAGE" or tex.image is None:
+            continue
+        im = tex.image
+        w, h = im.size
+        px = np.empty(w * h * 4, dtype=np.float32)
+        im.pixels.foreach_get(px)
+        px = px.reshape(-1, 4)
+        r, g, b = px[:, 0], px[:, 1], px[:, 2]
+        calor = np.clip((r - b) * 1.6 - .25, 0, 1)
+        luz = np.clip((np.maximum(r, g) - .35) * 2.2, 0, 1)
+        k = np.clip(calor * luz * 1.4, 0, 1)
+        out = px.copy()
+        out[:, :3] *= k[:, None]
+        out[:, 3] = 1
+        em = bpy.data.images.new(im.name + "_brillo", w, h)
+        em.pixels.foreach_set(out.ravel())
+        em.pack()
+        n = nt.nodes.new("ShaderNodeTexImage")
+        n.image = em
+        nt.links.new(tex.inputs["Vector"].links[0].from_socket if tex.inputs["Vector"].links else n.inputs["Vector"], n.inputs["Vector"]) if tex.inputs["Vector"].links else None
+        nt.links.new(n.outputs["Color"], bsdf.inputs["Emission Color"])
+        bsdf.inputs["Emission Strength"].default_value = fuerza
+        print(f"    {o.name}: brilla el {100 * (k > .5).mean():.1f} % del color")
+
+
 def texturas(objs, max_px):
     """el color a max_px; normales, rugosidad y metal a la mitad. Todo en JPEG salvo lo que lleva transparencia."""
     vistas = set()
@@ -273,7 +338,10 @@ def paquete(entrada, salida, nombre):
             piezas[n] = {"de": ["^" + re.escape(g) + "$"], "tris": cfg.get("tris")}
     hechos = []
     for n, p in piezas.items():
-        objs = [o for g, os_ in G.items() if any(re.search(rx, g) for rx in p["de"]) for o in os_]
+        if "archivo" in p:
+            objs = [o for o in bpy.context.scene.objects if o.type == "MESH" and fnmatch.fnmatch(o.get("archivo", ""), p["archivo"])]
+        else:
+            objs = [o for g, os_ in G.items() if any(re.search(rx, g) for rx in p["de"]) for o in os_]
         if not objs:
             print(f"  {nombre}/{n}: no hay grupo que case con {p['de']}")
             continue
@@ -281,7 +349,14 @@ def paquete(entrada, salida, nombre):
         reducir(o, p.get("tris"))
         if cfg.get("giro"):
             o.data.transform(__import__("mathutils").Matrix.Rotation(math.radians(cfg["giro"]), 4, "Z"))
-        colocar(o, cfg["escala"] * p.get("escala", 1.0), p.get("origen", "base"))
+        esc = cfg["escala"] * p.get("escala", 1.0)
+        for k, eje in (("alto", 2), ("ancho", 0), ("fondo", 1)):
+            if k in p:
+                vs = [v.co[eje] for v in o.data.vertices]
+                esc = p[k] / max(max(vs) - min(vs), 1e-6)
+        colocar(o, esc, p.get("origen", "base"))
+        if p.get("brillo"):
+            brillo_lava(o, p["brillo"])
         hechos.append(o)
     # fuera lo que no sale
     for o in list(bpy.context.scene.objects):

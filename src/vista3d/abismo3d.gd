@@ -3,7 +3,7 @@ class_name Abismo3D
 ## y capas de niebla con un brillo tenue. La niebla de altura del entorno (CamaraIso.ambiente) oscurece todo
 ## lo que queda por debajo del suelo, así que la roca se funde con la niebla según baja.
 ## Todo se crea por piso (sin recursos estáticos) y cuelga del nodo que se le pase.
-## Con un tema con lava (Temas, el Inframundo): la roca es la del tema, abajo hay un mar de lava
+## Con un tema con lava (TemaMazmorra, el Inframundo): la roca es la del tema, abajo hay un mar de lava
 ## que corre, cascadas de lava que salen de algunos bordes, luces naranjas bajo los bordes y brasas.
 
 const MAX_LUCES_LAVA := 40
@@ -17,8 +17,8 @@ const COLUMNAS := 6      # vértices por casilla a lo ancho (cada 0,33 m)
 const RELIEVE := .7      # m que sale o entra la roca
 
 static func crear(G: PackedByteArray, padre: Node3D, tema: String = "") -> void:
-	var lava := tema != "" and Temas.dato(tema, "lava") != null
-	var lava_y: float = Temas.dato(tema, "lava_y", -5.5) if lava else 0.0
+	var lava := tema != "" and TemaMazmorra.dato(tema, "lava") != null
+	var lava_y: float = TemaMazmorra.dato(tema, "lava_y", -5.5) if lava else 0.0
 	var cae := SurfaceTool.new()
 	cae.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var n_cae := 0
@@ -64,7 +64,7 @@ static func crear(G: PackedByteArray, padre: Node3D, tema: String = "") -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "ParedesAbismo"
 	mi.mesh = st.commit()
-	mi.material_override = Temas.material_roca(tema) if lava else _roca()
+	mi.material_override = TemaMazmorra.material_roca(tema) if lava else _roca()
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	padre.add_child(mi)
 	if not lava:
@@ -75,7 +75,7 @@ static func crear(G: PackedByteArray, padre: Node3D, tema: String = "") -> void:
 		var mc := MeshInstance3D.new()
 		mc.name = "CascadasLava"
 		mc.mesh = cae.commit()
-		mc.material_override = Temas.material_lava(tema, true)
+		mc.material_override = TemaMazmorra.material_lava(tema, true)
 		mc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		padre.add_child(mc)
 	# luces naranjas bajo los bordes: la lava alumbra la roca desde abajo (repartidas, como mucho MAX_LUCES_LAVA)
@@ -220,7 +220,7 @@ static func _lava(padre: Node3D, ancho: float, largo: float, y: float, tema: Str
 	var mi := MeshInstance3D.new()
 	mi.name = "MarDeLava"
 	mi.mesh = pl
-	mi.material_override = Temas.material_lava(tema)
+	mi.material_override = TemaMazmorra.material_lava(tema)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.position = centro
 	padre.add_child(mi)
