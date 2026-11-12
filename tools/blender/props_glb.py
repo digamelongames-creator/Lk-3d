@@ -36,7 +36,8 @@ ENVOLTORIOS = ("sketchfab_model", "rootnode", "gltf_scenerootnode", ".fbx", "col
 #  Si "piezas" es "*", salen todos los grupos con su nombre limpio.
 #  Modelos sueltos (Tripo, un .glb por pieza): "archivo": patrón del archivo de la carpeta de entrada,
 #  "alto" / "ancho" / "fondo": medida final en metros (en lugar de "escala"),
-#  "brillo": fuerza del brillo de lo que es lava en su color (grietas naranjas), 0 = nada.
+#  "brillo": fuerza del brillo de lo que es lava en su color (grietas naranjas), 0 = nada;
+#  "brillo_color": "cian" para que brille lo azul claro encendido (cristales, cuencos) en lugar de lo naranja.
 # ---------------------------------------------------------------------------
 _TRIPO_INFRA = {
     "pilar_retorcido": {"archivo": "lava column*.glb", "alto": 3.6, "tris": 9000, "brillo": 3.0},
@@ -54,6 +55,19 @@ _TRIPO_PUENTE = {
     "estalactitas": {"archivo": "lava rock formation*.glb", "ancho": 6.0, "tris": 6000, "brillo": 2.5},
     "cadena": {"archivo": "rusty chain*.glb", "alto": 3.0, "tris": 3000},
     "jaula": {"archivo": "rusty spiked cage*.glb", "alto": 2.3, "tris": 9000},
+}
+
+_TRIPO_ABISMO = {   # sala especial «Abismo de cristal» (Galerías hundidas); dibujos en C:\Carpeta Juego\Escenas\abismo_cristal\piezas_tripo
+    "estatua_cuenco": {"archivo": "female statue*.glb", "alto": 3.2, "tris": 12000},   # el agua que brilla del cuenco la pone la escena («disco»)
+    "hornacina": {"archivo": "stone archway*.glb", "alto": 4.6, "tris": 8000},
+    "cristales_grande": {"archivo": "blue crystal cluster 3d model (1).glb", "alto": 2.4, "tris": 8000, "brillo": 2.2, "brillo_color": "cian"},
+    "cristales_pequeno": {"archivo": "blue crystal cluster 3d model.glb", "alto": .9, "tris": 4000, "brillo": 2.2, "brillo_color": "cian"},
+    "pebetero": {"archivo": "rusty brazier*.glb", "alto": .8, "tris": 5000},
+    "poste_pretil": {"archivo": "stone pedestal*.glb", "alto": 1.15, "tris": 2500},
+    "tramo_pretil": {"archivo": "stone balustrade*.glb", "ancho": 2.4, "tris": 4000},
+    "arco_puente": {"archivo": "stone arch ruin*.glb", "ancho": 8.0, "tris": 10000},
+    "arco_entrada": {"archivo": "ancient stone arch*.glb", "ancho": 6.8, "tris": 12000},
+    "roca_acantilado": {"archivo": "rocky cliff*.glb", "alto": 6.0, "tris": 6000},
 }
 
 PAQUETES = {
@@ -119,6 +133,7 @@ PAQUETES = {
     # ---- Tripo (Diego, Premium: uso comercial): un .glb por pieza ----
     "inframundo": {"fuente": [v["archivo"] for v in _TRIPO_INFRA.values()], "escala": 1.0, "piezas": _TRIPO_INFRA, "max_px": 1024},
     "puente": {"fuente": [v["archivo"] for v in _TRIPO_PUENTE.values()], "escala": 1.0, "piezas": _TRIPO_PUENTE, "max_px": 1024},
+    "abismo_cristal": {"fuente": [v["archivo"] for v in _TRIPO_ABISMO.values()], "escala": 1.0, "piezas": _TRIPO_ABISMO, "max_px": 1024},
     # ---- Ancient Ruins Pack · Toni García Vilche (CC-BY 4.0) ----
     "ruinas": {"fuente": ["*ancient_ruins_pack.glb"], "escala": 1.25, "piezas": "*", "tris": 6000, "max_px": 1024},
     # ---- Free Modular Low Poly Dungeon Pack · RgsDev (CC-BY 4.0): muro de 2,1 m → 2 m ----
@@ -248,8 +263,9 @@ def colocar(o, escala, origen):
     o.location = (0, 0, 0)
 
 
-def brillo_lava(o, fuerza):
-    """lo naranja encendido del color (grietas de lava) pasa a brillar: textura de emisión = color × máscara"""
+def brillo_lava(o, fuerza, color="lava"):
+    """lo naranja encendido del color (grietas de lava) pasa a brillar: textura de emisión = color × máscara.
+    color="cian": lo azul claro encendido (cristales, cuencos de agua que brillan)"""
     import numpy as np
     for s_ in o.material_slots:
         m = s_.material
@@ -268,8 +284,12 @@ def brillo_lava(o, fuerza):
         im.pixels.foreach_get(px)
         px = px.reshape(-1, 4)
         r, g, b = px[:, 0], px[:, 1], px[:, 2]
-        calor = np.clip((r - b) * 1.6 - .25, 0, 1)
-        luz = np.clip((np.maximum(r, g) - .35) * 2.2, 0, 1)
+        if color == "cian":
+            calor = np.clip((np.minimum(g, b) - r) * 2.2 - .1, 0, 1)   # más verde y azul que rojo
+            luz = np.clip((np.maximum(g, b) - .45) * 2.2, 0, 1)
+        else:
+            calor = np.clip((r - b) * 1.6 - .25, 0, 1)
+            luz = np.clip((np.maximum(r, g) - .35) * 2.2, 0, 1)
         k = np.clip(calor * luz * 1.4, 0, 1)
         out = px.copy()
         out[:, :3] *= k[:, None]
@@ -356,7 +376,7 @@ def paquete(entrada, salida, nombre):
                 esc = p[k] / max(max(vs) - min(vs), 1e-6)
         colocar(o, esc, p.get("origen", "base"))
         if p.get("brillo"):
-            brillo_lava(o, p["brillo"])
+            brillo_lava(o, p["brillo"], p.get("brillo_color", "lava"))
         hechos.append(o)
     # fuera lo que no sale
     for o in list(bpy.context.scene.objects):

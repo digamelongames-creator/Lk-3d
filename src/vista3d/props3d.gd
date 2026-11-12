@@ -10,7 +10,7 @@ class_name Props3D
 ## Autores y licencias: docs/CREDITOS_Y_LICENCIAS.md y assets/creditos.json.
 
 const RUTA := "res://assets/props/%s.glb"
-const PAQUETES := ["polyhaven", "dungeon_kit", "armas", "ruinas", "low_poly", "gotico", "inframundo", "puente"]
+const PAQUETES := ["polyhaven", "dungeon_kit", "armas", "ruinas", "low_poly", "gotico", "inframundo", "puente", "abismo_cristal"]
 
 static var _raices := {}      # paquete → Node3D instanciado (fuera del árbol)
 static var _mallas := {}      # "paquete/pieza" → Mesh (con los materiales ya cambiados)

@@ -52,15 +52,24 @@ C:\Carpeta Juego\Escenas\<nombre>\
 - Añadir la pieza al paquete en `tools/blender/props_glb.py` con `archivo`, la medida del bloque (`alto`/`ancho`/`fondo`), `tris` (3 000–20 000) y `brillo` si tiene lava; convertir; ficha en el catálogo y `tools/catalogo.gd`.
 - Cambiar el bloque por la pieza en la escena. Captura en modo materiales.
 
+- Los nombres de los .glb de Tripo no dicen qué pieza es: se reconocen por sus proporciones (`ancho/fondo/alto` del modelo) comparadas con las del bloque.
+- Si el brillo de la pieza no viene en la textura de Tripo (p. ej. el cuenco de la estatua del abismo), se pone en la escena: `{"disco": …}` o una luz.
+- `brillo_color: "cian"` en `props_glb.py` para lo azul que brilla (cristales); por defecto, lo naranja (lava).
+- Una pieza muy fina se puede engordar en la escena con `"escala": [x, y, z]` (el arco del puente: 2,83 → 5 m de tablero).
+
 ## 5. Materiales (modo materiales)
 
 - Texturas del tema: `python3 tools/texturas.py … --mosaico` y mirar el 3×3 (costura, patrón repetido, escala). Altura: la de Pixmith si cuadra (parecido ≥ 0,35); si no, sale del color.
 - Captura en modo materiales: luz neutra fija, sin niebla ni partículas. Validar color de la piedra, escala de losas, brillo de grietas.
 
+- Cajas con la textura del tema: `"material": "suelo_tema" | "roca_tema" | "muro_tema"` (triplanar: valen para cualquier tamaño).
+
 ## 6. Luz y ambiente (modo final)
 
 - `entorno` de la escena y objetos `sol`, `luz`, `fuego`, `lava`, `cascada`, `cadena`, `jaula`.
 - Jerarquía: emisión (lava, grietas) → luces locales (pocas y bien puestas) → ambiente → contraste (zonas oscuras y punto focal).
+- `entorno` de la escena acepta propiedades de `Environment` tal cual (`fog_height`, `fog_height_density`, `ambient_light_energy`…); en el abismo de cristal la niebla de altura baja a −4 m para que se vean los arcos.
+- Ojo con los comentarios dentro del código de un shader: `//`, nunca `#` (no compila y la pieza sale plana; mirar «SHADER ERROR» en el registro de la captura).
 - Captura final, comparación e informe.
 
 ## Capturas (aquí, sin tarjeta gráfica)

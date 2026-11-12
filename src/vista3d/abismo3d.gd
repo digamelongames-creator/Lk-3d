@@ -13,6 +13,7 @@ const MAX_CASCADAS := 14
 
 const HONDO := 14.0      # m que baja la pared de roca
 const NIEBLA_Y := [-2.2, -4.5, -7.5]   # capas de niebla que brillan un poco
+const NIEBLA_Y_ESCENA := [-6.0, -9.0, -12.5]   # en las escenas hechas a mano (abismo_a_mano)
 ## profundidad de cada fila de vértices de la pared (más juntas arriba, donde se ve mejor)
 const FILAS := [0.0, .35, .9, 1.6, 2.5, 3.6, 5.0, 6.8, 9.0, 11.5, HONDO]
 const COLUMNAS := 6      # vértices por casilla a lo ancho (cada 0,33 m)
@@ -31,9 +32,10 @@ static func crear(G: PackedByteArray, padre: Node3D, tema: String = "", a_mano: 
 		if lava:
 			_lava(padre, ancho, largo, lava_y, tema)
 		elif con_tema:
-			_niebla(padre, ancho, largo, TemaMazmorra.dato(tema, "niebla_abismo", Color(.3, .6, .7)), .16, Color(.02, .07, .1))
+			# más honda que en los pisos de pasarelas: en las escenas se ve bajar lo que hay bajo los bordes (arcos, pilas)
+			_niebla(padre, ancho, largo, TemaMazmorra.dato(tema, "niebla_abismo", Color(.3, .6, .7)), .16, Color(.02, .07, .1), NIEBLA_Y_ESCENA)
 		else:
-			_niebla(padre, ancho, largo)
+			_niebla(padre, ancho, largo, Color(.2, .22, .28), .1, Color(.05, .05, .06), NIEBLA_Y_ESCENA)
 		return
 	# las cascadas caen hasta la lava o, con agua, hasta perderse en la niebla
 	var caida: float = (-lava_y + .5) if lava else HONDO
@@ -327,7 +329,7 @@ static func brasas(padre: Node3D, tema: String = "") -> Node3D:
 	return raiz
 
 ## capas de niebla que se mueven despacio y brillan un poco; debajo, un fondo del color de la niebla
-static func _niebla(padre: Node3D, ancho: float, largo: float, color := Color(.2, .22, .28), fuerza := .1, fondo_c := Color(.05, .05, .06)) -> void:
+static func _niebla(padre: Node3D, ancho: float, largo: float, color := Color(.2, .22, .28), fuerza := .1, fondo_c := Color(.05, .05, .06), alturas: Array = NIEBLA_Y) -> void:
 	var sh := Shader.new()
 	sh.code = """
 shader_type spatial;
@@ -355,7 +357,7 @@ void fragment() {
 	tex.seamless = true
 	tex.noise = n
 	var centro := Vector3(ancho / 2, 0, largo / 2)
-	for i in NIEBLA_Y.size():
+	for i in alturas.size():
 		var mat := ShaderMaterial.new()
 		mat.shader = sh
 		mat.set_shader_parameter("ruido", tex)
@@ -369,7 +371,7 @@ void fragment() {
 		mi.mesh = pl
 		mi.material_override = mat
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.position = centro + Vector3(0, NIEBLA_Y[i], 0)
+		mi.position = centro + Vector3(0, alturas[i], 0)
 		padre.add_child(mi)
 	# fondo: la niebla de altura lo deja del todo del color de la niebla
 	var fondo := MeshInstance3D.new()

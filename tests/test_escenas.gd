@@ -83,7 +83,27 @@ func _init() -> void:
 	ok(not main.camara.fija and main.camara.projection == Camera3D.PROJECTION_ORTHOGONAL, "abismo: cámara del juego")
 	ok(main.hud.visible, "abismo: sala especial con interfaz")
 	ok(main.sim.L.get("plataformas", false) and int(main.sim.p.x / DungeonGen.TS) == 20 and int(main.sim.p.y / DungeonGen.TS) == 15, "abismo: el héroe empieza en el puente (%d, %d)" % [main.sim.p.x, main.sim.p.y])
+	# modo final: piezas de Tripo, sin un solo bloque gris, dentro de los límites de una sala especial
 	main.modo_escena = "final"
+	main.menu.piso_tema.emit(10)
+	await process_frame
+	await process_frame
+	var bloques := 0
+	var discos := 0
+	for c in main.mazmorra.adornos.get_children():
+		if c.is_queued_for_deletion():
+			continue
+		if c.has_meta("bloque"):
+			bloques += 1
+		elif c.has_meta("disco"):
+			discos += 1
+	ok(bloques == 0, "abismo final: sin bloques grises (%d)" % bloques)
+	ok(discos == 2, "abismo final: el agua de los dos cuencos")
+	var inf := Escena3D.informe(main.mazmorra, "abismo_cristal", "final")
+	ok(inf.luces <= 20 and inf.luces_con_sombra <= 1, "abismo final: luces de sala especial (%d, %d con sombra)" % [inf.luces, inf.luces_con_sombra])
+	ok(inf.triangulos_escena <= 600000, "abismo final: triángulos de sala especial (%d)" % inf.triangulos_escena)
+	for id in ["abismo_cristal/arco_puente", "abismo_cristal/estatua_cuenco", "abismo_cristal/cristales_grande"]:
+		ok(Props3D.malla(id.get_slice("/", 0), id.get_slice("/", 1)) != null, "pieza " + id)
 	main._entrar(DungeonGen.gen_level("otro", 1))
 	await process_frame
 	ok(e.background_color == fondo and not main.camara.fija, "al salir, entorno y cámara como antes")

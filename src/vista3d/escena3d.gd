@@ -5,12 +5,13 @@ class_name Escena3D
 ## El archivo dice qué se pisa (rejilla), dónde está la cámara, el entorno y la lista de objetos:
 ##   {"pieza": "paquete/pieza", "pos": [x,y,z], "giro": grados, "escala": n | [x,y,z]}   pieza del catálogo (Props3D)
 ##   {"bloque": [ancho,alto,fondo], "pos": …, "giro": …, "nombre": "…"}                  caja gris (pieza aún sin hacer)
-##   {"caja": [x,y,z], "pos": …, "material": "suelo_tema", "metros": 6.5}                  suelo o losa del tema
+##   {"caja": [x,y,z], "pos": …, "material": "suelo_tema|roca_tema|muro_tema", "metros": 6.5}   suelo, roca o sillería del tema
 ##   {"lava": [ancho, fondo], "pos": …, "fuerza": 2.4}                                      plano de lava que corre
 ##   {"cascada": [ancho, alto], "pos": …, "giro": …}                                        cascada de lava o agua (pos = arriba)
 ## rejilla: {"inicio": [cx, cy], "suelo": [[x0, y0, x1, y1], …], "abismo": [[…], …]} (casillas de 2 m; el abismo hace caer)
 ##   {"luz": {"color": [r,g,b], "energia": e, "rango": r, "parpadea": false}, "pos": …}
 ##   {"fuego": tamaño, "pos": …}                                                            llamas (sin luz)
+##   {"disco": radio, "pos": …, "color": [r,g,b], "fuerza": f}                               disco que brilla (agua de un cuenco…)
 ##   {"sol": {"color": [r,g,b], "energia": e, "sombras": true}, "giro": [x, y]}             luz direccional
 ##   {"cadena": {"a": [..], "b": [..], "caida": m}}  ·  {"jaula": {"arriba": [..], "largo": m, "escala": s}}
 ##
@@ -229,6 +230,11 @@ static func _objeto(o: Dictionary, M: MazmorraGridMap, tema: String, modo: Strin
 			var m := TemaMazmorra.material_suelo(tema).duplicate() as StandardMaterial3D
 			m.uv1_scale = Vector3.ONE / float(o.get("metros", TemaMazmorra.dato(tema, "suelo_m", 4.0)))
 			mi.material_override = m
+		elif String(o.get("material", "")) == "roca_tema" and tema != "":
+			mi.material_override = TemaMazmorra._pbr(tema, "roca", float(o.get("metros", TemaMazmorra.dato(tema, "roca_m", 4.0))), true)
+		elif String(o.get("material", "")) == "muro_tema" and tema != "":
+			var k := TemaMazmorra.clave_muro(tema)
+			mi.material_override = TemaMazmorra._pbr(tema, k, float(o.get("metros", TemaMazmorra.dato(tema, k + "_m", 3.0))), true)
 		mi.position = pos
 		mi.rotation.y = giro
 		M.adornos.add_child(mi)
@@ -284,6 +290,25 @@ static func _objeto(o: Dictionary, M: MazmorraGridMap, tema: String, modo: Strin
 	elif o.has("fuego"):
 		if modo == "final":
 			M.fuego_sin_luz(pos, float(o.fuego))
+	elif o.has("disco"):
+		if geo:
+			return
+		var mi := MeshInstance3D.new()
+		mi.name = "Disco"
+		mi.set_meta("disco", true)   # con dos, Godot cambia el nombre del segundo
+		var c := CylinderMesh.new()
+		c.top_radius = float(o.disco)
+		c.bottom_radius = float(o.disco)
+		c.height = .02
+		c.radial_segments = 24
+		mi.mesh = c
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.albedo_color = _c(o.get("color"), Color(.4, .9, 1)) * float(o.get("fuerza", 2.0))   # más de 1 resplandece
+		mi.material_override = m
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.position = pos
+		M.adornos.add_child(mi)
 	elif o.has("sol"):
 		if modo != "final":
 			return

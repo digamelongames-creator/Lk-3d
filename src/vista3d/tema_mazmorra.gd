@@ -46,6 +46,7 @@ const TEMAS := {
 		"brillo": Color(.3, .85, 1.0),
 		"brillo_e": 0.0,                  # sin vetas que brillen
 		"antorcha": Color(.35, .78, 1.0), # fuego azul
+		"llama": [Color(.35, .75, 1, .6), Color(.1, .4, 1, .5), Color(.02, .08, .35, 0)],   # de la base a la punta
 		"luz_abismo": Color(.35, .8, 1.0), "luz_abismo_e": 1.6,
 		"niebla_abismo": Color(.32, .7, .82),
 		"entorno": {
@@ -218,10 +219,10 @@ void fragment() {
 	ALBEDO = c * mix(.45, espuma, smoothstep(.5, .9, l));
 	if (cae) {
 		float borde = smoothstep(0.0, .2, UV.x) * smoothstep(1.0, .8, UV.x);
-		ALPHA = borde * mix(.55, 1.0, l) * smoothstep(1.0, .75, UV.y);
+		ALPHA = borde * mix(.55, 1.0, l) * smoothstep(1.0, .75, UV.y) * smoothstep(0.0, .05, UV.y);   // sin borde duro arriba
 	}
 }
-""" % (", blend_mix, cull_disabled, depth_draw_never" if cae else "")
+""" % (", blend_mix, cull_disabled, depth_draw_never, fog_disabled" if cae else "")   # la niebla dejaba las cascadas planas
 	var m := ShaderMaterial.new()
 	m.shader = sh
 	m.set_shader_parameter("agua", tex(t, "agua", "color"))

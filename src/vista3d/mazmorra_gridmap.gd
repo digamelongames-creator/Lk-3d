@@ -420,7 +420,8 @@ func _fuego(p: Vector3, tam: float) -> void:
 	f.mesh = q
 	var g := Gradient.new()
 	g.offsets = PackedFloat32Array([0, .35, 1])
-	g.colors = PackedColorArray([Color(1, .75, .35, .9), Color(1, .42, .08, .75), Color(.5, .08, .02, 0)])
+	var llama = TemaMazmorra.dato(tema, "llama") if tema != "" else null   # colores de la llama del tema (fuego azul…)
+	g.colors = PackedColorArray(llama) if llama != null else PackedColorArray([Color(1, .75, .35, .9), Color(1, .42, .08, .75), Color(.5, .08, .02, 0)])
 	f.color_ramp = g
 	adornos.add_child(f)
 
