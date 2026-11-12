@@ -60,29 +60,26 @@ if not exist "%REPO%\.git" (
 rem ---------------------------------------------------------------- Godot
 set "GODOT="
 if exist "%RUTA_GODOT%" set /p GODOT=<"%RUTA_GODOT%"
+rem si lo apuntado es una carpeta (al descomprimir el zip de Godot sale una carpeta con el mismo nombre que el programa), se busca el programa dentro
+if defined GODOT if exist "!GODOT!\*" call :godot_en "!GODOT!"
 if defined GODOT if not exist "!GODOT!" set "GODOT="
 if not defined GODOT (
     echo Buscando Godot 4 ^(solo la primera vez^)...
     for %%d in ("%CARPETA%" "%USERPROFILE%\Desktop" "%USERPROFILE%\Downloads" "%USERPROFILE%\Documents" "%LOCALAPPDATA%" "%ProgramFiles%" "C:\Godot") do (
-        if not defined GODOT if exist "%%~d" (
-            for /f "delims=" %%g in ('dir /b /s "%%~d\Godot_v4*_win64.exe" 2^>nul ^| findstr /v /i "console"') do (
-                if not defined GODOT set "GODOT=%%g"
-            )
-        )
+        if not defined GODOT if exist "%%~d" call :godot_en "%%~d"
     )
     if not defined GODOT (
         echo.
         echo No encuentro Godot. Arrastra aqui el Godot_v4.7.2-stable_win64.exe y pulsa Enter:
         set /p GODOT=
         set "GODOT=!GODOT:"=!"
+        if exist "!GODOT!\*" call :godot_en "!GODOT!"
     )
-    if not exist "!GODOT!" (
-        echo No existe "!GODOT!".
-        pause
-        exit /b 1
-    )
-    >"%RUTA_GODOT%" echo !GODOT!
+    if not defined GODOT goto :sin_godot
+    if not exist "!GODOT!" goto :sin_godot
 )
+>"%RUTA_GODOT%" echo !GODOT!
+echo Godot: !GODOT!
 
 rem ---------------------------------------------------------------- importar lo nuevo y abrir
 echo Importando lo nuevo en Godot...
@@ -97,3 +94,16 @@ if /i "%~1"=="editor" (
     start "" "%GODOT%" --path "%REPO%"
 )
 exit /b 0
+
+rem ---------------------------------------------------------------- busca el programa de Godot 4 (archivo, no carpeta) dentro de una carpeta
+:godot_en
+set "GODOT="
+for /f "delims=" %%g in ('dir /b /s /a-d "%~1\Godot_v4*.exe" 2^>nul ^| findstr /v /i "console"') do (
+    if not defined GODOT set "GODOT=%%g"
+)
+exit /b 0
+
+:sin_godot
+echo No encuentro el programa de Godot. Borra C:\Carpeta Juego\godot_ruta.txt y vuelve a abrir este archivo.
+pause
+exit /b 1
