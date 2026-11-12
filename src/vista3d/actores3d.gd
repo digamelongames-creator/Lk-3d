@@ -638,11 +638,9 @@ func _animar_heroe(p: Ent.Hero) -> void:
 			m.reproducir(dolor, 1.6 if dolor == "hurt" else 1.3, .05, true)
 		elif m.actual in ["hurt", "dolor_escudo"] and not m.terminada():
 			pass
-		elif p.roll_t > 0 or (corre and not m.anim.has_animation("andar")):
-			m.reproducir("run", 1.3 if p.roll_t > 0 else maxf(.3, sim.vel_mov))   # la voltereta sigue con run (Diego, 12 nov)
-		elif corre:
-			# andar de todos los héroes (Walk de Diego, 12 nov): los pasos al ritmo de lo que avanza el héroe
-			m.reproducir("andar", ritmo_andar(p.st.spd * sim.vel_mov))
+		elif p.roll_t > 0 or corre:
+			# todos los héroes corren con run (Diego, 12 nov: run en vez de Walk); «andar» queda en heroe_anims sin usar
+			m.reproducir("run", 1.3 if p.roll_t > 0 else maxf(.3, sim.vel_mov))
 		else:
 			m.reproducir("idle")
 			_combo_antes = -2

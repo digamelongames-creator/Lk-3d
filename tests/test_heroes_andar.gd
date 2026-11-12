@@ -1,5 +1,5 @@
 extends SceneTree
-## Todos los héroes andan con «andar» (Walk de Diego) al ritmo de lo que avanzan; la voltereta sigue con run.
+## Todos los héroes corren con run (no con «andar», el Walk de Diego, que queda en heroe_anims).
 ## El mago lleva la Maga (Modelo3D.HEROE_CLASE), de pie, de 1,8 m y con sus ataques de Cast.
 ## godot --headless --path . -s tests/test_heroes_andar.gd
 
@@ -75,6 +75,6 @@ func _correr() -> void:
 		if act._modelo_heroe != null:
 			vistos[act._modelo_heroe.actual] = true
 	print("animaciones vistas: ", vistos.keys())
-	ok(vistos.has("andar"), "el héroe no anda con «andar»")
+	ok(vistos.has("run") and not vistos.has("andar"), "el héroe no corre con run")
 	print("test_heroes_andar: ", "todo bien" if fallos == 0 else "%d fallos" % fallos)
 	quit(1 if fallos else 0)
