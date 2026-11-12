@@ -3,7 +3,8 @@ class_name TemaMazmorra
 ## Las texturas son de Pixmith (ChatGPT desde el PC de Diego) pasadas por tools/texturas.py
 ## (color, relieve, rugosidad y lo que brilla) en assets/texturas/<tema>/.
 ##
-## De momento solo está el Inframundo: pisos 8–9 (PISOS, pasarelas sobre lava) y el «Piso de prueba 7» (L.tema3d).
+## Inframundo: pisos 8–9 (pasarelas sobre lava) y el «Piso de prueba 7». Galerías hundidas: solo el «Piso de prueba 3»
+## (pasarelas sobre un abismo de niebla azul con cascadas de agua). El piso de prueba lo pone en L.tema3d.
 ## Qué cambia: el suelo pasa a ser una losa lisa con la textura (la textura ya trae las piedras),
 ## los muros llevan la roca con vetas que brillan, el agua de los canales es lava, el abismo
 ## es un mar de lava con cascadas (Abismo3D) y el entorno pasa a rojo y naranja.
@@ -21,6 +22,7 @@ const TEMAS := {
 		"brillo": Color(1.0, .36, .07),   # color de las grietas y vetas
 		"brillo_e": 2.6,                  # fuerza (más de 1,3 hace resplandor)
 		"antorcha": Color(1.0, .46, .2),
+		"abismo": "lava",                 # qué hay en el vacío: «lava» (mar de lava) o «agua» (niebla y cascadas de agua)
 		"lava_y": -5.5,                   # m bajo el suelo donde está el mar de lava
 		"entorno": {
 			"bg": Color(.03, .008, .004),
@@ -28,6 +30,30 @@ const TEMAS := {
 			"niebla_vol": .014, "niebla_vol_c": Color(1.0, .52, .32),
 			"niebla_alt_c": Color(.32, .07, .02),   # lo que queda bajo el suelo se tiñe de rojo
 			"saturacion": 1.05,
+		},
+	},
+	## Galerías hundidas (pisos 3–5): puentes de sillería sobre un abismo de niebla azul con cascadas de agua,
+	## piedra mojada con musgo y fuego azul. De momento solo el «Piso de prueba 3» (pisos vacío).
+	"galerias": {
+		"nombre": "Galerías hundidas",
+		"pisos": [],
+		"abismo": "agua",
+		"suelo": "galerias/suelo", "muro": "galerias/muro", "roca": "galerias/roca", "agua": "galerias/agua",
+		"suelo_m": 4.0,
+		"muro_m": 3.0,               # sillería de los muros (la roca del abismo es «roca»)
+		"roca_m": 4.5,
+		"tinte_muro": Color(.92, .96, 1.0),
+		"brillo": Color(.3, .85, 1.0),
+		"brillo_e": 0.0,                  # sin vetas que brillen
+		"antorcha": Color(.35, .78, 1.0), # fuego azul
+		"luz_abismo": Color(.35, .8, 1.0), "luz_abismo_e": 1.6,
+		"niebla_abismo": Color(.32, .7, .82),
+		"entorno": {
+			"bg": Color(.008, .02, .03),
+			"amb": Color(.4, .58, .72), "amb_e": .4,
+			"niebla_vol": .012, "niebla_vol_c": Color(.55, .82, .95),
+			"niebla_alt_c": Color(.04, .16, .22),   # lo que queda bajo el suelo se funde en niebla azul
+			"saturacion": 1.0,
 		},
 	},
 }
@@ -55,6 +81,14 @@ static func dato(t: String, clave: String, si_no = null):
 
 static func nombre(t: String) -> String:
 	return String(dato(t, "nombre", ""))
+
+## qué hay en el vacío de los pisos de pasarelas: "lava", "agua" o "" (la niebla gris de siempre)
+static func abismo(t: String) -> String:
+	return String(dato(t, "abismo", ""))
+
+## la textura de los muros de las salas: «muro» si el tema la tiene; si no, la roca
+static func clave_muro(t: String) -> String:
+	return "muro" if dato(t, "muro") != null else "roca"
 
 ## una capa de una textura del tema: color, normal, rugosidad o brillo (null si no está)
 static func tex(t: String, clave: String, capa: String) -> Texture2D:
@@ -149,6 +183,55 @@ void fragment() {
 	m.set_shader_parameter("cae", cae)
 	_mats[k] = m
 	return m
+
+## agua (Galerías hundidas): la textura corre en dos capas y la espuma brilla un poco; en las cascadas cae
+## deprisa y se deshace por los lados. Le afecta la niebla, así que lo hondo se pierde en el azul.
+static func material_agua(t: String, cae: bool = false) -> ShaderMaterial:
+	var k := ("cascada_agua|" if cae else "agua|") + t
+	if _mats.has(k):
+		return _mats[k]
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+render_mode unshaded%s;
+uniform sampler2D agua : source_color, repeat_enable, filter_linear_mipmap;
+uniform float metros = 5.0;
+uniform vec2 corre = vec2(.04, .02);
+uniform float espuma = 1.5;
+uniform bool cae = false;
+varying vec3 mundo;
+void vertex() { mundo = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec2 uv;
+	vec2 d = corre;
+	if (cae) {
+		uv = vec2(UV.x * .5, UV.y * 1.4);
+		d = vec2(0.0, -.6);
+	} else {
+		uv = mundo.xz / metros;
+	}
+	vec3 a = texture(agua, uv + TIME * d).rgb;
+	vec3 b = texture(agua, uv * 1.31 + vec2(.27, .61) - TIME * d.yx * .7).rgb;
+	vec3 c = max(a, b * .9);
+	float l = dot(c, vec3(.3, .55, .15));
+	// el agua honda queda oscura; la espuma brilla algo (más de 1,3 hace resplandor)
+	ALBEDO = c * mix(.45, espuma, smoothstep(.5, .9, l));
+	if (cae) {
+		float borde = smoothstep(0.0, .2, UV.x) * smoothstep(1.0, .8, UV.x);
+		ALPHA = borde * mix(.55, 1.0, l) * smoothstep(1.0, .75, UV.y);
+	}
+}
+""" % (", blend_mix, cull_disabled, depth_draw_never" if cae else "")
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("agua", tex(t, "agua", "color"))
+	m.set_shader_parameter("cae", cae)
+	_mats[k] = m
+	return m
+
+## el líquido de los canales y cascadas del tema (agua o lava)
+static func material_liquido(t: String, cae: bool = false) -> ShaderMaterial:
+	return material_agua(t, cae) if abismo(t) == "agua" else material_lava(t, cae)
 
 # ---------------------------------------------------------------- entorno
 ## pone el entorno del tema (o lo deja como estaba si t == "")

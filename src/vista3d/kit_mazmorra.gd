@@ -221,10 +221,11 @@ void fragment() {
 	if tema != "" and TemaMazmorra.hay(tema):
 		m.set_shader_parameter("usar_tex", 1.0)
 		m.set_shader_parameter("color", TemaMazmorra.dato(tema, "tinte_muro", Color.WHITE))
-		m.set_shader_parameter("tex_color", TemaMazmorra.tex(tema, "roca", "color"))
-		m.set_shader_parameter("tex_normal", TemaMazmorra.tex(tema, "roca", "normal"))
-		m.set_shader_parameter("tex_brillo", TemaMazmorra.tex(tema, "roca", "brillo"))
-		m.set_shader_parameter("tex_metros", float(TemaMazmorra.dato(tema, "roca_m", 3.0)))
+		var k := TemaMazmorra.clave_muro(tema)   # sillería propia del tema o, si no tiene, su roca
+		m.set_shader_parameter("tex_color", TemaMazmorra.tex(tema, k, "color"))
+		m.set_shader_parameter("tex_normal", TemaMazmorra.tex(tema, k, "normal"))
+		m.set_shader_parameter("tex_brillo", TemaMazmorra.tex(tema, k, "brillo"))
+		m.set_shader_parameter("tex_metros", float(TemaMazmorra.dato(tema, k + "_m", 3.0)))
 		m.set_shader_parameter("brillo_color", TemaMazmorra.dato(tema, "brillo", Color.ORANGE))
 		m.set_shader_parameter("brillo_fuerza", float(TemaMazmorra.dato(tema, "brillo_e", 2.0)))
 	return m
@@ -250,8 +251,8 @@ static func _malla_tema(n: String, tema: String) -> Mesh:
 	# el suelo: losa lisa, la textura ya trae las piedras y las grietas
 	if n in SUELOS:
 		return _caja(Vector3(CELDA, .2, CELDA), Vector3(0, -.1, 0), TemaMazmorra.material_suelo(tema))
-	if n == "agua":   # los canales: lava un poco más honda que el suelo
-		return _caja(Vector3(CELDA, .1, CELDA), Vector3(0, -.35, 0), TemaMazmorra.material_lava(tema))
+	if n == "agua":   # los canales: lava o agua del tema, un poco más honda que el suelo
+		return _caja(Vector3(CELDA, .1, CELDA), Vector3(0, -.35, 0), TemaMazmorra.material_liquido(tema))
 	var m: Mesh = _mallas[n].duplicate()
 	var nombres: Array = _nombres.get(n, [])
 	for s in m.get_surface_count():

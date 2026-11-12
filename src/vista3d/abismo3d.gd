@@ -5,6 +5,8 @@ class_name Abismo3D
 ## Todo se crea por piso (sin recursos estáticos) y cuelga del nodo que se le pase.
 ## Con un tema con lava (TemaMazmorra, el Inframundo): la roca es la del tema, abajo hay un mar de lava
 ## que corre, cascadas de lava que salen de algunos bordes, luces naranjas bajo los bordes y brasas.
+## Con un tema con agua (Galerías hundidas): roca del tema, niebla azul espesa, cascadas de agua que se
+## pierden en ella, luces azules bajo los bordes y rocío que sube.
 
 const MAX_LUCES_LAVA := 40
 const MAX_CASCADAS := 14
@@ -17,12 +19,16 @@ const COLUMNAS := 6      # vértices por casilla a lo ancho (cada 0,33 m)
 const RELIEVE := .7      # m que sale o entra la roca
 
 static func crear(G: PackedByteArray, padre: Node3D, tema: String = "") -> void:
-	var lava := tema != "" and TemaMazmorra.dato(tema, "lava") != null
+	var tipo := TemaMazmorra.abismo(tema) if tema != "" else ""   # "lava", "agua" o "" (niebla gris)
+	var lava := tipo == "lava"
+	var con_tema := tipo != ""
 	var lava_y: float = TemaMazmorra.dato(tema, "lava_y", -5.5) if lava else 0.0
+	# las cascadas caen hasta la lava o, con agua, hasta perderse en la niebla
+	var caida: float = (-lava_y + .5) if lava else HONDO
 	var cae := SurfaceTool.new()
 	cae.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var n_cae := 0
-	var bordes := []   # [punto del borde, hacia el vacío] para las luces de la lava
+	var bordes := []   # [punto del borde, hacia el vacío] para las luces de abajo
 	var W := DungeonGen.GW
 	var H := DungeonGen.GH
 	var ruido := FastNoiseLite.new()
@@ -51,12 +57,12 @@ static func crear(G: PackedByteArray, padre: Node3D, tema: String = "") -> void:
 				var b := centro + mitad - Vector3(-d.y, 0, d.x) * C * .5
 				_pared(st, ruido, a, b)
 				hay = true
-				if lava:
+				if con_tema:
 					var fuera := Vector3(-d.x, 0, -d.y)
 					bordes.append([centro + mitad, fuera])
 					# cascada en algunos bordes (fijo por casilla, para que no cambie al volver)
 					if n_cae < MAX_CASCADAS and absi(hash(Vector3i(cx, cy, d.x * 3 + d.y))) % 11 == 0:
-						_cascada(cae, ruido, a, b, fuera, -lava_y + .5)
+						_cascada(cae, ruido, a, b, fuera, caida)
 						n_cae += 1
 	if not hay:
 		return
@@ -64,27 +70,34 @@ static func crear(G: PackedByteArray, padre: Node3D, tema: String = "") -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "ParedesAbismo"
 	mi.mesh = st.commit()
-	mi.material_override = TemaMazmorra.material_roca(tema) if lava else _roca()
+	mi.material_override = TemaMazmorra.material_roca(tema) if con_tema else _roca()
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	padre.add_child(mi)
-	if not lava:
+	if not con_tema:
 		_niebla(padre, W * C, H * C)
 		return
-	_lava(padre, W * C, H * C, lava_y, tema)
+	if lava:
+		_lava(padre, W * C, H * C, lava_y, tema)
+	else:
+		# agua: niebla del color del tema, más espesa, y un fondo que se funde con ella
+		_niebla(padre, W * C, H * C, TemaMazmorra.dato(tema, "niebla_abismo", Color(.3, .6, .7)), .16, Color(.02, .07, .1))
 	if n_cae > 0:
 		var mc := MeshInstance3D.new()
-		mc.name = "CascadasLava"
+		mc.name = "CascadasLava" if lava else "CascadasAgua"
 		mc.mesh = cae.commit()
-		mc.material_override = TemaMazmorra.material_lava(tema, true)
+		mc.material_override = TemaMazmorra.material_liquido(tema, true)
 		mc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		padre.add_child(mc)
-	# luces naranjas bajo los bordes: la lava alumbra la roca desde abajo (repartidas, como mucho MAX_LUCES_LAVA)
-	var paso := maxi(1, ceili(bordes.size() / float(MAX_LUCES_LAVA)))
+	# luces bajo los bordes: la lava (o el brillo azul del abismo) alumbra la roca desde abajo
+	# (repartidas, como mucho MAX_LUCES_LAVA; con agua, la mitad)
+	var maximo := MAX_LUCES_LAVA if lava else MAX_LUCES_LAVA / 2
+	var paso := maxi(1, ceili(bordes.size() / float(maximo)))
+	var hondo_luz: float = lava_y * .55 if lava else -3.5
 	for i in range(0, bordes.size(), paso):
 		var l := OmniLight3D.new()
-		l.position = bordes[i][0] + bordes[i][1] * 1.6 + Vector3(0, lava_y * .55, 0)
-		l.light_color = Color(1, .38, .1)
-		l.light_energy = 2.4
+		l.position = bordes[i][0] + bordes[i][1] * 1.6 + Vector3(0, hondo_luz, 0)
+		l.light_color = TemaMazmorra.dato(tema, "luz_abismo", Color(1, .38, .1))
+		l.light_energy = float(TemaMazmorra.dato(tema, "luz_abismo_e", 2.4))
 		l.omni_range = 8.5
 		l.omni_attenuation = 1.2
 		l.light_volumetric_fog_energy = .4
@@ -259,45 +272,50 @@ void fragment() {
 	calima.position = centro + Vector3(0, 1.4, 0)
 	padre.add_child(calima)
 
-## brasas que suben desde la lava (MazmorraGridMap las mueve con la cámara)
-static func brasas(padre: Node3D) -> Node3D:
+## partículas que suben alrededor de la cámara (MazmorraGridMap las mueve con ella): brasas sobre la lava
+## y, con agua, gotas de rocío frías que suben despacio desde la niebla
+static func brasas(padre: Node3D, tema: String = "") -> Node3D:
+	var agua := TemaMazmorra.abismo(tema) == "agua"
 	var f := CPUParticles3D.new()
-	f.name = "Brasas"
-	f.amount = 140
-	f.lifetime = 5.0
-	f.preprocess = 5.0
+	f.name = "Rocio" if agua else "Brasas"
+	f.amount = 90 if agua else 140
+	f.lifetime = 7.0 if agua else 5.0
+	f.preprocess = f.lifetime
 	f.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	f.emission_box_extents = Vector3(16, 2.5, 16)
 	f.position = Vector3(0, -2.5, 0)
 	f.direction = Vector3.UP
 	f.spread = 25
-	f.initial_velocity_min = .4
-	f.initial_velocity_max = 1.3
-	f.gravity = Vector3(.15, .25, .05)
+	f.initial_velocity_min = .2 if agua else .4
+	f.initial_velocity_max = .6 if agua else 1.3
+	f.gravity = Vector3(.1, .12, .05) if agua else Vector3(.15, .25, .05)
 	var q := QuadMesh.new()
-	q.size = Vector2(.06, .06)   # chispas pequeñas y redondas
+	q.size = Vector2(.05, .05) if agua else Vector2(.06, .06)   # pequeñas y redondas
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.vertex_color_use_as_albedo = true
-	m.albedo_color = Color(2.2, 1.2, .6)   # algo de resplandor
+	m.albedo_color = Color(1.2, 1.7, 2.0) if agua else Color(2.2, 1.2, .6)   # algo de resplandor
 	m.albedo_texture = MazmorraGridMap._punto()
 	q.material = m
 	f.mesh = q
 	var g := Gradient.new()
 	g.offsets = PackedFloat32Array([0, .15, .7, 1])
-	g.colors = PackedColorArray([Color(1, .6, .2, 0), Color(1, .55, .15, 1), Color(1, .3, .05, .7), Color(.5, .1, .02, 0)])
+	if agua:
+		g.colors = PackedColorArray([Color(.5, .85, 1, 0), Color(.6, .9, 1, .8), Color(.4, .75, 1, .5), Color(.2, .5, .7, 0)])
+	else:
+		g.colors = PackedColorArray([Color(1, .6, .2, 0), Color(1, .55, .15, 1), Color(1, .3, .05, .7), Color(.5, .1, .02, 0)])
 	f.color_ramp = g
 	var raiz := Node3D.new()
-	raiz.name = "BrasasRaiz"
+	raiz.name = "RocioRaiz" if agua else "BrasasRaiz"
 	raiz.add_child(f)
 	padre.add_child(raiz)
 	return raiz
 
 ## capas de niebla que se mueven despacio y brillan un poco; debajo, un fondo del color de la niebla
-static func _niebla(padre: Node3D, ancho: float, largo: float) -> void:
+static func _niebla(padre: Node3D, ancho: float, largo: float, color := Color(.2, .22, .28), fuerza := .1, fondo_c := Color(.05, .05, .06)) -> void:
 	var sh := Shader.new()
 	sh.code = """
 shader_type spatial;
@@ -329,7 +347,8 @@ void fragment() {
 		var mat := ShaderMaterial.new()
 		mat.shader = sh
 		mat.set_shader_parameter("ruido", tex)
-		mat.set_shader_parameter("fuerza", .1 + i * .05)
+		mat.set_shader_parameter("color", color)
+		mat.set_shader_parameter("fuerza", fuerza + i * .05)
 		mat.set_shader_parameter("deriva", Vector2(.004, .002).rotated(i * 2.1))
 		var pl := PlaneMesh.new()
 		pl.size = Vector2(ancho + 40, largo + 40)
@@ -347,7 +366,7 @@ void fragment() {
 	pf.size = Vector2(ancho + 80, largo + 80)
 	fondo.mesh = pf
 	var mf := StandardMaterial3D.new()
-	mf.albedo_color = Color(.05, .05, .06)
+	mf.albedo_color = fondo_c
 	fondo.material_override = mf
 	fondo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	fondo.position = centro + Vector3(0, -HONDO, 0)

@@ -29,7 +29,7 @@ var luces: Array[OmniLight3D] = []
 var _llamas: Array = []   # [OmniLight3D, energía base, fase]
 var _t := 0.0
 var tema := ""            # TemaMazmorra: texturas, luz y abismo del piso ("" = los de siempre)
-var _brasas: Node3D       # temas con lava: brasas que suben alrededor de la cámara
+var _brasas: Node3D       # temas con abismo: brasas (lava) o rocío (agua) que suben alrededor de la cámara
 var _piezas_tema := false # Inframundo3D: piezas de Tripo en lugar de algunas del kit
 var _calaveras: Array = []   # [cx, cy, k] caras que pasan a ser muro con calavera (se ponen al final)
 var _lisas := {}             # caras que deben quedar lisas (llevan algo colgado)
@@ -140,8 +140,8 @@ func construir(L: Dictionary) -> void:
 		Inframundo3D.amueblar(L, self)
 	if L.get("plataformas", false):
 		Abismo3D.crear(G, adornos, tema)   # paredes de roca bajo los bordes y niebla (o lava) en el vacío
-	if tema != "" and TemaMazmorra.dato(tema, "lava") != null:
-		_brasas = Abismo3D.brasas(adornos)
+	if tema != "" and TemaMazmorra.abismo(tema) != "":
+		_brasas = Abismo3D.brasas(adornos, tema)   # brasas (lava) o rocío (agua) alrededor de la cámara
 
 ## puertas negras de las salas secretas (SalaSecreta): la cara del muro que da al suelo pasa a ser una puerta,
 ## con una luz fría y tenue delante para que se distinga de los nichos

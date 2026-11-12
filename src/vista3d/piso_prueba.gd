@@ -16,7 +16,8 @@ class_name PisoPrueba
 const NOMBRES := ["Piso de prueba 1"]
 ## pisos de prueba de temas (TemaMazmorra): un piso generado de verdad, sin enemigos, con el tema puesto
 ## 7 = el Inframundo (pisos 8–9): pasarelas sobre un mar de lava, como en la imagen 7 de Pixmith
-const DE_TEMA := {7: "inframundo"}
+## 3 = Galerías hundidas (pisos 3–5): pasarelas sobre un abismo de niebla azul con cascadas de agua
+const DE_TEMA := {3: "galerias", 7: "inframundo"}
 
 ## pisos enteros que salen en el menú de pruebas (además de las salas del piso 1)
 static func pisos_menu() -> Array:

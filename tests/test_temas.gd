@@ -1,7 +1,7 @@
 extends SceneTree
 ## TemaMazmorra de la mazmorra: el «Piso de prueba 7 · Inframundo» sale del generador de siempre como piso de pasarelas,
 ## sin enemigos, con las texturas del tema, el mar de lava, cascadas, luces y brasas; al volver a Inca
-## el entorno vuelve a ser el de antes.
+## el entorno vuelve a ser el de antes. También el «Piso de prueba 3 · Galerías hundidas» (niebla azul, cascadas de agua).
 ## godot --headless --path . -s tests/test_temas.gd
 var fallos := 0
 func ok(c: bool, q: String) -> void:
@@ -99,6 +99,43 @@ func _init() -> void:
 		ok(piezas.has(Props3D.malla(paq, n)), "en la prueba puente hay " + n)
 	ok(DungeonGen.walk(sim.L.grid[int(sim.p.y / DungeonGen.TS) * DungeonGen.GW + int(sim.p.x / DungeonGen.TS)]), "el héroe empieza sobre el tablero")
 	ok(not DungeonGen.walk(sim.L.grid[(20 - 1) * DungeonGen.GW + 15]), "fuera del pretil no se pisa")
+	# Galerías hundidas: «Piso de prueba 3», pasarelas sobre un abismo de niebla azul con cascadas de agua
+	for clave in ["suelo", "muro", "roca"]:
+		for capa in ["color", "normal", "rugosidad"]:
+			ok(TemaMazmorra.tex("galerias", clave, capa) != null, "galerías: textura %s_%s" % [clave, capa])
+	ok(TemaMazmorra.tex("galerias", "agua", "color") != null, "galerías: textura del agua")
+	ok(PisoPrueba.nombre(3) == "Piso de prueba 3 · Galerías hundidas", "nombre: " + PisoPrueba.nombre(3))
+	var L3 := PisoPrueba.generar(3)
+	ok(L3.get("plataformas", false) and TemaMazmorra.de(L3) == "galerias", "piso 3 de pasarelas con el tema")
+	for w in [3, 4, 5]:
+		ok(TemaMazmorra.de(DungeonGen.gen_level("tema-%d" % w, w)) == "", "el piso %d de las partidas aún no lleva tema" % w)
+	var lib3 := KitMazmorra.mesh_library("galerias")
+	var cara3: Mesh = lib3.get_item_mesh(lib3.find_item_by_name("cara"))
+	var sillar := false
+	for s in cara3.get_surface_count():
+		var m := cara3.surface_get_material(s)
+		if m is ShaderMaterial and m.get_shader_parameter("tex_color") == TemaMazmorra.tex("galerias", "muro", "color"):
+			sillar = true
+	ok(sillar, "los muros llevan la sillería del tema")
+	main.menu.piso_tema.emit(3)
+	await process_frame
+	await process_frame
+	ok(main.prueba == 3 and main.mazmorra.tema == "galerias", "entra en el piso de prueba 3 con el tema")
+	ok(main.sim.enemies.is_empty(), "galerías: sin enemigos (%d)" % main.sim.enemies.size())
+	var n3 := {}
+	var luces3 := 0
+	for c in main.mazmorra.adornos.get_children():
+		if c.is_queued_for_deletion():
+			continue
+		n3[String(c.name)] = true
+		if c is OmniLight3D:
+			luces3 += 1
+	for n in ["ParedesAbismo", "CascadasAgua", "RocioRaiz", "Niebla0", "FondoAbismo"]:
+		ok(n3.has(n), "galerías: hay " + n)
+	for n in ["MarDeLava", "Calima", "CascadasLava", "BrasasRaiz"]:
+		ok(not n3.has(n), "galerías: sin " + n)
+	ok(luces3 > 5 and luces3 < 200, "galerías: luces razonables (%d)" % luces3)
+	ok(e.background_color == TemaMazmorra.dato("galerias", "entorno").bg, "entorno azul del tema")
 	# de vuelta a un piso normal: el entorno vuelve
 	main._entrar(DungeonGen.gen_level("otro", 1))
 	await process_frame
