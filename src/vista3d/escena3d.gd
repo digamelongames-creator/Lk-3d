@@ -7,7 +7,8 @@ class_name Escena3D
 ##   {"bloque": [ancho,alto,fondo], "pos": …, "giro": …, "nombre": "…"}                  caja gris (pieza aún sin hacer)
 ##   {"caja": [x,y,z], "pos": …, "material": "suelo_tema", "metros": 6.5}                  suelo o losa del tema
 ##   {"lava": [ancho, fondo], "pos": …, "fuerza": 2.4}                                      plano de lava que corre
-##   {"cascada": [ancho, alto], "pos": …, "giro": …}                                        cascada de lava (pos = arriba)
+##   {"cascada": [ancho, alto], "pos": …, "giro": …}                                        cascada de lava o agua (pos = arriba)
+## rejilla: {"inicio": [cx, cy], "suelo": [[x0, y0, x1, y1], …], "abismo": [[…], …]} (casillas de 2 m; el abismo hace caer)
 ##   {"luz": {"color": [r,g,b], "energia": e, "rango": r, "parpadea": false}, "pos": …}
 ##   {"fuego": tamaño, "pos": …}                                                            llamas (sin luz)
 ##   {"sol": {"color": [r,g,b], "energia": e, "sombras": true}, "giro": [x, y]}             luz direccional
@@ -107,6 +108,14 @@ static func generar(nombre: String, n: int) -> Dictionary:
 				G[cy * W + cx] = DungeonGen.FLOOR
 				room_of[cy * W + cx] = 0
 		x0 = mini(x0, int(r[0])); y0 = mini(y0, int(r[1])); x1 = maxi(x1, int(r[2])); y1 = maxi(y1, int(r[3]))
+	# vacío (si lo pisas, te caes, como en los pisos de pasarelas): Abismo3D pone la roca bajo los bordes y la niebla
+	var hay_abismo := false
+	for r in R.get("abismo", []):
+		for cy in range(int(r[1]), int(r[3]) + 1):
+			for cx in range(int(r[0]), int(r[2]) + 1):
+				if G[cy * W + cx] == DungeonGen.ROCK:
+					G[cy * W + cx] = DungeonGen.ABISMO
+					hay_abismo = true
 	var ini: Array = R.get("inicio", [x0, y0])
 	var inicio := {"cx": int(ini[0]), "cy": int(ini[1])}
 	for clave in ["plataformas", "tramos", "escaleras", "esc_mask", "alt", "pozos", "p5_obj", "_esc_idx", "torches_px", "keyrings", "estilo"]:
@@ -118,6 +127,9 @@ static func generar(nombre: String, n: int) -> Dictionary:
 		"torches": [], "decor": [], "litter": [], "wall_deco": [], "wall_veg": [], "flats": [],
 		"chests": [], "gold": [], "doors": [], "key_tables": [], "deco": {},
 		"dist": PisoPrueba._distancias(G, inicio, W, H), "prueba": n, "escena": nombre}, true)
+	if hay_abismo:
+		L["plataformas"] = true      # pisar el vacío hace caer (Sim._vigilar_caida_heroe)
+		L["abismo_a_mano"] = true    # la roca, las cascadas y las luces del abismo las pone la escena
 	if E.has("tema"):
 		L["tema3d"] = String(E.tema)
 	return L
@@ -143,11 +155,14 @@ static func montar(nombre: String, M: MazmorraGridMap, e: Environment, modo: Str
 		sol.light_volumetric_fog_energy = 0.0
 		sol.rotation = Vector3(deg_to_rad(-55), deg_to_rad(150), 0)
 		M.adornos.add_child(sol)
-	# la brasas y la niebla del tema solo en el modo final
+	# las brasas, el rocío y la niebla del tema solo en el modo final; en geometría, la roca del abismo en gris
 	if modo != "final":
 		for c in M.adornos.get_children():
-			if c.name == "BrasasRaiz":
+			var n := String(c.name)
+			if n in ["BrasasRaiz", "RocioRaiz", "Calima"] or n.begins_with("Niebla"):
 				c.visible = false
+			elif modo == "geometria" and n == "ParedesAbismo":
+				(c as MeshInstance3D).material_override = _gris()
 
 ## la cámara de la escena: propia (fija, en perspectiva) o la del juego
 static func camara(nombre: String) -> Dictionary:
@@ -238,14 +253,15 @@ static func _objeto(o: Dictionary, M: MazmorraGridMap, tema: String, modo: Strin
 		M.adornos.add_child(mi)
 	elif o.has("cascada"):
 		if geo:
-			_bloque(M, Vector3(float(o.cascada[0]), float(o.cascada[1]), .2), pos - Vector3(0, float(o.cascada[1]) / 2, 0), giro, "cascada", Color(.8, .35, .1))
+			var cc := Color(.3, .6, .85) if TemaMazmorra.abismo(tema) == "agua" else Color(.8, .35, .1)
+			_bloque(M, Vector3(float(o.cascada[0]), float(o.cascada[1]), .2), pos - Vector3(0, float(o.cascada[1]) / 2, 0), giro, "cascada", cc)
 			return
 		var q := MeshInstance3D.new()
 		q.name = "Cascada"
 		var qm := QuadMesh.new()
 		qm.size = Vector2(float(o.cascada[0]), float(o.cascada[1]))
 		q.mesh = qm
-		q.material_override = TemaMazmorra.material_lava(tema, true)
+		q.material_override = TemaMazmorra.material_liquido(tema, true)   # lava o agua, según el tema
 		q.position = pos - Vector3(0, float(o.cascada[1]) / 2, 0)
 		q.rotation.y = giro
 		M.adornos.add_child(q)

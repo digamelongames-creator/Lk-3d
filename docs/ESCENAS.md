@@ -28,7 +28,8 @@ C:\Carpeta Juego\Escenas\<nombre>\
 
 ## 1. Referencia
 
-- Pedir la imagen a Pixmith **con la cámara decidida**. Para la cámara del juego, decirlo en el encargo («orthographic camera, rotated 45°, tilted 33° down») y pasar como `reference_images` una captura del juego con esa cámara.
+- Pedir la imagen a Pixmith **con la cámara decidida**. Para la cámara del juego, decirlo en el encargo con detalle («true isometric orthographic projection, no perspective, vertical edges parallel, rotated 45° so the floor grid runs diagonally, pitched 33° down») y el héroe pequeño en el centro (≈1/14 del alto: así sale el zoom de 17 m).
+- **Sin `reference_images`** de capturas del juego: Pixmith copia su pobreza y la imagen pierde riqueza (Diego, 12 nov). Mejor un encargo largo y detallado (paleta, luz, materiales, qué hay en cada zona de la imagen) y 2 variantes; se elige la de ángulo más parecido al del juego.
 - Anotar qué manda en la imagen (protagonista, plano medio, fondo) y la lista de piezas: cuáles ya están en el catálogo y cuáles faltan.
 
 ## 2. Cámara calculada (no a ojo)
@@ -39,7 +40,9 @@ C:\Carpeta Juego\Escenas\<nombre>\
 
 ## 3. Bloques (modo geometría)
 
-- Escribir la escena con `{"bloque": [ancho, alto, fondo]}` para lo que aún no existe y `{"pieza": …}` para lo del catálogo; la rejilla (`rejilla.suelo`, rectángulos de casillas de 2 m) dice por dónde se anda.
+- Escribir la escena con `{"bloque": [ancho, alto, fondo]}` para lo que aún no existe y `{"pieza": …}` para lo del catálogo; la rejilla (`rejilla.suelo`, rectángulos de casillas de 2 m) dice por dónde se anda y `rejilla.abismo` dónde se cae (vacío: la escena pone la roca, las cascadas y las luces; el tema solo la niebla). Lo demás es roca: no se pisa (pretiles, repisas).
+- Con la cámara del juego, la cámara sigue al héroe: la casilla `inicio` es el centro de la imagen (sale de `colocar` en el centro).
+- Al mirar las capturas: con la vista ortográfica, la cara de un bloque alto (repisa, acantilado) tapa todo lo que queda debajo en pantalla; en geometría parece un suelo, en el modo final la niebla de altura lo funde.
 - Colocar lo que se ve en la imagen con `python3 tools/escena.py colocar <nombre> <px> <py> <altura>`: devuelve dónde va en el mundo.
 - Captura en modo geometría (abajo) y comparación. Validar: tamaños, siluetas, cámara, que el héroe se ve y que se distingue por dónde se anda. **No pedir piezas a Tripo hasta que esto esté bien.**
 
@@ -64,9 +67,11 @@ C:\Carpeta Juego\Escenas\<nombre>\
 
 ```
 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json xvfb-run -a -s "-screen 0 1536x1024x24" \
-  godot --path . --resolution 1536x1024 --windowed -- --prueba=<numero> --modo=geometria|materiales|final --shot=/tmp/c.png,30
+  godot --path . --resolution 1536x1024 --windowed -- --prueba=<numero> --modo=geometria|materiales|final [--zoom=<el de la escena>] [--sin-interfaz] --shot=/tmp/c.png,30
 python3 tools/escena.py comparar referencia.png /tmp/c.png --salida=/tmp/comparacion.png --informe=/tmp/c_informe.json
 ```
+- `--sin-interfaz` quita el HUD (para que no tape la imagen al comparar); `--zoom` el de la cámara calculada.
+- En geometría la nota de parecido sale baja (25–30): lo que vale es que cuadren tamaños, siluetas y por dónde se anda.
 - Cada captura deja `<captura>_informe.json` (rendimiento). `comparar` le añade la nota de parecido por zonas.
 - **Cambiar una sola cosa por vuelta** (geometría, materiales o luz), nunca las tres a la vez.
 - Mientras se ajusta, basta media resolución (`--resolution 768x512`, puntos de la cámara a la mitad); la buena, al final.

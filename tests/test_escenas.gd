@@ -58,6 +58,31 @@ func _init() -> void:
 			ok(e.volumetric_fog_enabled, "final: con niebla")
 		var inf := Escena3D.informe(main.mazmorra, "puente", modo)
 		ok(inf.triangulos_escena > 0 and inf.has("llamadas_de_dibujo") and inf.has("con_tarjeta_grafica"), "informe de " + modo)
+	# abismo de cristal (sala especial, cámara del juego): se anda de punta a punta y por los bordes sin pretil se cae
+	ok(PisoPrueba.nombre(10) == "Prueba 10 · Abismo de cristal", "nombre: " + PisoPrueba.nombre(10))
+	var A := Escena3D.generar("abismo_cristal", 10)
+	var G: PackedByteArray = A.grid
+	var W := DungeonGen.GW
+	ok(A.get("plataformas", false) and A.get("abismo_a_mano", false), "abismo: se cae y la roca la pone la escena")
+	ok(TemaMazmorra.de(A) == "galerias", "abismo: tema Galerías hundidas")
+	var dist: PackedInt32Array = A.dist
+	for c in [Vector2i(20, 25), Vector2i(23, 22), Vector2i(23, 9), Vector2i(20, 4), Vector2i(21, 10)]:
+		ok(dist[c.y * W + c.x] >= 0, "abismo: se llega andando a %s" % c)
+	ok(not DungeonGen.walk(G[15 * W + 19]) and not DungeonGen.walk(G[15 * W + 22]), "abismo: los pretiles no se pisan")
+	ok(G[15 * W + 23] == DungeonGen.ABISMO and G[15 * W + 18] == DungeonGen.ABISMO, "abismo: vacío a los dos lados del puente")
+	ok(G[24 * W + 24] == DungeonGen.ABISMO and DungeonGen.walk(G[24 * W + 23]), "abismo: el rellano tiene un borde sin pretil")
+	main.modo_escena = "geometria"
+	main.menu.piso_tema.emit(10)
+	await process_frame
+	await process_frame
+	var nb := 0
+	for c in main.mazmorra.adornos.get_children():
+		if c.has_meta("bloque") and not c.is_queued_for_deletion():
+			nb += 1
+	ok(main.prueba == 10 and nb > 60, "abismo: entra con los bloques (%d)" % nb)
+	ok(not main.camara.fija and main.camara.projection == Camera3D.PROJECTION_ORTHOGONAL, "abismo: cámara del juego")
+	ok(main.hud.visible, "abismo: sala especial con interfaz")
+	ok(main.sim.L.get("plataformas", false) and int(main.sim.p.x / DungeonGen.TS) == 20 and int(main.sim.p.y / DungeonGen.TS) == 15, "abismo: el héroe empieza en el puente (%d, %d)" % [main.sim.p.x, main.sim.p.y])
 	main.modo_escena = "final"
 	main._entrar(DungeonGen.gen_level("otro", 1))
 	await process_frame

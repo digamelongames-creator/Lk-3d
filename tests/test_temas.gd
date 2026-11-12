@@ -108,7 +108,7 @@ func _init() -> void:
 	var L3 := PisoPrueba.generar(3)
 	ok(L3.get("plataformas", false) and TemaMazmorra.de(L3) == "galerias", "piso 3 de pasarelas con el tema")
 	for w in [3, 4, 5]:
-		ok(TemaMazmorra.de(DungeonGen.gen_level("tema-%d" % w, w)) == "", "el piso %d de las partidas aún no lleva tema" % w)
+		ok(TemaMazmorra.de(DungeonGen.gen_level("tema-%d" % w, w)) == "galerias", "el piso %d de las partidas lleva Galerías hundidas" % w)
 	var lib3 := KitMazmorra.mesh_library("galerias")
 	var cara3: Mesh = lib3.get_item_mesh(lib3.find_item_by_name("cara"))
 	var sillar := false

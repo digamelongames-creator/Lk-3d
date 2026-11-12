@@ -1,6 +1,6 @@
 # Estado · Last Knight 3D
 
-Al día: 12 nov 2026. **Este archivo es la fuente de verdad del proyecto**: cómo se trabaja, qué falta, qué se ha decidido y qué está hecho. Las fichas del Proyecto «isometrico» y los documentos antiguos son historia; si no coinciden con esto, manda esto.
+Al día: 12 nov 2026 (tarde). **Este archivo es la fuente de verdad del proyecto**: cómo se trabaja, qué falta, qué se ha decidido y qué está hecho. Las fichas del Proyecto «isometrico» y los documentos antiguos son historia; si no coinciden con esto, manda esto.
 
 ## Cómo trabajamos (léelo primero, todos los chats)
 
@@ -26,7 +26,8 @@ Al día: 12 nov 2026. **Este archivo es la fuente de verdad del proyecto**: cóm
 Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guardado).
 
 0. **Escenas de calidad** (decidido por Diego el 11 nov): la herramienta ya está (ver «Hecho»). Siguiente: pedir a Pixmith otra vez las 10 imágenes de `C:\Carpeta Juego\Temas` con la cámara del juego (las salas que van dentro de un piso se diseñan con ella) en `C:\Carpeta Juego\Escenas\<nombre>\`; con las nuevas imágenes, Diego elige la primera prueba de la skill. Después: Prueba puente jugable (cámara de la imagen que sigue al héroe y enemigos), y más tarde salas especiales y de jefe dentro de los pisos (Diego acepta tocar el generador para eso).
-0b. **Temas de la mazmorra**: Galerías hundidas ya tiene su «Piso de prueba 3» (12 nov); falta que Diego lo pruebe y decida si los pisos 3–5 de las partidas lo llevan (`"pisos": [3, 4, 5]` en `TemaMazmorra.TEMAS.galerias`), y sus piezas de Tripo (estatua encapuchada con cuenco, hornacina, cristales azules, pebetero, pretil, arco del puente). Después, los otros temas (Criptas 1–2, Osario 6–7, Sarcófago del rey caído 10).
+0a. **Sala especial «Abismo de cristal»** (`assets/escenas/abismo_cristal.json`, «Prueba 10»): bloques hechos (12 nov). Siguiente, cuando Diego dé por buenos los bloques: dibujos de Pixmith de las piezas (con detalle y calidad) en `C:\Carpeta Juego\Escenas\abismo_cristal\piezas_tripo\` → Diego las pasa por Tripo → materiales → luz y ambiente (fuego azul, cristales y cuencos que brillan, cascadas sencillas). Después: que el generador la ponga sola, una por piso en los pisos 3–5, en un sitio adecuado (Diego: «lo veremos más adelante»).
+0b. **Temas de la mazmorra**: Galerías hundidas ya va en los pisos 3–5 (12 nov). Faltan sus piezas de Tripo para los pisos normales y, después, los otros temas (Criptas 1–2, Osario 6–7, Sarcófago del rey caído 10).
 1. **Preparar la simulación para el cooperativo** (rama aparte): órdenes del jugador, varios héroes y objetos y oro aprobados por la simulación (las 5 reglas de `PRODUCTO_MINIMO.md`). Va antes de las tiendas.
 2. **Inca, tanda 2:** herrero, alquimista y runista (género fijo, tenderos provisionales con Prueba2 teñido) y almacén compartido entre personajes.
 3. **Guardado con ranuras y número de versión** («Continuar partida»). Cerrar el juego o volver al menú en la mazmorra cuenta como morir (confirmado por Diego).
@@ -38,8 +39,8 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 
 ## Pendiente de Diego
 
-- Probar el **Piso de prueba 3 · Galerías hundidas** («Salas de prueba» o `--prueba=3`) y decir si los pisos 3–5 de las partidas pasan a llevarlo.
-- La escena hecha a mano del **abismo de cristal** (imagen del caballero en el puente azul): las preguntas de `docs/ESCENAS.md` quedaron sin contestar; por ahora solo se hizo el tema (paso 3).
+- Probar los pisos 3–5 con Galerías hundidas y el «Piso de prueba 3».
+- Revisar los bloques de la **Prueba 10 · Abismo de cristal** (andar por el puente, el rellano, la terraza y el pasillo tras el arco; caer por el borde del rellano) y dar el visto bueno para pedir los dibujos de las piezas.
 - Probar: los 7 legendarios (sala de guardia del piso de prueba), la sala «Mímico», el teletransporte junto a una sala secreta, el tajo del verdugo dado la vuelta, la sala del aprendizaje y el contorno fino con la barra de lo señalado.
 - El registro del cierre de Godot al importar (a veces se cierra y a veces no): abrir siempre con `Godot_v4.7.2-stable_win64_console.exe --editor --path . *> registro.txt` y pasarlo cuando pase, o la carpeta `%APPDATA%\Godot\app_userdata\Last Knight 3D\logs`.
 - Las 5 piezas del HUD que faltan: líquido azul, marco de la barra de habilidades, marco redondo del minimapa, hueco mágico y hueco legendario (turquesa).
@@ -70,6 +71,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 
 ## Decidido (y que se mantiene)
 
+- Abismo de cristal (12 nov): sala especial, tema Galerías hundidas, cámara del juego, 1 por piso en los pisos 3–5 (cuando el generador sepa ponerla), sin enemigos por ahora pero funcional (se cruza y el arco del fondo es un paso), se cae por los bordes sin pretil. Galerías hundidas en los pisos 3–5 de las partidas. Las imágenes de referencia, con encargo detallado y sin capturas del juego como referencia.
 - Prueba puente e Inframundo (piso 7) dados por buenos por Diego el 11 nov («este es el juego que pensé»); los detalles de la prueba (cascadas, cadenas, jaulas) no se pulen: era una prueba.
 - Salas en tres clases: normales (modulares, decoración automática), especiales y de jefe (hechas a mano con `docs/ESCENAS.md`). Las que van dentro de un piso se diseñan con la cámara del juego; la cámara propia, solo para vitrinas y cinemáticas (11 nov).
 - Carpetas de cada escena: `C:\Carpeta Juego\Escenas\<nombre>\` (referencia, puntos, piezas_tripo, piezas_tripo_hechas, capturas) (11 nov).
@@ -91,6 +93,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Salas secretas alejadas del resto (se tapan y el teletransporte no entra).
 
 ## Hecho (lo más nuevo arriba)
+- **Abismo de cristal, bloques (12 nov, pedido por Diego):** imagen de referencia nueva de Pixmith con la cámara del juego (`C:\Carpeta Juego\Escenas\abismo_cristal\referencia-1.png`, la mejor de 2), cámara calculada (centro y zoom 17,4; error ≤ 61 px en las esquinas) y la sala en bloques (`--prueba=10 --modo=geometria`): puente de 4 m entre pretiles con viga y 3 pilas, rellano al sur con un borde sin pretil, terraza y pasillo tras el arco al norte, acantilado con hornacinas, estatuas y cascadas al oeste, rocas con cristales al este. `rejilla.abismo` en `Escena3D` (se cae; `Abismo3D` con `abismo_a_mano` solo pone la niebla), cascadas de agua en las escenas, `--sin-interfaz` para las capturas. Galerías hundidas pasa a los pisos 3–5. Prueba: `tests/test_escenas.gd`.
 - **Héroes otra vez con run (12 nov, Diego).** Al moverse, todos los héroes usan run, no el Walk; «andar» sigue en `heroe_anims.glb` y `Actores3D.ritmo_andar` sin usar, por si se quiere volver.
 - **Andar con Walk y skin de la Maga (12 nov, pedido por Diego).** Todos los héroes andan con «andar» (`Sword And Shield Walk.fbx` de `C:\Carpeta Juego\animaciones`, en `heroe_anims.glb`; `animaciones_glb.py` guarda su `avance`, 1,5 m/s) en lugar de run, con los pasos al ritmo de lo que avanza el héroe (`Actores3D.ritmo_andar`; al 100 % ≈ ×3, decidido por Diego); la voltereta sigue con run. El mago lleva la **Maga** (`C:\Carpeta Juego\Personajes\Maga.fbx` → `tools/blender/heroe_skin_glb.py` → `assets/monstruos/maga.glb`, `Modelo3D.HEROE_CLASE`), de 1,8 m, con quieto, dolor, muerte y run del esqueleto pasados a sus huesos (`Modelo3D._pasar`: giro de la cadera según el marco del esqueleto, su altura escalada, sin las demás posiciones) y los ataques con los Cast (`attack` = `lanzar_bola`, decidido por Diego). Prueba: `tests/test_heroes_andar.gd`.
 - **Tema Galerías hundidas y «Piso de prueba 3» (12 nov, pedido por Diego a partir de la imagen del abismo de cristal):** texturas de Pixmith (`C:\Carpeta Juego\Temas\galerias`: suelo de losas mojadas con musgo y sillería con sus mapas de alturas, roca del acantilado y agua) pasadas por `texturas.py` a `assets/texturas/galerias`. `TemaMazmorra` gana `abismo` («lava» o «agua»), `muro` (sillería propia para los muros; si no, la roca) y `material_agua`/`material_liquido`. `Abismo3D` con agua: roca del tema, niebla azul espesa, cascadas de agua que se pierden en ella, luces azules bajo los bordes y rocío que sube; fuego azul en antorchas y braseros. Solo el piso de prueba (`PisoPrueba.DE_TEMA[3]`, `--prueba=3`): los pisos 3–5 de las partidas no cambian. Prueba: `tests/test_temas.gd`.

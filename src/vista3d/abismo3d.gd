@@ -18,11 +18,23 @@ const FILAS := [0.0, .35, .9, 1.6, 2.5, 3.6, 5.0, 6.8, 9.0, 11.5, HONDO]
 const COLUMNAS := 6      # vértices por casilla a lo ancho (cada 0,33 m)
 const RELIEVE := .7      # m que sale o entra la roca
 
-static func crear(G: PackedByteArray, padre: Node3D, tema: String = "") -> void:
+## a_mano: escenas hechas a mano (Escena3D): la roca, las cascadas y las luces las pone la escena;
+## aquí solo la niebla (o el mar de lava) y el fondo
+static func crear(G: PackedByteArray, padre: Node3D, tema: String = "", a_mano: bool = false) -> void:
 	var tipo := TemaMazmorra.abismo(tema) if tema != "" else ""   # "lava", "agua" o "" (niebla gris)
 	var lava := tipo == "lava"
 	var con_tema := tipo != ""
 	var lava_y: float = TemaMazmorra.dato(tema, "lava_y", -5.5) if lava else 0.0
+	if a_mano:
+		var ancho := DungeonGen.GW * KitMazmorra.CELDA
+		var largo := DungeonGen.GH * KitMazmorra.CELDA
+		if lava:
+			_lava(padre, ancho, largo, lava_y, tema)
+		elif con_tema:
+			_niebla(padre, ancho, largo, TemaMazmorra.dato(tema, "niebla_abismo", Color(.3, .6, .7)), .16, Color(.02, .07, .1))
+		else:
+			_niebla(padre, ancho, largo)
+		return
 	# las cascadas caen hasta la lava o, con agua, hasta perderse en la niebla
 	var caida: float = (-lava_y + .5) if lava else HONDO
 	var cae := SurfaceTool.new()

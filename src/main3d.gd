@@ -62,6 +62,7 @@ var _junto := ""   # pruebas: --junto=demonCaptain pone al héroe al lado de ese
 var _shot_path := ""
 var _shot_frames := 0
 var modo_escena := "final"   # escenas hechas a mano: geometria | materiales | final (--modo=)
+var _sin_interfaz := false   # escenas: --sin-interfaz quita el HUD para comparar la captura con la imagen
 var _frame := 0
 var _attack_edge := false
 var _dash_edge := false
@@ -132,6 +133,8 @@ func _ready() -> void:
 		elif a.begins_with("--inclinacion=") or a.begins_with("--giro=") or a.begins_with("--zoom=") or a == "--perspectiva": opciones_camara.append(a)
 		elif a.begins_with("--modo="):
 			modo_escena = a.get_slice("=", 1)
+		elif a == "--sin-interfaz":
+			_sin_interfaz = true
 		elif a.begins_with("--shot="):
 			var p := a.get_slice("=", 1).split(",")
 			_shot_path = p[0]
@@ -340,7 +343,7 @@ func _entrar_prueba(n: int) -> void:
 		if String(cam.get("tipo", "juego")) == "propia":
 			camara.fijar(Escena3D._v(cam.desde), Escena3D._v(cam.hacia), float(cam.get("fov", 45)))
 		_camara(1.0)
-		if String(Escena3D.datos(esc).get("clase", "")) == "vitrina":
+		if String(Escena3D.datos(esc).get("clase", "")) == "vitrina" or _sin_interfaz:
 			hud.visible = false   # como en la imagen: sin interfaz
 		return
 	var salas: Array = sim.L.get("salas_prueba", [])

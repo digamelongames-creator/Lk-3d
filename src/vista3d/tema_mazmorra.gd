@@ -3,7 +3,7 @@ class_name TemaMazmorra
 ## Las texturas son de Pixmith (ChatGPT desde el PC de Diego) pasadas por tools/texturas.py
 ## (color, relieve, rugosidad y lo que brilla) en assets/texturas/<tema>/.
 ##
-## Inframundo: pisos 8–9 (pasarelas sobre lava) y el «Piso de prueba 7». Galerías hundidas: solo el «Piso de prueba 3»
+## Inframundo: pisos 8–9 (pasarelas sobre lava) y el «Piso de prueba 7». Galerías hundidas: pisos 3–5 y el «Piso de prueba 3»
 ## (pasarelas sobre un abismo de niebla azul con cascadas de agua). El piso de prueba lo pone en L.tema3d.
 ## Qué cambia: el suelo pasa a ser una losa lisa con la textura (la textura ya trae las piedras),
 ## los muros llevan la roca con vetas que brillan, el agua de los canales es lava, el abismo
@@ -33,10 +33,10 @@ const TEMAS := {
 		},
 	},
 	## Galerías hundidas (pisos 3–5): puentes de sillería sobre un abismo de niebla azul con cascadas de agua,
-	## piedra mojada con musgo y fuego azul. De momento solo el «Piso de prueba 3» (pisos vacío).
+	## piedra mojada con musgo y fuego azul. Pisos 3–5 de las partidas y el «Piso de prueba 3».
 	"galerias": {
 		"nombre": "Galerías hundidas",
-		"pisos": [],
+		"pisos": [3, 4, 5],   # decidido por Diego el 12 nov
 		"abismo": "agua",
 		"suelo": "galerias/suelo", "muro": "galerias/muro", "roca": "galerias/roca", "agua": "galerias/agua",
 		"suelo_m": 4.0,

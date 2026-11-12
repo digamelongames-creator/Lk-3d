@@ -139,7 +139,7 @@ func construir(L: Dictionary) -> void:
 				caras[c[2]].set_cell_item(cel, KitMazmorra.id("cara"), _ori(caras[c[2]], GIROS[c[2]]))
 		Inframundo3D.amueblar(L, self)
 	if L.get("plataformas", false):
-		Abismo3D.crear(G, adornos, tema)   # paredes de roca bajo los bordes y niebla (o lava) en el vacío
+		Abismo3D.crear(G, adornos, tema, L.get("abismo_a_mano", false))   # paredes de roca bajo los bordes y niebla (o lava) en el vacío
 	if tema != "" and TemaMazmorra.abismo(tema) != "":
 		_brasas = Abismo3D.brasas(adornos, tema)   # brasas (lava) o rocío (agua) alrededor de la cámara
 
