@@ -39,6 +39,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 
 ## Pendiente de Diego
 
+- Probar el prototipo **Coliseo Mecha** (`C:\Carpeta Juego\Lk-3d\prototipos\coliseo-mecha\Abrir coliseo.bat`, después de «Abrir juego.bat») y decir si es divertido y qué cambiar.
 - Probar los pisos 3–5 con Galerías hundidas y el «Piso de prueba 3».
 - Probar la **Prueba 10 · Abismo de cristal** acabada: andar por el puente, el rellano, la terraza y el pasillo tras el arco; caer por el borde del rellano; F7 para ver los fotogramas por segundo.
 - Probar: los 7 legendarios (sala de guardia del piso de prueba), la sala «Mímico», el teletransporte junto a una sala secreta, el tajo del verdugo dado la vuelta, la sala del aprendizaje y el contorno fino con la barra de lo señalado.
@@ -94,6 +95,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Salas secretas alejadas del resto (se tapan y el teletransporte no entra).
 
 ## Hecho (lo más nuevo arriba)
+- **Prototipo aparte «Coliseo Mecha» (12 nov, pedido por Diego):** `prototipos/coliseo-mecha/` es otro proyecto de Godot (el de Last Knight lo ignora). Tu mecha contra otro con IA en la arena del Coliseo, todo con formas básicas: cámara al hombro, cañón que se recalienta, puñetazo con estocada y parada de golpe, impulso lateral, propulsores, público que salta, columnas de cobertura; 3 rondas de 99 s. Se abre con `Abrir coliseo.bat` (dentro de la carpeta). Prueba: `godot --headless --path prototipos/coliseo-mecha -- --prueba` (dos IA; rondas de 24–32 s).
 - **Copia del juego en el PC de Diego (12 nov):** `C:\Carpeta Juego\Abrir juego.bat` y `Abrir en el editor.bat` (copias en `tools/windows/`): la primera vez instala Git si falta y baja el repositorio a `C:\Carpeta Juego\Lk-3d`; cada vez lo pone al día con `main` (lo que cambie el editor se aparta con `git stash`), busca Godot 4 una vez (`godot_ruta.txt`), importa lo nuevo y abre el juego. Se acabaron los zips.
 - **Abismo de cristal terminado (12 nov):** los 10 modelos de Tripo convertidos (`props_glb.py`, paquete `abismo_cristal`; brillo cian en los cristales con `brillo_color`) y en el catálogo; la escena con piezas en lugar de bloques, roca y sillería del tema en cajas (`roca_tema`, `muro_tema`), agua que brilla en los cuencos (`disco`), fuego azul (`llama` del tema), 11 luces + la luna con sombra, niebla más honda en las escenas (`NIEBLA_Y_ESCENA`) para ver los arcos bajar. 283 000 triángulos. Capturas: materiales 47/100, final 47/100.
 - **Carreras nuevas y panel de animaciones (12 nov, Diego).** En `heroe_anims.glb`: `correr_medio` (Medium Run), `correr_rapido` (Running), `trotar` (Jogging), `correr_adelante` (Standing Run Forward) y `correr_herido_atras` (Injured Run Backwards), todas en bucle y sin usar en partida. Sala «Animaciones» en el Piso de prueba 1 (Salas de prueba) y **F5** en cualquier piso de prueba: elegir skin (esqueleto o Maga) y pasar por todas sus animaciones (`PanelAnimaciones`, `Actores3D.skin_forzada/anim_forzada`).
