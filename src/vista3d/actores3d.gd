@@ -13,6 +13,8 @@ var sim: Sim
 const VEL_TAJO := 2.5   # ritmo del clip de ataque del héroe (recortado, ver _animar_heroe)
 var heroe_id := "esqueleto"   # modelo del héroe (Modelo3D.FICHAS); si no existe, cápsula
 var _heroe_de := ""   # el modelo que lleva ahora (según la clase: Modelo3D.HEROE_CLASE)
+var skin_forzada := ""   # panel de animaciones (F5 en el piso de prueba): modelo elegido a mano ("" = el de la clase)
+var anim_forzada := ""   # panel de animaciones: animación que se repite sin parar ("" = la normal)
 ## los enemigos sin modelo propio (caballeros, renegados…) usan este, provisional
 const MODELO_HUMANOS := "prueba2"
 ## los esqueletos enemigos, más oscuros y rojizos que el héroe
@@ -70,7 +72,7 @@ func nuevo_piso() -> void:
 	_oro.clear()
 	_cofres.clear()
 	_puertas.clear()
-	if heroe != null and sim.p != null and _heroe_de != Modelo3D.de_clase(sim.p.cls, heroe_id):
+	if heroe != null and sim.p != null and _heroe_de != _skin_quiere():
 		heroe.queue_free()   # otra clase con otro modelo (la Maga para el mago)
 		heroe = null
 	if heroe == null:
@@ -607,9 +609,29 @@ static func caida(t: float, dir_px: Vector2, face: float) -> Vector3:
 static func _giro(face: float) -> float:
 	return atan2(-cos(face), -sin(face))
 
+func _skin_quiere() -> String:
+	if skin_forzada != "" and Modelo3D.hay(skin_forzada):
+		return skin_forzada
+	return Modelo3D.de_clase(sim.p.cls, heroe_id) if sim != null and sim.p != null else heroe_id
+
+## panel de animaciones: cambia el modelo del héroe (lo vuelve a montar y a vestir)
+func cambiar_skin(id: String) -> void:
+	skin_forzada = id
+	if heroe != null:
+		var donde := heroe.transform
+		heroe.queue_free()
+		heroe = _nuevo_heroe()
+		heroe.transform = donde
+		add_child(heroe)
+		_firma_equipo = ""
+
 func _animar_heroe(p: Ent.Hero) -> void:
 	var corre := p.mx != 0 or p.my != 0
 	var m := _modelo_heroe
+	if m != null and anim_forzada != "" and not p.dead:
+		if m.actual != anim_forzada or not m.anim.is_playing():
+			m.reproducir(anim_forzada, 1.0, .1, true)   # las que no se repiten vuelven a empezar
+		return
 	if m != null:
 		if p.dead:
 			if m.actual != "death":
@@ -784,7 +806,7 @@ static func Items_col(it) -> Color:
 func _nuevo_heroe() -> Node3D:
 	var n := Node3D.new()
 	n.name = "Heroe"
-	_heroe_de = Modelo3D.de_clase(sim.p.cls, heroe_id) if sim != null and sim.p != null else heroe_id
+	_heroe_de = _skin_quiere()
 	_modelo_heroe = Modelo3D.crear(_heroe_de)
 	if _modelo_heroe != null:
 		_modelo_heroe.anadir_animaciones()

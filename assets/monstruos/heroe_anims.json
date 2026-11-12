@@ -19,6 +19,36 @@
   "duracion": 1.033,
   "golpe": 0.032
  },
+ "correr_herido_atras": {
+  "archivo": "Injured Run Backwards.fbx",
+  "duracion": 0.6,
+  "golpe": 0.167,
+  "avance": 1.176
+ },
+ "trotar": {
+  "archivo": "Jogging.fbx",
+  "duracion": 2.567,
+  "golpe": 0.636,
+  "avance": 1.306
+ },
+ "correr_medio": {
+  "archivo": "Medium Run.fbx",
+  "duracion": 0.567,
+  "golpe": 0.294,
+  "avance": 3.086
+ },
+ "correr_rapido": {
+  "archivo": "Running.fbx",
+  "duracion": 0.833,
+  "golpe": 0.4,
+  "avance": 1.699
+ },
+ "correr_adelante": {
+  "archivo": "Standing Run Forward.fbx",
+  "duracion": 0.733,
+  "golpe": 1.0,
+  "avance": 2.594
+ },
  "ataque_salto": {
   "archivo": "Sword And Shield  jump Attack (1).fbx",
   "duracion": 2.033,

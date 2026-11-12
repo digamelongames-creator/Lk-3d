@@ -76,5 +76,16 @@ func _correr() -> void:
 			vistos[act._modelo_heroe.actual] = true
 	print("animaciones vistas: ", vistos.keys())
 	ok(vistos.has("run") and not vistos.has("andar"), "el héroe no corre con run")
+	# panel F5: cambiar de skin y forzar cada carrera nueva
+	for id in ["esqueleto", "maga"]:
+		act.cambiar_skin(id)
+		ok(act._heroe_de == id, "no cambia a la skin " + id)
+		for n in ["correr_medio", "correr_rapido", "trotar", "correr_adelante", "correr_herido_atras"]:
+			act.anim_forzada = n
+			sim.step(1.0 / 30, Sim.Inp.new())
+			act.actualizar(1.0 / 30)
+			ok(act._modelo_heroe.actual == n, "%s no reproduce %s" % [id, n])
+	act.anim_forzada = ""
+	ok(PisoPrueba.salas_menu().any(func(x): return x[1] == "animaciones"), "falta la sala Animaciones")
 	print("test_heroes_andar: ", "todo bien" if fallos == 0 else "%d fallos" % fallos)
 	quit(1 if fallos else 0)

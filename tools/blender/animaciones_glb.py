@@ -30,9 +30,14 @@ NOMBRES = [
     ("sword and shield slashcombo", "combo_tajos"),
     ("sword and shield ihurt", "dolor_escudo"),
     ("sword and shield hurt", "dolor_escudo"),
-    ("sword and shield walk", "andar"),     # andar de todos los héroes (en lugar de run)
+    ("sword and shield walk", "andar"),     # sin usar: los héroes corren con run
+    ("medium run", "correr_medio"),         # carreras para probar (panel F5 del piso de prueba)
+    ("running", "correr_rapido"),
+    ("jogging", "trotar"),
+    ("standing run forward", "correr_adelante"),
+    ("injured run backwards", "correr_herido_atras"),
 ]
-BUCLES = {"andar"}   # las que se repiten: además de duración y golpe, guardan «avance» (m/s del clip)
+BUCLES = {"andar", "correr_medio", "correr_rapido", "trotar", "correr_adelante", "correr_herido_atras"}   # las que se repiten: además de duración y golpe, guardan «avance» (m/s del clip)
 
 
 def nombre_de(fich):

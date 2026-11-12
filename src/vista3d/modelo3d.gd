@@ -24,7 +24,7 @@ const FICHAS := {
 }
 ## el modelo del héroe según la clase (si su .glb existe); las demás clases, el esqueleto
 const HEROE_CLASE := {"mage": "maga"}
-const BUCLE := ["idle", "walk", "run", "andar"]
+const BUCLE := ["idle", "walk", "run", "andar", "correr_medio", "correr_rapido", "trotar", "correr_adelante", "correr_herido_atras"]
 const ALTO_ORIGINAL := 1.81   # lo que miden los modelos al salir de Mixamo
 
 var anim: AnimationPlayer

@@ -35,7 +35,7 @@ const ESTILOS := {
 const ARRIBA := [["Poly Haven", "", "muestra_polyhaven"], ["Modular Dungeon Kit", "dungeon_kit", "muestra_dungeon_kit"],
 	["Low Poly Dungeon", "low_poly", "muestra_low_poly"], ["Gothic Interior", "gotico", "muestra_gotico"], ["Ancient Ruins", "", "muestra_ruinas"]]
 const ABAJO := [["Almacén", "", "almacen"], ["Guardia", "", "guardia"], ["Tesoro", "", "tesoro"], ["Cueva", "", "cueva"],
-	["Aprendizaje", "", "arena"], ["Efectos", "", "efectos"], ["Mímico", "", "mimico"]]
+	["Aprendizaje", "", "arena"], ["Efectos", "", "efectos"], ["Mímico", "", "mimico"], ["Animaciones", "", "animaciones"]]
 const LADO := 9          # casillas de cada sala
 const PASO_SALAS := 11   # sala + 2 de roca
 const Y_ARRIBA := 3

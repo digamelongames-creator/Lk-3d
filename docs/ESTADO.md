@@ -45,6 +45,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Probar: los 7 legendarios (sala de guardia del piso de prueba), la sala «Mímico», el teletransporte junto a una sala secreta, el tajo del verdugo dado la vuelta, la sala del aprendizaje y el contorno fino con la barra de lo señalado.
 - El registro del cierre de Godot al importar (a veces se cierra y a veces no): abrir siempre con `Godot_v4.7.2-stable_win64_console.exe --editor --path . *> registro.txt` y pasarlo cuando pase, o la carpeta `%APPDATA%\Godot\app_userdata\Last Knight 3D\logs`.
 - Las 5 piezas del HUD que faltan: líquido azul, marco de la barra de habilidades, marco redondo del minimapa, hueco mágico y hueco legendario (turquesa).
+- Elegir con el panel F5 qué carrera usan los héroes (ahora run).
 - Probar la **Maga** (clase Mago) (corre con run, ataques con los Cast). La armadura provisional y las armas están colocadas para el esqueleto: en la Maga pueden quedar desplazadas.
 - Los modelos de `input/raw` (elf, violeta, cuernitos, medusa, vaquita) riggeados en Mixamo: cara propia para los enemigos humanos y los tenderos.
 - Colocar con el panel el escudo y la espada izquierda del esqueleto.
@@ -94,6 +95,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Salas secretas alejadas del resto (se tapan y el teletransporte no entra).
 
 ## Hecho (lo más nuevo arriba)
+- **Carreras nuevas y panel de animaciones (12 nov, Diego).** En `heroe_anims.glb`: `correr_medio` (Medium Run), `correr_rapido` (Running), `trotar` (Jogging), `correr_adelante` (Standing Run Forward) y `correr_herido_atras` (Injured Run Backwards), todas en bucle y sin usar en partida. Sala «Animaciones» en el Piso de prueba 1 (Salas de prueba) y **F5** en cualquier piso de prueba: elegir skin (esqueleto o Maga) y pasar por todas sus animaciones (`PanelAnimaciones`, `Actores3D.skin_forzada/anim_forzada`).
 - **Cómo se hicieron Galerías hundidas y el Abismo de cristal (12 nov, pedido por Diego):** `docs/PROCESO_GALERIAS_ABISMO.html`, los 34 pasos desplegables con el código de los dos commits (7327311 y 152d17a), los encargos de Pixmith y las capturas.
 - **Abismo de cristal, bloques (12 nov, pedido por Diego):** imagen de referencia nueva de Pixmith con la cámara del juego (`C:\Carpeta Juego\Escenas\abismo_cristal\referencia-1.png`, la mejor de 2), cámara calculada (centro y zoom 17,4; error ≤ 61 px en las esquinas) y la sala en bloques (`--prueba=10 --modo=geometria`): puente de 4 m entre pretiles con viga y 3 pilas, rellano al sur con un borde sin pretil, terraza y pasillo tras el arco al norte, acantilado con hornacinas, estatuas y cascadas al oeste, rocas con cristales al este. `rejilla.abismo` en `Escena3D` (se cae; `Abismo3D` con `abismo_a_mano` solo pone la niebla), cascadas de agua en las escenas, `--sin-interfaz` para las capturas. Galerías hundidas pasa a los pisos 3–5. Prueba: `tests/test_escenas.gd`.
 - **Héroes otra vez con run (12 nov, Diego).** Al moverse, todos los héroes usan run, no el Walk; «andar» sigue en `heroe_anims.glb` y `Actores3D.ritmo_andar` sin usar, por si se quiere volver.

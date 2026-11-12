@@ -19,6 +19,7 @@ var mazmorra: MazmorraGridMap
 var actores: Actores3D
 var hechizos: Hechizos3D   # efectos de las magias con hojas de fotogramas (assets/vfx, catálogo)
 var panel_efectos: PanelEfectos   # F4 en el piso de prueba: ajustar los efectos
+var panel_anims: PanelAnimaciones   # F5 en el piso de prueba: skin del héroe y sus animaciones
 var camara: CamaraIso
 var hud: Hud
 var inventory: Inventory
@@ -230,6 +231,10 @@ func _ready() -> void:
 	panel_efectos.hechizos = hechizos
 	panel_efectos.visible = _panel_fx
 	ui.add_child(panel_efectos)
+	panel_anims = PanelAnimaciones.new()
+	panel_anims.actores = actores
+	panel_anims.visible = false
+	ui.add_child(panel_anims)
 	menu = MenuInicio.new()
 	menu.visible = false
 	menu.empezar.connect(func(c: String): _empezar(c, 0))
@@ -667,6 +672,9 @@ func _a_mazmorra(n: int) -> void:
 ## la pantalla de inicio: de fondo, un piso 1 fijo sin enemigos con el héroe quieto y la cámara girando
 func _ir_menu() -> void:
 	panel_efectos.visible = false
+	panel_anims.visible = false
+	actores.anim_forzada = ""
+	actores.skin_forzada = ""
 	sim.apr.cerrar_todos(sim)
 	sim.apr.guardar()
 	_muerte.visible = false
@@ -785,6 +793,12 @@ func _unhandled_input(ev: InputEvent) -> void:
 		panel_efectos.visible = not panel_efectos.visible
 		if panel_efectos.visible:
 			panel_efectos.refrescar()
+		get_viewport().set_input_as_handled()
+		return
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F5 and state == "play" and prueba > 0:
+		panel_anims.visible = not panel_anims.visible
+		if panel_anims.visible:
+			panel_anims.refrescar()
 		get_viewport().set_input_as_handled()
 		return
 	if ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F6 and state == "play" and prueba > 0:
