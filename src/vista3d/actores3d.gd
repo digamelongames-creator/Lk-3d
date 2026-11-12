@@ -12,6 +12,7 @@ extends Node3D
 var sim: Sim
 const VEL_TAJO := 2.5   # ritmo del clip de ataque del héroe (recortado, ver _animar_heroe)
 var heroe_id := "esqueleto"   # modelo del héroe (Modelo3D.FICHAS); si no existe, cápsula
+var _heroe_de := ""   # el modelo que lleva ahora (según la clase: Modelo3D.HEROE_CLASE)
 ## los enemigos sin modelo propio (caballeros, renegados…) usan este, provisional
 const MODELO_HUMANOS := "prueba2"
 ## los esqueletos enemigos, más oscuros y rojizos que el héroe
@@ -69,6 +70,9 @@ func nuevo_piso() -> void:
 	_oro.clear()
 	_cofres.clear()
 	_puertas.clear()
+	if heroe != null and sim.p != null and _heroe_de != Modelo3D.de_clase(sim.p.cls, heroe_id):
+		heroe.queue_free()   # otra clase con otro modelo (la Maga para el mago)
+		heroe = null
 	if heroe == null:
 		heroe = _nuevo_heroe()
 		add_child(heroe)
@@ -634,8 +638,11 @@ func _animar_heroe(p: Ent.Hero) -> void:
 			m.reproducir(dolor, 1.6 if dolor == "hurt" else 1.3, .05, true)
 		elif m.actual in ["hurt", "dolor_escudo"] and not m.terminada():
 			pass
-		elif p.roll_t > 0 or corre:
-			m.reproducir("run", 1.3 if p.roll_t > 0 else maxf(.3, sim.vel_mov))   # los pasos al ritmo de «Velocidad al andar»
+		elif p.roll_t > 0 or (corre and not m.anim.has_animation("andar")):
+			m.reproducir("run", 1.3 if p.roll_t > 0 else maxf(.3, sim.vel_mov))   # la voltereta sigue con run (Diego, 12 nov)
+		elif corre:
+			# andar de todos los héroes (Walk de Diego, 12 nov): los pasos al ritmo de lo que avanza el héroe
+			m.reproducir("andar", ritmo_andar(p.st.spd * sim.vel_mov))
 		else:
 			m.reproducir("idle")
 			_combo_antes = -2
@@ -646,6 +653,11 @@ func _animar_heroe(p: Ent.Hero) -> void:
 	_mano_der.rotation.x = lerpf(_mano_der.rotation.x, -1.6 if ataca else -.2, .4)
 	_mano_izq.position.z = -.25 if p.blocking else -.05
 	heroe.scale = Vector3.ONE * (.9 if p.roll_t > 0 else 1.0)
+
+## ritmo del clip «andar» para que los pies no patinen: lo que avanza el héroe (px/s) entre lo que avanza el clip
+static func ritmo_andar(px_s: float) -> float:
+	var v: float = float(Modelo3D.extra().datos.get("andar", {}).get("avance", 1.5))
+	return clampf(px_s / 16.0 / maxf(.1, v), .25, 4.0)   # 32 px = 2 m
 
 # ---------- equipo ----------
 ## cuelga de los enganches lo que lleva puesto el héroe; solo rehace si ha cambiado algo
@@ -774,7 +786,8 @@ static func Items_col(it) -> Color:
 func _nuevo_heroe() -> Node3D:
 	var n := Node3D.new()
 	n.name = "Heroe"
-	_modelo_heroe = Modelo3D.crear(heroe_id)
+	_heroe_de = Modelo3D.de_clase(sim.p.cls, heroe_id) if sim != null and sim.p != null else heroe_id
+	_modelo_heroe = Modelo3D.crear(_heroe_de)
 	if _modelo_heroe != null:
 		_modelo_heroe.anadir_animaciones()
 	if _modelo_heroe != null:

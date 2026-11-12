@@ -13,7 +13,8 @@ func _init() -> void:
 			print("FALLO sin modelo o sin animaciones: ", id)
 			fallos += 1
 			continue
-		for a in ["idle", "walk", "run", "attack", "hurt", "death"]:
+		m.anadir_animaciones()   # la Maga saca «attack» de los Cast y anda con «andar»
+		for a in ["idle", "walk" if not "walk" in m.ficha.get("sin", []) else "andar", "run", "attack", "hurt", "death"]:
 			if not m.anim.has_animation(a):
 				print("FALLO ", id, " sin ", a)
 				fallos += 1

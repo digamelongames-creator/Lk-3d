@@ -30,7 +30,9 @@ NOMBRES = [
     ("sword and shield slashcombo", "combo_tajos"),
     ("sword and shield ihurt", "dolor_escudo"),
     ("sword and shield hurt", "dolor_escudo"),
+    ("sword and shield walk", "andar"),     # andar de todos los héroes (en lugar de run)
 ]
+BUCLES = {"andar"}   # las que se repiten: además de duración y golpe, guardan «avance» (m/s del clip)
 
 
 def nombre_de(fich):
@@ -60,6 +62,25 @@ def golpe(arm, act, f0, f1):
     return (cuando - f0) / max(1, f1 - f0)
 
 
+def avance(ruta):
+    """metros por segundo que avanza la cadera en el clip original (antes de quitarle el avance)"""
+    nuevos = importar_fbx(ruta)
+    arm = next(o for o in nuevos if o.type == "ARMATURE")
+    act = arm.animation_data.action
+    f0, f1 = act.frame_range
+    pb = arm.pose.bones["mixamorig:Hips"]
+    bpy.context.scene.frame_set(int(f0))
+    p0 = arm.matrix_world @ pb.head
+    bpy.context.scene.frame_set(int(f1))
+    p1 = arm.matrix_world @ pb.head
+    d = p1 - p0
+    v = Vector((d.x, d.y)).length / max(1e-3, (f1 - f0) / bpy.context.scene.render.fps)
+    for o in nuevos:
+        bpy.data.objects.remove(o, do_unlink=True)
+    bpy.data.actions.remove(act)
+    return round(v, 3)
+
+
 def main(carpeta, salida):
     limpiar()
     fbx = sorted(f for f in os.listdir(carpeta) if f.lower().endswith(".fbx") and nombre_de(f))
@@ -83,9 +104,12 @@ def main(carpeta, salida):
         n = nombre_de(f)
         if n in datos:
             continue
+        v = avance(os.path.join(carpeta, f)) if n in BUCLES else None
         act = accion_de(os.path.join(carpeta, f), n, None, True)
         f0, f1 = act.frame_range
         datos[n] = {"archivo": f, "duracion": round((f1 - f0) / fps, 3), "golpe": round(golpe(arm, act, f0, f1), 3)}
+        if v is not None:
+            datos[n]["avance"] = v
         tr = arm.animation_data.nla_tracks.new()
         tr.name = n
         st = tr.strips.new(n, int(f0), act)

@@ -16,13 +16,25 @@ const FICHAS := {
 	"prueba2": {"glb": "prueba2", "alto": 2.0, "golpe": .5},
 	# el héroe: pon su base.fbx de Mixamo en SPRITE_FACTORY/input/characters/heroe y conviértelo igual
 	"heroe": {"glb": "heroe", "alto": 1.8, "golpe": .5},
+	# la Maga (Tripo + Mixamo, solo malla y esqueleto: tools/blender/heroe_skin_glb.py), skin del mago.
+	# Sale de 1,0 m («alto_original»); sus animaciones, del esqueleto («anims_de»: quieto, dolor, muerte, correr),
+	# y sus ataques con los Cast de heroe_anims («attack» = lanzar_bola). Decidido por Diego el 12 nov.
+	"maga": {"glb": "maga", "alto": 1.8, "alto_original": 1.0, "golpe": .348, "anims_de": "esqueleto",
+		"sin": ["attack", "walk"], "attack": "lanzar_bola"},
 }
-const BUCLE := ["idle", "walk", "run"]
+## el modelo del héroe según la clase (si su .glb existe); las demás clases, el esqueleto
+const HEROE_CLASE := {"mage": "maga"}
+const BUCLE := ["idle", "walk", "run", "andar"]
 const ALTO_ORIGINAL := 1.81   # lo que miden los modelos al salir de Mixamo
 
 var anim: AnimationPlayer
 var actual := ""
 var ficha := {}
+var ajuste := 1.0   # para que lo colgado de los huesos (armas, armadura) salga en metros si el modelo se ha escalado aparte
+
+static func de_clase(cls: String, por_defecto: String = "esqueleto") -> String:
+	var id: String = HEROE_CLASE.get(cls, por_defecto)
+	return id if hay(id) else por_defecto
 
 static func hay(id: String) -> bool:
 	return FICHAS.has(id) and ResourceLoader.exists("res://assets/monstruos/%s.glb" % FICHAS[id].glb)
@@ -36,12 +48,15 @@ static func crear(id: String, tinte: Color = Color.WHITE) -> Modelo3D:
 	m.ficha = f
 	var esc: Node3D = (load("res://assets/monstruos/%s.glb" % f.glb) as PackedScene).instantiate()
 	esc.rotation.y = PI
-	esc.scale = Vector3.ONE * (float(f.alto) / ALTO_ORIGINAL)
+	esc.scale = Vector3.ONE * (float(f.alto) / float(f.get("alto_original", ALTO_ORIGINAL)))
+	m.ajuste = float(f.get("alto_original", ALTO_ORIGINAL)) / ALTO_ORIGINAL
 	m.add_child(esc)
 	# los agarres de repuesto (para el equipo del héroe) no se ven: solo se ve lo que lleva el personaje
 	for a in esc.find_children("agarre_*", "MeshInstance3D", true, false):
 		a.visible = false
 	m.anim = esc.find_children("*", "AnimationPlayer", true, false).front() if esc.find_children("*", "AnimationPlayer", true, false).size() else null
+	if f.has("anims_de"):
+		m._animaciones_de(esc, f)
 	if m.anim != null:
 		for n in BUCLE:
 			if m.anim.has_animation(n):
@@ -85,7 +100,7 @@ func enganche(hueso: String) -> Node3D:
 	var m := Node3D.new()
 	m.name = "metros"
 	b.add_child(m)
-	m.scale = Vector3.ONE * 100.0   # deshace el 0,01 de Mixamo (la escala de alto del modelo se mantiene)
+	m.scale = Vector3.ONE * 100.0 * ajuste   # deshace el 0,01 de Mixamo (la escala de alto del modelo se mantiene)
 	return m
 
 ## el agarre de un arma de un modelo de la fábrica (malla y posición respecto al hueso) para dárselo a otro
@@ -107,7 +122,7 @@ static var _extra := {}   # {"anims": {nombre: Animation}, "datos": {nombre: {du
 static func extra() -> Dictionary:
 	if not _extra.is_empty():
 		return _extra
-	_extra = {"anims": {}, "datos": {}}
+	_extra = {"anims": {}, "datos": {}, "reposo": {}}
 	var ruta := "res://assets/monstruos/heroe_anims.glb"
 	if not ResourceLoader.exists(ruta):
 		return _extra
@@ -117,6 +132,7 @@ static func extra() -> Dictionary:
 		var ap: AnimationPlayer = aps[0]
 		for n in ap.get_animation_list():
 			_extra.anims[n] = ap.get_animation(n).duplicate()
+	_extra.reposo = _reposo(esc)
 	esc.free()
 	var f := FileAccess.open("res://assets/monstruos/heroe_anims.json", FileAccess.READ)
 	if f != null:
@@ -133,14 +149,85 @@ func anadir_animaciones() -> void:
 	if lib == null:
 		return
 	var x := extra()
+	var ajenas := ficha.has("anims_de")   # otro esqueleto de Mixamo: hay que pasarlas a sus huesos
 	for n in x.anims:
 		if not lib.has_animation(n):
-			lib.add_animation(n, x.anims[n])
+			lib.add_animation(n, _pasar(x.anims[n], x.reposo, _reposo(self)) if ajenas else x.anims[n])
+	if ficha.has("attack") and lib.has_animation(ficha.attack) and not lib.has_animation("attack"):
+		lib.add_animation("attack", lib.get_animation(ficha.attack))
+	for n in BUCLE:
+		if lib.has_animation(n):
+			lib.get_animation(n).loop_mode = Animation.LOOP_LINEAR
+
+## marco del esqueleto de un modelo de Mixamo (giro de la raíz del .glb al Skeleton3D) y altura de la cadera en reposo
+static func _reposo(n: Node) -> Dictionary:
+	var sks := n.find_children("*", "Skeleton3D", true, false)
+	if sks.is_empty():
+		return {}
+	var sk: Skeleton3D = sks[0]
+	var i := sk.find_bone("mixamorig_Hips")
+	if i < 0:
+		return {}
+	var marco := Basis.IDENTITY
+	var x: Node = sk
+	while x != null and x != n:
+		if x is Node3D:
+			marco = (x as Node3D).transform.basis.orthonormalized() * marco
+		x = x.get_parent()
+	return {"marco": marco.get_rotation_quaternion(), "alto": sk.get_bone_rest(i).origin.length()}
+
+## una animación de otro esqueleto de Mixamo pasada a este: los huesos llevan el mismo giro (Mixamo usa los
+## mismos ejes), menos la cadera, que se gira para quedar igual en el mundo aunque el esqueleto venga girado;
+## su posición se escala a la altura de este y se quitan las demás posiciones y escalas (cada hueso conserva su largo)
+static func _pasar(a: Animation, de: Dictionary, a_: Dictionary) -> Animation:
+	var r := a.duplicate(true) as Animation
+	if de.is_empty() or a_.is_empty():
+		return r
+	var giro: Quaternion = (a_.marco as Quaternion).inverse() * (de.marco as Quaternion)
+	var k: float = float(a_.alto) / maxf(.001, float(de.alto))
+	for t in range(r.get_track_count() - 1, -1, -1):
+		var cadera := str(r.track_get_path(t)).ends_with(":mixamorig_Hips")
+		match r.track_get_type(t):
+			Animation.TYPE_POSITION_3D:
+				if not cadera:
+					r.remove_track(t)
+				else:
+					for c in r.track_get_key_count(t):
+						r.track_set_key_value(t, c, giro * (r.track_get_key_value(t, c) as Vector3) * k)
+			Animation.TYPE_ROTATION_3D:
+				if cadera:
+					for c in r.track_get_key_count(t):
+						r.track_set_key_value(t, c, giro * (r.track_get_key_value(t, c) as Quaternion))
+			Animation.TYPE_SCALE_3D:
+				r.remove_track(t)
+	return r
+
+## las animaciones del modelo «anims_de» (menos las de «sin») en un AnimationPlayer nuevo para este
+func _animaciones_de(esc: Node3D, f: Dictionary) -> void:
+	var src := (load("res://assets/monstruos/%s.glb" % FICHAS[f.anims_de].glb) as PackedScene).instantiate()
+	var aps := src.find_children("*", "AnimationPlayer", true, false)
+	if anim == null:
+		anim = AnimationPlayer.new()
+		anim.name = "AnimationPlayer"
+		esc.add_child(anim)   # root_node «..»: las pistas «esqueleto/Skeleton3D:…» salen de la raíz del .glb
+	if not anim.has_animation_library(""):
+		anim.add_animation_library("", AnimationLibrary.new())
+	var lib := anim.get_animation_library("")
+	if aps.size():
+		var ap: AnimationPlayer = aps[0]
+		var de := _reposo(src)
+		var a_ := _reposo(esc)
+		for n in ap.get_animation_list():
+			if not n in f.get("sin", []) and not lib.has_animation(n):
+				lib.add_animation(n, _pasar(ap.get_animation(n), de, a_))
+	src.free()
 
 ## momento del golpe de una animación (fracción del clip): de la ficha para «attack», del .json para las sueltas
 func golpe_de(n: String) -> float:
-	if n == "attack":
+	if n == "attack" and not ficha.has("attack"):
 		return float(ficha.get("golpe", .5))
+	if n == "attack":
+		n = ficha.attack
 	return float(extra().datos.get(n, {}).get("golpe", .5))
 static func agarre(id: String = "esqueleto", mano: String = "main_hand", tipo: String = "espada") -> Dictionary:
 	var k := "%s/%s/%s" % [id, mano, tipo]

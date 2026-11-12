@@ -38,5 +38,11 @@
   "archivo": "Sword And Shield Slashcombo.fbx",
   "duracion": 3.533,
   "golpe": 0.198
+ },
+ "andar": {
+  "archivo": "Sword And Shield Walk.fbx",
+  "duracion": 1.1,
+  "golpe": 0.848,
+  "avance": 1.516
  }
 }
