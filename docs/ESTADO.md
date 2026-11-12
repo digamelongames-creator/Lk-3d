@@ -14,7 +14,7 @@ Al día: 12 nov 2026 (tarde). **Este archivo es la fuente de verdad del proyecto
 - Al grano, sin introducciones. Si una tarea es grande o ambigua, una sola pregunta antes de empezar.
 - **Sin capturas de pantalla ni comprobaciones visuales salvo que Diego las pida**: lo prueba él en su PC. Se comprueba con las pruebas de `tests/` (todas deben decir «todo bien»).
 - No dibujar imágenes provisionales por código si Diego va a pasar las suyas. Las imágenes de efectos se pueden pedir a Pixmith (ChatGPT desde el PC de Diego, carpeta `C:\Carpeta Juego\Magias`).
-- Cada entrega se sube a `main` (o a una rama aparte si Diego lo pide) y además se le pasa el zip del proyecto.
+- Cada entrega se sube a `main` (o a una rama aparte si Diego lo pide). **Sin zip** (12 nov): Diego abre `C:\Carpeta Juego\Abrir juego.bat`, que pone al día su copia `C:\Carpeta Juego\Lk-3d` con `main` y abre el juego. Al terminar, decirle solo «está en main».
 
 **Al terminar**
 1. Añade lo hecho arriba del apartado «Hecho», con la fecha y si lo decidió Diego.
@@ -94,6 +94,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Salas secretas alejadas del resto (se tapan y el teletransporte no entra).
 
 ## Hecho (lo más nuevo arriba)
+- **Copia del juego en el PC de Diego (12 nov):** `C:\Carpeta Juego\Abrir juego.bat` y `Abrir en el editor.bat` (copias en `tools/windows/`): la primera vez instala Git si falta y baja el repositorio a `C:\Carpeta Juego\Lk-3d`; cada vez lo pone al día con `main` (lo que cambie el editor se aparta con `git stash`), busca Godot 4 una vez (`godot_ruta.txt`), importa lo nuevo y abre el juego. Se acabaron los zips.
 - **Abismo de cristal terminado (12 nov):** los 10 modelos de Tripo convertidos (`props_glb.py`, paquete `abismo_cristal`; brillo cian en los cristales con `brillo_color`) y en el catálogo; la escena con piezas en lugar de bloques, roca y sillería del tema en cajas (`roca_tema`, `muro_tema`), agua que brilla en los cuencos (`disco`), fuego azul (`llama` del tema), 11 luces + la luna con sombra, niebla más honda en las escenas (`NIEBLA_Y_ESCENA`) para ver los arcos bajar. 283 000 triángulos. Capturas: materiales 47/100, final 47/100.
 - **Carreras nuevas y panel de animaciones (12 nov, Diego).** En `heroe_anims.glb`: `correr_medio` (Medium Run), `correr_rapido` (Running), `trotar` (Jogging), `correr_adelante` (Standing Run Forward) y `correr_herido_atras` (Injured Run Backwards), todas en bucle y sin usar en partida. Sala «Animaciones» en el Piso de prueba 1 (Salas de prueba) y **F5** en cualquier piso de prueba: elegir skin (esqueleto o Maga) y pasar por todas sus animaciones (`PanelAnimaciones`, `Actores3D.skin_forzada/anim_forzada`).
 - **Cómo se hicieron Galerías hundidas y el Abismo de cristal (12 nov, pedido por Diego):** `docs/PROCESO_GALERIAS_ABISMO.html`, los 34 pasos desplegables con el código de los dos commits (7327311 y 152d17a), los encargos de Pixmith y las capturas.
