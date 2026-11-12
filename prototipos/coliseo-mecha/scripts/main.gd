@@ -1,7 +1,8 @@
 extends Node3D
 ## Coliseo Mecha (prototipo): tu mecha contra otro en la arena del Coliseo.
-## Combate a 3 rondas (gana quien gane 2), 99 segundos por ronda.
-## «-- --prueba» enfrenta a dos IA a cámara rápida, escribe el resultado y se cierra.
+## Antes de cada combate, el hangar: módulos en la mochila 4×4 con la chatarra ganada.
+## Escalera de 5 gladiadores; combate a 3 rondas (gana quien gane 2), 99 segundos por ronda.
+## «-- --prueba» enfrenta a dos IA contra toda la escalera a cámara rápida y se cierra.
 
 const Mecha = preload("res://scripts/mecha.gd")
 const IA = preload("res://scripts/ia.gd")
@@ -9,6 +10,10 @@ const Jugador = preload("res://scripts/jugador.gd")
 const Coliseo = preload("res://scripts/coliseo.gd")
 const Hud = preload("res://scripts/hud.gd")
 const Fx = preload("res://scripts/fx.gd")
+const Modulos = preload("res://scripts/modulos.gd")
+const Hangar = preload("res://scripts/hangar.gd")
+const CHATARRA_INICIAL := 150
+const CHATARRA_DERROTA := 40
 
 const RONDAS_PARA_GANAR := 2
 const TIEMPO_RONDA := 99.0
@@ -31,6 +36,16 @@ var prueba := false
 var escala := 1.0
 var animo := 0.15
 var t_prueba := 0.0
+var hangar
+var datos := {
+	"construccion": Modulos.desde_lista(Modulos.DE_SERIE),
+	"almacen": [],
+	"chatarra": CHATARRA_INICIAL,
+	"rival_n": 0,
+	"rival": Modulos.RIVALES[0],
+}
+var ganado := 0
+var rotos := 0
 
 
 func _ready() -> void:
@@ -73,11 +88,27 @@ func _ready() -> void:
 	enemigo.golpeado.connect(_on_golpe.bind(enemigo))
 	jugador.destruido.connect(_on_destruido.bind(jugador))
 	enemigo.destruido.connect(_on_destruido.bind(enemigo))
+	jugador.modulo_roto.connect(func(n): hud.avisar("¡Te han roto: %s!" % n))
+	jugador.modulo_roto.connect(func(_n): rotos += 1)
+	enemigo.modulo_roto.connect(func(_n): rotos += 1)
+	enemigo.modulo_roto.connect(func(n): hud.avisar("¡Le has roto: %s!" % n))
 
 	hud = Hud.new()
 	add_child(hud)
 	hud.preparar(jugador, enemigo, null if prueba else control_j)
-	_nueva_ronda()
+	hangar = Hangar.new()
+	add_child(hangar)
+	hangar.preparar(datos)
+	hangar.cambio.connect(func(): jugador.montar(datos.construccion))
+	hangar.a_la_arena.connect(_a_la_arena)
+	_preparar_rival()
+	if prueba:
+		datos.construccion = Modulos.desde_lista(Modulos.RIVALES[1].construccion)
+		jugador.montar(datos.construccion)
+		hangar.visible = false
+		_reiniciar_combate()
+	else:
+		_ir_hangar()
 
 
 func _exit_tree() -> void:
@@ -97,6 +128,7 @@ func _acciones() -> void:
 	_accion("soltar_raton", [KEY_ESCAPE])
 	_accion("reiniciar", [KEY_R])
 	_accion("pantalla", [KEY_F11])
+	_accion("volver", [KEY_ENTER, KEY_KP_ENTER])
 
 
 func _accion(nombre: String, teclas: Array, botones: Array = []) -> void:
@@ -145,6 +177,48 @@ func _ambiente() -> void:
 	sol.shadow_enabled = true
 	sol.directional_shadow_max_distance = 160.0
 	add_child(sol)
+
+
+# ---------------------------------------------------------------- hangar y escalera
+func _preparar_rival() -> void:
+	var r: Dictionary = Modulos.RIVALES[datos.rival_n]
+	datos.rival = r
+	enemigo.pintar(r.nombre, r.color, r.luz)
+	enemigo.montar(Modulos.desde_lista(r.construccion))
+	enemigo.control.punteria = r.punteria
+	enemigo.control.reflejos = r.reflejos
+
+
+func _ir_hangar() -> void:
+	estado = "hangar"
+	Engine.time_scale = 1.0
+	for b in get_tree().get_nodes_in_group("balas"):
+		b.queue_free()
+	_preparar_rival()
+	jugador.montar(datos.construccion)
+	jugador.restablecer(Vector3(0, 0, 6), 0.45)
+	enemigo.restablecer(Vector3(-3, 0, -16), PI - 0.3)
+	hud.visible = false
+	hangar.visible = true
+	hangar.refrescar()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	control_j.set_process(false)
+	control_j.set_process_unhandled_input(false)
+	camara.global_position = Vector3(1.5, 6.5, 15.5)
+	camara.look_at(Vector3(0, 4.0, 6))
+	camara.fov = 60
+
+
+func _a_la_arena() -> void:
+	if not Modulos.problemas(datos.construccion).is_empty():
+		return
+	hangar.visible = false
+	hud.visible = true
+	jugador.montar(datos.construccion)
+	control_j.set_process(true)
+	control_j.set_process_unhandled_input(true)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_reiniciar_combate()
 
 
 # ---------------------------------------------------------------- rondas
@@ -225,7 +299,9 @@ func _process(d: float) -> void:
 	if Input.is_action_just_pressed("pantalla"):
 		var w := get_window()
 		w.mode = Window.MODE_WINDOWED if w.mode == Window.MODE_FULLSCREEN or w.mode == Window.MODE_EXCLUSIVE_FULLSCREEN else Window.MODE_FULLSCREEN
-	if Input.is_action_just_pressed("reiniciar") and not prueba:
+	if estado == "hangar":
+		return
+	if Input.is_action_just_pressed("reiniciar") and not prueba and estado != "final":
 		_reiniciar_combate()
 		return
 
@@ -263,18 +339,36 @@ func _process(d: float) -> void:
 					estado = "final"
 					t_estado = 0.0
 					var gano: bool = victorias[0] >= RONDAS_PARA_GANAR
-					hud.decir("¡VICTORIA!" if gano else "DERROTA", "R para otro combate")
+					var era_ultimo: bool = datos.rival_n == Modulos.RIVALES.size() - 1
+					ganado = datos.rival.premio if gano else CHATARRA_DERROTA
+					datos.chatarra += ganado
+					if gano and not era_ultimo:
+						datos.rival_n += 1
+					var titulo := "¡VICTORIA!" if gano else "DERROTA"
+					if gano and era_ultimo:
+						titulo = "¡CAMPEÓN DEL COLISEO!"
+					hud.decir(titulo, "+%d chatarra · Intro para volver al hangar" % ganado)
 					if prueba:
-						print("Combate: %d - %d" % victorias)
-						print("PRUEBA: todo bien")
-						get_tree().quit()
+						print("Combate contra %s: %d - %d · módulos rotos: %d · golpes por la espalda: %d" % [datos.rival.nombre, victorias[0], victorias[1], rotos, jugador.golpes_espalda + enemigo.golpes_espalda])
+						jugador.golpes_espalda = 0
+						enemigo.golpes_espalda = 0
+						rotos = 0
+						if datos.rival_n == Modulos.RIVALES.size() - 1 and era_ultimo:
+							print("PRUEBA: todo bien")
+							get_tree().quit()
+						else:
+							if not gano:
+								datos.rival_n += 1
+							_preparar_rival()
+							_reiniciar_combate()
 				else:
 					_nueva_ronda()
 		"final":
-			pass
+			if Input.is_action_just_pressed("volver") and t_estado > 1.0:
+				_ir_hangar()
 
 	if prueba:
 		t_prueba += real
-		if t_prueba > 240.0:
+		if t_prueba > 900.0:
 			print("PRUEBA: el combate no ha terminado a tiempo")
 			get_tree().quit(1)

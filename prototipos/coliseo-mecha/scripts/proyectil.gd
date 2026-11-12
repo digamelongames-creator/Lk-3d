@@ -44,7 +44,7 @@ func _physics_process(d: float) -> void:
 	if not r.is_empty():
 		var fx = get_parent()
 		if r.collider.has_method("recibir"):
-			r.collider.recibir(dano, false, vel.normalized() * 1.5)
+			r.collider.recibir(dano, false, vel.normalized() * 1.5, vel.normalized())
 			fx.chispas(r.position, r.normal, color, 18, 9.0)
 		else:
 			fx.chispas(r.position, r.normal, Color(0.85, 0.75, 0.55), 10, 6.0)

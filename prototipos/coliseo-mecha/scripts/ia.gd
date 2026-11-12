@@ -22,6 +22,7 @@ var t_salto := 0.0
 var t_propulsor := 0.0
 var error := Vector3.ZERO
 var balas_vistas := {}
+var impulsos_flanqueo := 0  # impulsos seguidos de lado para ponerse a la espalda del rival
 
 
 func _init(p_mecha) -> void:
@@ -49,6 +50,8 @@ func pensar(d: float) -> void:
 		agresivo = randf() < 0.3
 		dist_pref = randf_range(6.0, 10.0) if agresivo else randf_range(13.0, 22.0)
 		error = Vector3(randf_range(-1, 1), randf_range(-0.6, 0.6), randf_range(-1, 1)) * 0.9 * punteria
+		if dist < 20.0 and mecha.prop >= mecha.IMPULSO_COSTE * 2.0 and randf() < 0.3 + reflejos * 0.4:
+			impulsos_flanqueo = 3
 
 	# movimiento: rodear + acercarse o alejarse
 	var tang := Vector3(-dir.z, 0, dir.x) * lado
@@ -62,6 +65,14 @@ func pensar(d: float) -> void:
 		if e > 0.9:
 			lado = -lado if randf() < d * 2.0 else lado
 	mecha.mover = m.limit_length(1.0)
+	# flanqueo: dos impulsos de lado; el rival gira despacio y enseña la espalda
+	if impulsos_flanqueo > 0 and mecha.t_impulso <= 0.0:
+		if mecha.prop >= mecha.IMPULSO_COSTE:
+			mecha.mover = (tang + dir * 0.35).normalized()
+			mecha.pedir_impulso = true
+			impulsos_flanqueo -= 1
+		else:
+			impulsos_flanqueo = 0
 
 	# puñetazo
 	if dist < 8.5 and mecha.t_puno_recarga <= 0.0 and randf() < (6.0 if agresivo else 2.5) * d:
@@ -69,7 +80,7 @@ func pensar(d: float) -> void:
 
 	# esquivar: puñetazo que viene o balas
 	t_reaccion -= d
-	if t_reaccion <= 0.0 and mecha.energia >= 30.0:
+	if t_reaccion <= 0.0 and mecha.prop >= mecha.IMPULSO_COSTE:
 		if r.t_puno > 0.0 and dist < 12.0 and randf() < 0.5:
 			mecha.mover = tang
 			mecha.pedir_impulso = true

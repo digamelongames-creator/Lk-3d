@@ -5,15 +5,17 @@ extends CharacterBody3D
 
 signal golpeado(cantidad: float, por_punetazo: bool)
 signal destruido
+signal modulo_roto(nombre: String)
 
 const Proyectil = preload("res://scripts/proyectil.gd")
+const Modulos = preload("res://scripts/modulos.gd")
 
 const VIDA_MAX := 1000.0
 const VEL := 10.0
 const ACEL := 45.0
 const GRAVEDAD := 30.0
-const ENERGIA_MAX := 100.0
-const ENERGIA_REGEN := 24.0
+const ESPERA_ESCUDO := 2.5
+const GIRO := 2.3  # rad/s sin carga; el peso lo baja
 const IMPULSO_COSTE := 30.0
 const IMPULSO_VEL := 34.0
 const IMPULSO_T := 0.22
@@ -53,7 +55,18 @@ var rival  # el otro mecha
 var activo := false
 var muerto := false
 var vida := VIDA_MAX
-var energia := ENERGIA_MAX
+var vida_max := VIDA_MAX
+var prop := 0.0      # energía de propulsión (impulso y vuelo)
+var escudo := 0.0    # energía del escudo
+var t_escudo := 0.0  # tiempo sin recibir en el escudo
+var construccion: Array = []
+var stats: Dictionary = {}
+var nodos_modulo: Array = []
+var mochila: Node3D
+var burbuja: MeshInstance3D
+var mat_burbuja: ShaderMaterial
+var destello_escudo := 0.0
+var golpes_espalda := 0  # para la prueba
 var calor := 0.0
 var sobrecalentado := false
 var t_disparo := 0.0
@@ -106,6 +119,17 @@ func preparar(p_nombre: String, cuerpo: Color, luz: Color, p_fx) -> void:
 	forma.position.y = 3.2
 	add_child(forma)
 	_construir_cuerpo()
+	montar([])
+
+
+func pintar(p_nombre: String, cuerpo: Color, luz: Color) -> void:
+	nombre = p_nombre
+	color_cuerpo = cuerpo
+	color_luz = luz
+	mat_cuerpo.albedo_color = cuerpo
+	mat_luz.albedo_color = luz
+	mat_luz.emission = luz
+	mat_burbuja.set_shader_parameter("color", luz.lerp(Color(0.3, 0.7, 1.0), 0.6))
 
 
 func centro() -> Vector3:
@@ -192,14 +216,6 @@ func _construir_cuerpo() -> void:
 	_caja(torso, Vector3(1.5, 0.95, 1.4), Vector3(0, 2.4, -0.25), mat_cuerpo)
 	_caja(torso, Vector3(1.1, 0.24, 0.1), Vector3(0, 2.45, -0.97), mat_luz)
 	_caja(torso, Vector3(0.6, 0.5, 0.1), Vector3(0, 1.1, -1.03), mat_luz)
-	# mochila con toberas
-	_caja(torso, Vector3(2.2, 1.5, 0.9), Vector3(0, 1.3, 1.35), mat_oscuro)
-	for lado in [-0.6, 0.6]:
-		_cilindro(torso, 0.25, 0.38, 0.6, Vector3(lado, 0.35, 1.5), Vector3.ZERO, mat_oscuro)
-		var llama := _cilindro(torso, 0.3, 0.02, 1.6, Vector3(lado, -0.6, 1.5), Vector3.ZERO, mat_luz)
-		llama.visible = false
-		llamas.append(llama)
-
 	# brazo derecho: cañón
 	brazo_d = _pivote(torso, Vector3(1.95, 1.6, 0))
 	_caja(brazo_d, Vector3(1.3, 0.9, 1.6), Vector3(0.15, 0.2, 0), mat_cuerpo)
@@ -217,6 +233,21 @@ func _construir_cuerpo() -> void:
 	puno = _pivote(brazo_i, Vector3(-0.2, -1.4, -1.6))
 	_caja(puno, Vector3(1.3, 1.3, 1.2), Vector3.ZERO, mat_oscuro)
 	_caja(puno, Vector3(1.35, 0.25, 0.3), Vector3(0, 0.3, -0.5), mat_luz)
+
+	burbuja = MeshInstance3D.new()
+	var esfera := SphereMesh.new()
+	esfera.radius = 4.4
+	esfera.height = 8.4
+	burbuja.mesh = esfera
+	mat_burbuja = ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = SHADER_ESCUDO
+	mat_burbuja.shader = sh
+	mat_burbuja.set_shader_parameter("color", color_luz.lerp(Color(0.3, 0.7, 1.0), 0.6))
+	burbuja.material_override = mat_burbuja
+	burbuja.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	burbuja.position.y = 3.4
+	add_child(burbuja)
 
 	humo = CPUParticles3D.new()
 	humo.emitting = false
@@ -244,6 +275,95 @@ func _construir_cuerpo() -> void:
 	add_child(humo)
 
 
+const SHADER_ESCUDO := """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_back;
+uniform vec4 color : source_color = vec4(0.3, 0.7, 1.0, 1.0);
+uniform float carga = 1.0;
+uniform float destello = 0.0;
+void fragment() {
+	float f = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.5);
+	float lineas = 0.5 + 0.5 * sin(UV.y * 120.0 + TIME * 3.0);
+	ALBEDO = color.rgb * (f * (0.6 + 0.6 * carga) * (0.8 + 0.2 * lineas) + destello * 0.5);
+	ALPHA = clamp(f * (0.4 + 0.5 * carga) + destello * 0.4, 0.0, 1.0);
+}
+"""
+
+
+# ---------------------------------------------------------------- mochila
+## Pone la construcción (copia) en la espalda y recalcula lo que da.
+func montar(cons: Array) -> void:
+	construccion = Modulos.copiar(cons)
+	for p in construccion:
+		p.vida = Modulos.vida_de(p.id)
+	stats = Modulos.calcular(construccion)
+	vida_max = VIDA_MAX + stats.vida_extra
+	if mochila:
+		mochila.queue_free()
+	nodos_modulo.clear()
+	mochila = _pivote(torso, Vector3(0, 1.3, 1.05))
+	_caja(mochila, Vector3(2.45, 2.45, 0.25), Vector3.ZERO, mat_oscuro)
+	var c := 0.58
+	for p in construccion:
+		var d: Dictionary = Modulos.CATALOGO[p.id]
+		var t := Modulos.tam(p)
+		var cx: float = p.pos.x + (t.x - 1) * 0.5
+		var cy: float = p.pos.y + (t.y - 1) * 0.5
+		var prof: float = {"escudo": 0.75, "prop": 0.65, "bateria": 0.45, "recarga": 0.45, "disipador": 0.35,
+			"propulsor": 0.5, "blindaje": 0.3}[d.tipo]
+		var nodo := _pivote(mochila, Vector3((cx - 1.5) * c, (1.5 - cy) * c, 0.125))
+		var m := _mat(d.color, 0.45, 0.5)
+		_caja(nodo, Vector3(t.x * c - 0.08, t.y * c - 0.08, prof), Vector3(0, 0, prof * 0.5), m)
+		if d.tipo in ["prop", "escudo", "bateria", "recarga"]:
+			_caja(nodo, Vector3(t.x * c - 0.3, 0.08, 0.06), Vector3(0, 0, prof + 0.02), mat_luz)
+		if d.tipo == "disipador":
+			for k in 4:
+				_caja(nodo, Vector3(0.04, t.y * c - 0.15, 0.25), Vector3((k - 1.5) * 0.25, 0, prof + 0.12), mat_oscuro)
+		if d.tipo == "propulsor":
+			_cilindro(nodo, 0.15, 0.25, 0.4, Vector3(0, -t.y * c * 0.5, prof * 0.5), Vector3.ZERO, mat_oscuro)
+		nodos_modulo.append(nodo)
+	# llamas debajo de la mochila
+	for l in llamas:
+		l.queue_free()
+	llamas.clear()
+	for lado in [-0.6, 0.6]:
+		_cilindro(mochila, 0.25, 0.38, 0.5, Vector3(lado, -1.4, 0.3), Vector3.ZERO, mat_oscuro)
+		var llama := _cilindro(mochila, 0.3, 0.02, 1.6, Vector3(lado, -2.4, 0.3), Vector3.ZERO, mat_luz)
+		llama.visible = false
+		llamas.append(llama)
+
+
+func _recalcular() -> void:
+	stats = Modulos.calcular(construccion)
+	prop = minf(prop, stats.prop_max)
+	escudo = minf(escudo, stats.escudo_max)
+
+
+func _danar_modulo(dano: float) -> void:
+	var vivos := []
+	var blindajes := []
+	for i in construccion.size():
+		if Modulos.vivo(construccion[i]):
+			vivos.append(i)
+			if Modulos.CATALOGO[construccion[i].id].tipo == "blindaje":
+				blindajes.append(i)
+	if vivos.is_empty():
+		return
+	var i: int = blindajes.pick_random() if not blindajes.is_empty() and randf() < 0.75 else vivos.pick_random()
+	var p: Dictionary = construccion[i]
+	p.vida -= dano
+	if p.vida <= 0.0:
+		p.vida = 0.0
+		var nodo: Node3D = nodos_modulo[i]
+		fx.chispas(nodo.global_position, global_basis.z, Color(1, 0.7, 0.3), 40, 10.0)
+		fx.polvo(nodo.global_position, Vector3.ZERO)
+		for h in nodo.get_children():
+			h.visible = false
+		_caja(nodo, Vector3(0.35, 0.35, 0.15), Vector3(0, 0, 0.08), mat_oscuro)
+		_recalcular()
+		modulo_roto.emit(Modulos.CATALOGO[p.id].nombre)
+
+
 # ---------------------------------------------------------------- ronda
 func restablecer(pos: Vector3, yaw: float) -> void:
 	global_position = pos
@@ -252,8 +372,12 @@ func restablecer(pos: Vector3, yaw: float) -> void:
 	velocity = Vector3.ZERO
 	vel_h = Vector3.ZERO
 	empuje = Vector3.ZERO
-	vida = VIDA_MAX
-	energia = ENERGIA_MAX
+	montar(construccion)
+	vida = vida_max
+	prop = stats.prop_max
+	escudo = stats.escudo_max
+	t_escudo = 0.0
+	destello_escudo = 0.0
 	calor = 0.0
 	sobrecalentado = false
 	muerto = false
@@ -295,21 +419,32 @@ func _physics_process(d: float) -> void:
 
 	# calor
 	if sobrecalentado:
-		calor -= CALOR_ENFRIA_BLOQUEO * d
+		calor -= CALOR_ENFRIA_BLOQUEO * stats.enfria * d
 		if calor <= 0.0:
 			calor = 0.0
 			sobrecalentado = false
 	elif t_sin_disparar > ESPERA_ENFRIAR:
-		calor = maxf(0.0, calor - CALOR_ENFRIA * d)
+		calor = maxf(0.0, calor - CALOR_ENFRIA * stats.enfria * d)
 
 	if not muerto:
-		rotation.y = lerp_angle(rotation.y, mirar_yaw, 1.0 - exp(-14.0 * d))
+		var giro: float = GIRO * (1.0 - 0.025 * stats.peso)
+		rotation.y = rotate_toward(rotation.y, mirar_yaw, giro * d)
+
+	# escudo
+	t_escudo += d
+	if t_escudo > ESPERA_ESCUDO and not muerto:
+		escudo = minf(stats.escudo_max, escudo + stats.escudo_regen * d)
+	destello_escudo = maxf(0.0, destello_escudo - d * 4.0)
+	burbuja.visible = escudo > 1.0 and not muerto
+	if burbuja.visible:
+		mat_burbuja.set_shader_parameter("carga", escudo / maxf(stats.escudo_max, 1.0))
+		mat_burbuja.set_shader_parameter("destello", destello_escudo)
 
 	# impulso
 	if pedir_impulso:
 		pedir_impulso = false
-		if energia >= IMPULSO_COSTE and t_impulso <= 0.0 and t_aturdido <= 0.0:
-			energia -= IMPULSO_COSTE
+		if prop >= IMPULSO_COSTE and t_impulso <= 0.0 and t_aturdido <= 0.0:
+			prop -= IMPULSO_COSTE
 			t_impulso = IMPULSO_T
 			t_puno = 0.0
 			dir_impulso = mover.normalized() if mover.length() > 0.2 else global_basis.z
@@ -329,9 +464,9 @@ func _physics_process(d: float) -> void:
 		hacia_rival.y = 0
 	if t_impulso > 0.0:
 		t_impulso -= d
-		vel_h = dir_impulso * IMPULSO_VEL
+		vel_h = dir_impulso * IMPULSO_VEL * stats.impulso
 		if t_impulso <= 0.0:
-			vel_h = dir_impulso * VEL
+			vel_h = dir_impulso * velocidad()
 	elif t_aturdido > 0.0:
 		vel_h = vel_h.move_toward(Vector3.ZERO, ACEL * d)
 	elif t_puno > 0.0:
@@ -345,21 +480,21 @@ func _physics_process(d: float) -> void:
 			_soltar_puno()
 	else:
 		var ctrl := 1.0 if is_on_floor() else 0.6
-		vel_h = vel_h.move_toward(mover.limit_length(1.0) * VEL, ACEL * ctrl * d)
+		vel_h = vel_h.move_toward(mover.limit_length(1.0) * velocidad(), ACEL * ctrl * d)
 
 	empuje = empuje.move_toward(Vector3.ZERO, 38.0 * d)
 	velocity.x = vel_h.x + empuje.x
 	velocity.z = vel_h.z + empuje.z
 
 	# vertical: propulsores
-	propulsando = propulsor and energia > 0.0 and t_aturdido <= 0.0
+	propulsando = propulsor and prop > 0.0 and t_aturdido <= 0.0
 	if propulsando:
-		velocity.y = minf(velocity.y + PROPULSOR_EMPUJE * d, PROPULSOR_VMAX)
-		energia = maxf(0.0, energia - PROPULSOR_COSTE * d)
+		velocity.y = minf(velocity.y + PROPULSOR_EMPUJE * stats.empuje * d, PROPULSOR_VMAX * stats.empuje)
+		prop = maxf(0.0, prop - PROPULSOR_COSTE * d)
 	else:
 		velocity.y -= GRAVEDAD * d
 		if t_impulso <= 0.0:
-			energia = minf(ENERGIA_MAX, energia + ENERGIA_REGEN * d * (1.0 if is_on_floor() else 0.4))
+			prop = minf(stats.prop_max, prop + stats.prop_regen * d * (1.0 if is_on_floor() else 0.4))
 
 	var en_aire := not is_on_floor()
 	var vy_antes := velocity.y
@@ -369,7 +504,11 @@ func _physics_process(d: float) -> void:
 
 	# disparo
 	if disparando and not sobrecalentado and t_disparo <= 0.0 and t_aturdido <= 0.0 and t_puno <= 0.0 and not muerto:
-		_disparar()
+		# el cañón solo apunta hacia delante: si la mira está muy de lado, hay que girar primero
+		var a := punto_mira - global_position
+		a.y = 0
+		if a.length() < 0.5 or (-global_basis.z).angle_to(a.normalized()) < deg_to_rad(75.0):
+			_disparar()
 
 	_animar(d)
 
@@ -377,7 +516,7 @@ func _physics_process(d: float) -> void:
 func _disparar() -> void:
 	t_disparo = CADENCIA
 	t_sin_disparar = 0.0
-	calor += CALOR_DISPARO
+	calor += CALOR_DISPARO * stats.calor
 	if calor >= 100.0:
 		calor = 100.0
 		sobrecalentado = true
@@ -404,17 +543,43 @@ func _soltar_puno() -> void:
 	var frente := -global_basis.z
 	if a.length() <= PUNO_ALCANCE and dy < 4.5 and frente.dot(a.normalized()) > 0.35:
 		var dir := a.normalized()
-		rival.recibir(PUNO_DANO, true, dir * PUNO_EMPUJON)
+		rival.recibir(PUNO_DANO, true, dir * PUNO_EMPUJON, dir)
 		fx.chispas(rival.centro() - dir * 1.6, -dir, Color(1, 0.8, 0.4), 60, 14.0)
 	else:
 		fx.polvo(puno.global_position, Vector3.ZERO)
 
 
-func recibir(cantidad: float, por_punetazo: bool, empujon: Vector3) -> void:
+func velocidad() -> float:
+	return VEL * (1.0 - 0.015 * stats.peso)
+
+
+## `dir`: hacia dónde va el golpe. Si va en el mismo sentido que mira el mecha, es por la espalda.
+func recibir(cantidad: float, por_punetazo: bool, empujon: Vector3, dir := Vector3.ZERO) -> void:
 	if muerto or not activo:
 		return
-	vida = maxf(0.0, vida - cantidad)
+	var por_detras := dir.length() > 0.1 and dir.normalized().dot(-global_basis.z) > -0.1
+	if por_detras:
+		golpes_espalda += 1
 	empuje += empujon
+	if escudo > 0.0:
+		t_escudo = 0.0
+		destello_escudo = 1.0
+		if por_punetazo:
+			escudo = 0.0
+			cantidad *= 0.5
+			fx.chispas(centro(), Vector3.UP, Color(0.4, 0.8, 1.0), 70, 16.0)
+		else:
+			escudo -= cantidad
+			cantidad = maxf(0.0, -escudo)
+			escudo = maxf(0.0, escudo)
+			if escudo <= 0.0:
+				fx.chispas(centro(), Vector3.UP, Color(0.4, 0.8, 1.0), 50, 12.0)
+		if cantidad <= 0.0:
+			golpeado.emit(0.0, false)
+			return
+	vida = maxf(0.0, vida - cantidad)
+	if por_detras:
+		_danar_modulo(cantidad * (3.0 if por_punetazo else 2.0))
 	if por_punetazo:
 		t_aturdido = ATURDIDO_T
 		t_puno = 0.0
