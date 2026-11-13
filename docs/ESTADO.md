@@ -41,7 +41,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 ## Pendiente de Diego
 
 - Probar la rama **`creador-mundos`** (pisos 1–2, 6–7 y 10): muros bajos del lado de la cámara con el borde roto, tramos de muro con ritmo según la sala, columnatas, estanques y esquinas achaflanadas, muebles con piezas 3D, suciedad (hollín, humedad, grietas) y la luz nueva (sombras de las 5 antorchas más cercanas, el héroe sin sombra, luz rebotada; «Luz rebotada alta (SDFGI)» en Opciones, mejor apagada en la GTX 1060). Decir qué cambiar y si pasa a `main`.
-- Pasar a Tripo las piezas de las Criptas cuando estén las imágenes (`docs/CRIPTAS_PIEZAS.md`).
+- Pasar a Tripo las 25 piezas de las Criptas: las imágenes ya están en `C:\Carpeta Juego\Temas\criptas\piezas_tripo\` (13 nov, una por pieza, con el nombre de `docs/CRIPTAS_PIEZAS.md`).
 
 - Probar el **hangar del Coliseo Mecha** (mochila 4×4, escudo, módulos que se rompen por la espalda, escalera de 5 rivales) y decir qué cambiar: precios, límites de peso y reactor, si el giro lento del mecha se hace pesado. Aún sin sonido ni guardado (la chatarra se pierde al cerrar).
 - Probar los pisos 3–5 con Galerías hundidas y el «Piso de prueba 3».
