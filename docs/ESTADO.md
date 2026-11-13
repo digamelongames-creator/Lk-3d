@@ -47,7 +47,8 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Las 5 piezas del HUD que faltan: líquido azul, marco de la barra de habilidades, marco redondo del minimapa, hueco mágico y hueco legendario (turquesa).
 - Elegir con el panel F5 qué carrera usan los héroes (ahora run).
 - Probar la **Maga** (clase Mago) (corre con run, ataques con los Cast). La armadura provisional y las armas están colocadas para el esqueleto: en la Maga pueden quedar desplazadas.
-- Los modelos de `input/raw` (elf, violeta, cuernitos, medusa, vaquita) riggeados en Mixamo: cara propia para los enemigos humanos y los tenderos.
+- Probar el **Piso de prueba · Animaciones** (menú «Salas de prueba»): piso normal con enemigos y el panel F5 abierto para elegir personaje (esqueleto, Maga, Amazona, Vaquita, Cuernitos, Elfa azul) y animación. Todos los héroes corren ahora con correr_rapido: decir si va lento o patina.
+- Pasar los **4 personajes que faltan** (serán 8 en total) riggeados en Mixamo «With Skin»; entran igual que estos (ficha en `Modelo3D.FICHAS` y una línea en `Modelo3D.SKINS_HEROE`).
 - Colocar con el panel el escudo y la espada izquierda del esqueleto.
 - Probar el **Piso de prueba 7 · Inframundo** con las piezas de Tripo (pilares, muros con calavera, puertas demoníacas con braseros, remates, rocas y estalagmitas).
 
@@ -70,6 +71,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Escaleras de verdad (salas hundidas o elevadas, alturas en los pisos 3–5), armas con magia, puertas con llave y comida que da una mejora temporal.
 - Arte: piezas de muro según las vecinas y arcos en las puertas (hoy son cajas de `Actores3D`), adornos colgados del low poly con origen «atrás», salas hechas a mano con plantillas, AnimationTree con BoneAttachment3D.
 - Hueco en el HUD para la 4.ª habilidad (orbe de muerte del señor oscuro).
+- Armas en las manos de los personajes nuevos: espadas, bastones y más (Diego, 13 nov: «en un futuro»).
 
 ## Decidido (y que se mantiene)
 
@@ -95,6 +97,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Salas secretas alejadas del resto (se tapan y el teletransporte no entra).
 
 ## Hecho (lo más nuevo arriba)
+- **Personajes de Diego y Piso de prueba · Animaciones (13 nov, decidido por Diego):** Amazona, Vaquita, Cuernitos y Elfa azul (FBX de Mixamo «With Skin») pasados con `heroe_skin_glb.py` a `assets/monstruos/`, con las animaciones del esqueleto pasadas a sus huesos como la Maga; lista de skins en `Modelo3D.SKINS_HEROE` (panel F5). Todos los héroes, con cualquier skin, corren con `correr_rapido` (`Actores3D.CARRERA_HEROE`; la voltereta sigue con run, los enemigos no cambian). Nuevo «Piso de prueba · Animaciones» (`PisoPrueba.ANIMACIONES`, `--prueba=2`): piso 1 normal con enemigos y el panel F5 abierto al entrar. Se quita la sala «Animaciones» del Piso de prueba 1. Prueba: `tests/test_heroes_andar.gd`.
 - **Coliseo Mecha: hangar y mochila 4×4 (13 nov, decidido por Diego):** antes de cada combate, hangar con tienda, almacén y la mochila de la espalda en cuadrícula 4×4 (`scripts/modulos.gd`, `scripts/hangar.gd`). 9 módulos de tamaños 1×1, 1×2 y 2×2 que se giran: generador de propulsión (pequeño y normal; sin él no hay impulso ni vuelo), generador de escudo (pequeño y normal, con su propia energía; burbuja que para balas, se recarga sin golpes, el puñetazo la rompe), batería (+40 % de energía) y recargador (+50 % de recarga) a los generadores que tocan por un lado, disipador, propulsor extra y blindaje. Límites de peso (18, frena) y reactor (12). Se ven en la espalda; los tiros por detrás rompen módulos (el blindaje se lleva casi todos). Escalera de 5 gladiadores con su construcción, chatarra por combate (40 si pierdes). El mecha gira despacio para que rodear sirva. Pruebas: `tests/test_modulos.gd`, `tests/test_hangar.gd`, `tests/test_espalda.gd` y `-- --prueba` (la escalera entera IA contra IA).
 - **Prototipo aparte «Coliseo Mecha» (12 nov, pedido por Diego):** `prototipos/coliseo-mecha/` es otro proyecto de Godot (el de Last Knight lo ignora). Tu mecha contra otro con IA en la arena del Coliseo, todo con formas básicas: cámara al hombro, cañón que se recalienta, puñetazo con estocada y parada de golpe, impulso lateral, propulsores, público que salta, columnas de cobertura; 3 rondas de 99 s. Se abre con `Abrir coliseo.bat` (dentro de la carpeta). Prueba: `godot --headless --path prototipos/coliseo-mecha -- --prueba` (dos IA; rondas de 24–32 s).
 - **Copia del juego en el PC de Diego (12 nov):** `C:\Carpeta Juego\Abrir juego.bat` y `Abrir en el editor.bat` (copias en `tools/windows/`): la primera vez instala Git si falta y baja el repositorio a `C:\Carpeta Juego\Lk-3d`; cada vez lo pone al día con `main` (lo que cambie el editor se aparta con `git stash`), busca Godot 4 una vez (`godot_ruta.txt`), importa lo nuevo y abre el juego. Se acabaron los zips.

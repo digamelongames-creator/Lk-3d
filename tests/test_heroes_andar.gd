@@ -1,5 +1,6 @@
 extends SceneTree
-## Todos los héroes corren con run (no con «andar», el Walk de Diego, que queda en heroe_anims).
+## Todos los héroes, con cualquier skin, corren con «correr_rapido» (13 nov); «andar» queda en heroe_anims sin usar.
+## Skins de Diego (Amazona, Vaquita, Cuernitos, Elfa azul) y el «Piso de prueba · Animaciones» con enemigos.
 ## El mago lleva la Maga (Modelo3D.HEROE_CLASE), de pie, de 1,8 m y con sus ataques de Cast.
 ## godot --headless --path . -s tests/test_heroes_andar.gd
 
@@ -75,9 +76,10 @@ func _correr() -> void:
 		if act._modelo_heroe != null:
 			vistos[act._modelo_heroe.actual] = true
 	print("animaciones vistas: ", vistos.keys())
-	ok(vistos.has("run") and not vistos.has("andar"), "el héroe no corre con run")
+	ok(vistos.has("correr_rapido") and not vistos.has("andar"), "el héroe no corre con correr_rapido")
 	# panel F5: cambiar de skin y forzar cada carrera nueva
-	for id in ["esqueleto", "maga"]:
+	for s in Modelo3D.SKINS_HEROE:
+		var id: String = s[1]
 		act.cambiar_skin(id)
 		ok(act._heroe_de == id, "no cambia a la skin " + id)
 		for n in ["correr_medio", "correr_rapido", "trotar", "correr_adelante", "correr_herido_atras"]:
@@ -86,6 +88,39 @@ func _correr() -> void:
 			act.actualizar(1.0 / 30)
 			ok(act._modelo_heroe.actual == n, "%s no reproduce %s" % [id, n])
 	act.anim_forzada = ""
-	ok(PisoPrueba.salas_menu().any(func(x): return x[1] == "animaciones"), "falta la sala Animaciones")
+	# las skins nuevas: de pie, de ~1,7–1,8 m, y corren con correr_rapido en partida
+	for id in ["amazona", "vaquita", "cuernitos", "elfa_azul"]:
+		ok(Modelo3D.hay(id), "falta la skin " + id)
+		var k := Modelo3D.crear(id)
+		k.anadir_animaciones()
+		root.add_child(k)
+		for a in ["idle", "run", "correr_rapido", "attack", "hurt", "death"]:
+			ok(k.anim.has_animation(a), "%s sin %s" % [id, a])
+		k.reproducir("correr_rapido", 1.0, 0.0, true)
+		k.anim.advance(.3)
+		var sk2: Skeleton3D = k.find_children("*", "Skeleton3D", true, false)[0]
+		var cab2 := (_glob(sk2) * sk2.get_bone_global_pose(sk2.find_bone("mixamorig_HeadTop_End"))).origin
+		print("%s: cabeza %.2f m" % [id, cab2.y])
+		ok(cab2.y > 1.4 and cab2.y < 2.0, id + " no está de pie")
+		k.free()
+	act.cambiar_skin("amazona")
+	vistos.clear()
+	sim.enemies.clear()   # solo andar: sin enemigos que le hagan atacar o rodar
+	for i in 60:
+		var inp := Sim.Inp.new()
+		inp.move = Vector2(1, 0) if (i / 20) % 2 == 0 else Vector2(-1, 0)
+		sim.step(1.0 / 30, inp)
+		act.actualizar(1.0 / 30)
+		vistos[act._modelo_heroe.actual] = true
+	print("Amazona: ", vistos.keys())
+	ok(vistos.has("correr_rapido"), "la Amazona no corre con correr_rapido")
+	# el piso de prueba de animaciones: en el menú, sin la sala vieja, piso normal con enemigos
+	ok(not PisoPrueba.salas_menu().any(func(x): return x[1] == "animaciones"), "sigue la sala Animaciones del piso 1")
+	ok(PisoPrueba.ANIMACIONES in PisoPrueba.pisos_menu(), "falta el Piso de prueba · Animaciones en el menú")
+	ok(PisoPrueba.con_enemigos(PisoPrueba.ANIMACIONES) and not PisoPrueba.con_enemigos(1), "enemigos en los pisos de prueba")
+	var LA := PisoPrueba.generar(PisoPrueba.ANIMACIONES)
+	ok(int(LA.get("prueba", 0)) == PisoPrueba.ANIMACIONES and not LA.has("salas_prueba"), "el piso de animaciones no es un piso normal")
+	sim.enter_level(LA)
+	ok(sim.enemies.size() > 5, "el piso de animaciones sin enemigos (%d)" % sim.enemies.size())
 	print("test_heroes_andar: ", "todo bien" if fallos == 0 else "%d fallos" % fallos)
 	quit(1 if fallos else 0)

@@ -18,10 +18,17 @@ const NOMBRES := ["Piso de prueba 1"]
 ## 7 = el Inframundo (pisos 8–9): pasarelas sobre un mar de lava, como en la imagen 7 de Pixmith
 ## 3 = Galerías hundidas (pisos 3–5): pasarelas sobre un abismo de niebla azul con cascadas de agua
 const DE_TEMA := {3: "galerias", 7: "inframundo"}
+## «Piso de prueba · Animaciones» (13 nov, Diego): un piso normal generado, CON enemigos, para probar los
+## personajes (skins del héroe, Modelo3D.SKINS_HEROE) luchando; el panel F5 se abre solo al entrar.
+const ANIMACIONES := 2
 
 ## pisos enteros que salen en el menú de pruebas (además de las salas del piso 1)
 static func pisos_menu() -> Array:
-	return Escena3D.numeros() + DE_TEMA.keys()
+	return [ANIMACIONES] + Escena3D.numeros() + DE_TEMA.keys()
+
+## pisos de prueba en los que los enemigos se quedan (el resto va sin enemigos)
+static func con_enemigos(n: int) -> bool:
+	return n == ANIMACIONES
 
 ## kits con muros y suelos propios. Las piezas de muro miden una casilla (2 m) y dan la cara a +Z.
 const ESTILOS := {
@@ -35,7 +42,7 @@ const ESTILOS := {
 const ARRIBA := [["Poly Haven", "", "muestra_polyhaven"], ["Modular Dungeon Kit", "dungeon_kit", "muestra_dungeon_kit"],
 	["Low Poly Dungeon", "low_poly", "muestra_low_poly"], ["Gothic Interior", "gotico", "muestra_gotico"], ["Ancient Ruins", "", "muestra_ruinas"]]
 const ABAJO := [["Almacén", "", "almacen"], ["Guardia", "", "guardia"], ["Tesoro", "", "tesoro"], ["Cueva", "", "cueva"],
-	["Aprendizaje", "", "arena"], ["Efectos", "", "efectos"], ["Mímico", "", "mimico"], ["Animaciones", "", "animaciones"]]
+	["Aprendizaje", "", "arena"], ["Efectos", "", "efectos"], ["Mímico", "", "mimico"]]
 const LADO := 9          # casillas de cada sala
 const PASO_SALAS := 11   # sala + 2 de roca
 const Y_ARRIBA := 3
@@ -59,6 +66,8 @@ static func nombre(n: int) -> String:
 		return String(Escena3D.datos(Escena3D.de_numero(n)).get("titulo", Escena3D.de_numero(n)))
 	if DE_TEMA.has(n):
 		return "Piso de prueba %d · %s" % [n, TemaMazmorra.nombre(DE_TEMA[n])]
+	if n == ANIMACIONES:
+		return "Piso de prueba · Animaciones"
 	return NOMBRES[clampi(n - 1, 0, NOMBRES.size() - 1)]
 
 # ======================================================================
@@ -69,6 +78,10 @@ static func generar(n: int) -> Dictionary:
 		return Escena3D.generar(Escena3D.de_numero(n), n)
 	if DE_TEMA.has(n):
 		return _generar_tema(n, DE_TEMA[n])
+	if n == ANIMACIONES:   # un piso 1 de partida tal cual, con sus enemigos
+		var LA := DungeonGen.gen_level("piso-prueba-%d" % n, 1)
+		LA["prueba"] = n
+		return LA
 	# se parte de un piso normal para tener todas las claves que espera la simulación, y se cambia el mapa
 	var L := DungeonGen.gen_level("piso-prueba-%d" % n, 1)
 	var W := DungeonGen.GW

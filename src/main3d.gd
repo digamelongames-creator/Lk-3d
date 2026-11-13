@@ -337,6 +337,11 @@ func _entrar(L: Dictionary) -> void:
 func _entrar_prueba(n: int) -> void:
 	var L := PisoPrueba.generar(n)
 	_entrar(L)
+	if PisoPrueba.con_enemigos(n):   # Piso de prueba · Animaciones: piso normal con enemigos y el panel F5 abierto
+		panel_anims.visible = true
+		panel_anims.refrescar()
+		fx.banner("Elige personaje y animación en el panel · F5 lo cierra o lo abre", PisoPrueba.nombre(n))
+		return
 	sim.enemies.clear()
 	sim.cleared = true   # sin el aviso de «Mazmorra despejada» al empezar
 	PisoPrueba.amueblar(sim.L, mazmorra)
@@ -389,7 +394,7 @@ func _process(dt: float) -> void:
 			inp.block = true
 			inp.aim_mouse = false
 		var r := sim.step(dt, inp)
-		if prueba > 0:
+		if prueba > 0 and not PisoPrueba.con_enemigos(prueba):
 			# el piso de prueba no tiene enemigos (ni los que aparecen por el camino), salvo la sala del aprendizaje
 			sim.enemies = sim.enemies.filter(func(e): return e.en_arena or e.mimic)
 			PisoPrueba.arena(sim, dt)

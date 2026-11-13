@@ -21,7 +21,17 @@ const FICHAS := {
 	# y sus ataques con los Cast de heroe_anims («attack» = lanzar_bola). Decidido por Diego el 12 nov.
 	"maga": {"glb": "maga", "alto": 1.8, "alto_original": 1.0, "golpe": .348, "anims_de": "esqueleto",
 		"sin": ["attack", "walk"], "attack": "lanzar_bola"},
+	# personajes de Diego riggeados en Mixamo (13 nov; heroe_skin_glb.py): skins de héroe para el panel F5 y el
+	# «Piso de prueba · Animaciones». Animaciones del esqueleto pasadas a sus huesos, como la Maga.
+	"amazona": {"glb": "amazona", "alto": 1.8, "alto_original": 1.0, "golpe": .36, "anims_de": "esqueleto"},
+	"vaquita": {"glb": "vaquita", "alto": 1.8, "alto_original": 1.0, "golpe": .36, "anims_de": "esqueleto"},
+	"cuernitos": {"glb": "cuernitos", "alto": 1.8, "alto_original": 1.0, "golpe": .36, "anims_de": "esqueleto"},
+	"elfa_azul": {"glb": "elfa_azul", "alto": 1.8, "alto_original": 1.0, "golpe": .36, "anims_de": "esqueleto"},
 }
+## skins que se pueden elegir para el héroe (panel F5 y Piso de prueba · Animaciones): nombre y ficha.
+## Para añadir otra: su .glb con heroe_skin_glb.py, su ficha arriba y una línea aquí.
+const SKINS_HEROE := [["Esqueleto", "esqueleto"], ["Maga", "maga"], ["Amazona", "amazona"], ["Vaquita", "vaquita"],
+	["Cuernitos", "cuernitos"], ["Elfa azul", "elfa_azul"]]
 ## el modelo del héroe según la clase (si su .glb existe); las demás clases, el esqueleto
 const HEROE_CLASE := {"mage": "maga"}
 const BUCLE := ["idle", "walk", "run", "andar", "correr_medio", "correr_rapido", "trotar", "correr_adelante", "correr_herido_atras"]

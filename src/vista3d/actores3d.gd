@@ -13,6 +13,7 @@ var sim: Sim
 const VEL_TAJO := 2.5   # ritmo del clip de ataque del héroe (recortado, ver _animar_heroe)
 var heroe_id := "esqueleto"   # modelo del héroe (Modelo3D.FICHAS); si no existe, cápsula
 var _heroe_de := ""   # el modelo que lleva ahora (según la clase: Modelo3D.HEROE_CLASE)
+const CARRERA_HEROE := "correr_rapido"   # la carrera de todos los héroes (Diego, 13 nov)
 var skin_forzada := ""   # panel de animaciones (F5 en el piso de prueba): modelo elegido a mano ("" = el de la clase)
 var anim_forzada := ""   # panel de animaciones: animación que se repite sin parar ("" = la normal)
 ## los enemigos sin modelo propio (caballeros, renegados…) usan este, provisional
@@ -661,8 +662,10 @@ func _animar_heroe(p: Ent.Hero) -> void:
 		elif m.actual in ["hurt", "dolor_escudo"] and not m.terminada():
 			pass
 		elif p.roll_t > 0 or corre:
-			# todos los héroes corren con run (Diego, 12 nov: run en vez de Walk); «andar» queda en heroe_anims sin usar
-			m.reproducir("run", 1.3 if p.roll_t > 0 else maxf(.3, sim.vel_mov))
+			# todos los héroes (cualquier skin) corren con correr_rapido (Running de Mixamo; Diego, 13 nov);
+			# la voltereta sigue con run. Los enemigos no cambian.
+			var carrera := "run" if p.roll_t > 0 or not m.anim.has_animation(CARRERA_HEROE) else CARRERA_HEROE
+			m.reproducir(carrera, 1.3 if p.roll_t > 0 else maxf(.3, sim.vel_mov))
 		else:
 			m.reproducir("idle")
 			_combo_antes = -2

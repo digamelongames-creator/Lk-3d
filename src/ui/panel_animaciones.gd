@@ -1,13 +1,13 @@
 class_name PanelAnimaciones
 extends PanelContainer
-## Panel de animaciones (F5 en el piso de prueba; pensado para la sala «Animaciones»).
-## Eliges la skin del héroe (esqueleto o Maga) y pasas por todas sus animaciones: la elegida se repite sin parar.
+## Panel de animaciones (F5 en cualquier piso de prueba; se abre solo en el «Piso de prueba · Animaciones»).
+## Eliges la skin del héroe (Modelo3D.SKINS_HEROE: esqueleto, Maga y los personajes de Diego) y pasas por todas sus animaciones: la elegida se repite sin parar.
 ## «Normal» devuelve el héroe a sus animaciones de siempre.
 
 var actores: Actores3D
 var _skins: OptionButton
 var _lista: ItemList
-const SKINS := [["Esqueleto", "esqueleto"], ["Maga", "maga"]]
+const SKINS := Modelo3D.SKINS_HEROE
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_TOP_RIGHT)

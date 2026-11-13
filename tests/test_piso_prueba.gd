@@ -33,7 +33,7 @@ func _init() -> void:
 	ok(no_munecos.is_empty(), "sin enemigos, salvo los muñecos de la sala de efectos (%d)" % no_munecos.size())
 	var L: Dictionary = sim.L
 	var salas: Array = L.salas_prueba
-	ok(salas.size() == 14, "pasillo + 5 salas de paquete + 4 de propósito + aprendizaje + efectos + mímico + animaciones (%d)" % salas.size())
+	ok(salas.size() == 13, "pasillo + 5 salas de paquete + 4 de propósito + aprendizaje + efectos + mímico (%d)" % salas.size())
 	var d: PackedInt32Array = L.dist
 	var W := DungeonGen.GW
 	for s in salas:
