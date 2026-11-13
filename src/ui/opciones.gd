@@ -10,12 +10,15 @@ const DEFECTO := {
 	"brillo": 100,       # % sobre la exposición de CamaraIso.ambiente
 	"sombras": true,     # sombras de antorchas, braseros y la luz del héroe
 	"niebla": true,      # niebla volumétrica
-	"postprocesado": true,  # resplandor y oclusión ambiental (SSAO)
+	"postprocesado": true,  # resplandor, oclusión ambiental (SSAO) y luz rebotada en pantalla (SSIL)
+	"luz_rebotada": false,  # calidad alta: luz rebotada de verdad (SDFGI); en la GTX 1060, mejor sin ella
 	"sonido": true,      # false: el bus principal en silencio
 	"velocidad": 100,    # % de la velocidad de andar del héroe y de los enemigos (banco de pruebas, 30–100)
 }
 const EXPOSICION := 1.2   # la de CamaraIso.ambiente con brillo 100 %
 const ATLAS_SOMBRAS := 4096
+## antorchas y braseros con sombra a la vez: los más cercanos al héroe (MazmorraGridMap.sombras_cerca)
+const SOMBRAS_A_LA_VEZ := 5
 
 static var valores := {}
 
@@ -62,6 +65,8 @@ static func aplicar_grafico(we: WorldEnvironment, vp: Viewport) -> void:
 		e.volumetric_fog_enabled = v("niebla")
 		e.glow_enabled = v("postprocesado")
 		e.ssao_enabled = v("postprocesado")
+		e.ssil_enabled = v("postprocesado")
+		e.sdfgi_enabled = v("luz_rebotada")
 	if vp != null:
 		vp.positional_shadow_atlas_size = ATLAS_SOMBRAS if v("sombras") else 0
 

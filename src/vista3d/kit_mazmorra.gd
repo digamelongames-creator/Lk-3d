@@ -13,6 +13,10 @@ class_name KitMazmorra
 const RUTA_GLB := "res://assets/kit/kit_mazmorra.glb"
 const CELDA := 2.0       # metros por casilla (una casilla de la simulación = 32 px)
 const ALTO_MURO := 3.0
+## muros del lado de la cámara (sur y este de cada sala, Arquitectura.bajos): se cortan a esta altura
+const MURO_BAJO := 1.0
+## piezas que tienen versión baja (mesh_library_baja)
+const DE_MURO_BAJO := ["muro", "nucleo", "nucleo_b", "cara", "cara_b", "columna_esquina"]
 
 ## piezas de casilla (van al GridMap). Las que tienen variantes se eligen al azar por casilla.
 const DE_CASILLA := ["muro", "nucleo", "nucleo_b", "cara", "cara_b", "cara_columna", "cara_nicho", "cara_arco_ciego", "cara_puerta",
@@ -42,6 +46,27 @@ static func mesh_library(tema: String = "") -> MeshLibrary:
 			_lib.set_item_name(i, n)
 			_lib.set_item_mesh(i, _mallas[n])
 	return _lib
+
+## las piezas de muro con el material del muro bajo (todas sus superficies), mismos números que mesh_library()
+static func mesh_library_baja(tema: String = "") -> MeshLibrary:
+	var k := "bajo|" + tema
+	if _libs.has(k):
+		return _libs[k]
+	var base := mesh_library(tema)
+	var mat := material_muro(tema if tema != "" and TemaMazmorra.hay(tema) else "", true)
+	var lib := MeshLibrary.new()
+	for n in DE_MURO_BAJO:
+		var i := base.find_item_by_name(n)
+		if i < 0:
+			continue
+		var m: Mesh = base.get_item_mesh(i).duplicate()
+		for sf in m.get_surface_count():
+			m.surface_set_material(sf, mat)
+		lib.create_item(i)
+		lib.set_item_name(i, n)
+		lib.set_item_mesh(i, m)
+	_libs[k] = lib
+	return lib
 
 ## vaciar las cachés estáticas al salir: si siguen vivas cuando Godot apaga el servidor gráfico, el juego se cuelga al cerrar
 static func limpiar() -> void:
@@ -154,16 +179,17 @@ static func _piedra(c: Color, rug: float) -> StandardMaterial3D:
 
 ## muro que se vuelve transparente (tramado) cuando tapa al héroe, como en Diablo.
 ## Usa los parámetros globales pos_heroe y dir_camara (project.godot > shader_globals).
-static func material_muro(tema: String = "") -> ShaderMaterial:
+## bajo = true: muro bajo del lado de la cámara (MURO_BAJO m, borde de arriba roto y el interior oscuro), sin tramado
+static func material_muro(tema: String = "", bajo: bool = false) -> ShaderMaterial:
 	var s := Shader.new()
-	s.code = """
-shader_type spatial;
+	s.code = ("shader_type spatial;\nrender_mode cull_disabled;\n#define BAJO\n" if bajo else "shader_type spatial;\n") + """
 global uniform vec3 pos_heroe;
 global uniform vec2 dir_camara;
 uniform vec3 color : source_color = vec3(.47, .44, .42);
 uniform sampler2D ruido : hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform sampler2D relieve : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform float cortar = 1.0;
+uniform float alto_corte = 1.0;
 // tema (TemaMazmorra): textura de roca en lugar del ruido, con su relieve y las vetas que brillan
 uniform float usar_tex = 0.0;
 uniform sampler2D tex_color : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
@@ -184,6 +210,13 @@ vec4 triplanar(sampler2D t, vec3 p, vec3 n) {
 	return texture(t, p.zy) * w.x + texture(t, p.xz) * w.y + texture(t, p.xy) * w.z;
 }
 void fragment() {
+#ifdef BAJO
+	// muro bajo: se corta a MURO_BAJO m con un borde roto (ruido), y lo de dentro del muro se ve oscuro
+	float tope = alto_corte + (texture(ruido, vec2(wp.x + wp.z, wp.z - wp.x) * .22).r - .5) * .8
+		+ (fract(sin(dot(floor(wp.xz * 2.2), vec2(12.9898, 78.233))) * 43758.5453) - .5) * .25;
+	if (wp.y > tope) discard;
+	float canto = smoothstep(tope - .18, tope, wp.y);
+#endif
 	// tapa al héroe si está entre él y la cámara (dir_camara: del héroe hacia la cámara, en el suelo)
 	vec2 r = vec2(wp.x - pos_heroe.x, wp.z - pos_heroe.z);
 	float hacia = dot(r, dir_camara);
@@ -208,14 +241,23 @@ void fragment() {
 		float b = triplanar(tex_brillo, q, wn).r;
 		EMISSION = brillo_color * b * brillo_fuerza * (.8 + .2 * sin(TIME * 1.7 + wp.x * .7 + wp.z * .5));
 	}
+	// la base del muro, más oscura y sucia (humedad y hollín acumulados abajo); da peso al muro contra el suelo
+	c *= mix(.45, 1.0, smoothstep(0.0, 1.1, wp.y));
+#ifdef BAJO
+	c *= mix(1.0, .55, canto);   // el canto roto, más oscuro
+	if (!FRONT_FACING) c = vec3(.015, .013, .012);   // el relleno del muro, visto por el corte
+#endif
 	ALBEDO = c;
-	ROUGHNESS = .88;
+	ROUGHNESS = mix(.6, .88, smoothstep(0.0, .8, wp.y));   // abajo, algo húmeda
 	NORMAL_MAP = tn;
 	NORMAL_MAP_DEPTH = .8;
 }
 """
 	var m := ShaderMaterial.new()
 	m.shader = s
+	if bajo:
+		m.set_shader_parameter("cortar", 0.0)
+		m.set_shader_parameter("alto_corte", MURO_BAJO)
 	m.set_shader_parameter("ruido", _ruido(.05))
 	m.set_shader_parameter("relieve", _ruido(.12, true))
 	if tema != "" and TemaMazmorra.hay(tema):

@@ -308,7 +308,7 @@ func _pagina_opciones() -> Control:
 	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.offset_left = -260
 	panel.offset_right = 260
-	panel.offset_top = -260
+	panel.offset_top = -290
 	panel.grow_vertical = Control.GROW_DIRECTION_END
 	panel.add_theme_stylebox_override("panel", UiArte.estilo_panel(22))
 	var caja := VBoxContainer.new()
@@ -323,7 +323,8 @@ func _pagina_opciones() -> Control:
 	caja.add_child(_subtitulo("Calidad gráfica"))
 	_ctl.sombras = _casilla(caja, "Sombras", "sombras")
 	_ctl.niebla = _casilla(caja, "Niebla", "niebla")
-	_ctl.postprocesado = _casilla(caja, "Resplandor y oclusión ambiental", "postprocesado")
+	_ctl.postprocesado = _casilla(caja, "Resplandor, oclusión y luz rebotada", "postprocesado")
+	_ctl.luz_rebotada = _casilla(caja, "Luz rebotada alta (SDFGI)", "luz_rebotada")
 	var sep := Control.new()
 	sep.custom_minimum_size = Vector2(0, 4)
 	caja.add_child(sep)

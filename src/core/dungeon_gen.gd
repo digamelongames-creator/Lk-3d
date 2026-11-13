@@ -102,6 +102,8 @@ const PISOS_LOSETAS := [1, 2, 3]
 static func _post(L: Dictionary) -> void:
 	if plataformas and Plataformas.PISOS.has(int(L.wave)):
 		Plataformas.aplicar(L)
+	# creador de mundos en cascada: papel de cada sala, rasgos (columnatas, estanques, chaflanes) y muros (Arquitectura)
+	Arquitectura.aplicar(L)
 	# última etapa: el decorador (muebles y adornos)
 	Decorador.aplicar(L)
 	MapaPruebas.marcar(L)

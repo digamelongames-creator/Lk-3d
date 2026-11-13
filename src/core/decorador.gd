@@ -26,7 +26,7 @@ static func aplicar(L: Dictionary) -> void:
 	var R := Mulberry32.new(JS.hash_str(String(L.seed) + "#deco" + str(int(L.wave))))
 	var ocup := _ocupado(L)
 	var D := {"suelo": [], "pared": [], "luces": [], "papeles": {}, "focos": []}
-	var papeles := _papeles(L, R, C)
+	var papeles: Dictionary = L.papeles if L.has("papeles") else _papeles(L, R, C)   # los pone Arquitectura
 	D.papeles = papeles
 	var usados := {}   # tipo → [celdas] para separar los iguales
 	for k in L.rooms.size():

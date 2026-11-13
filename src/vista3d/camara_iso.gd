@@ -82,7 +82,7 @@ static func ambiente(padre: Node) -> WorldEnvironment:
 	e.background_color = Color(.012, .009, .012)
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = Color(.42, .42, .5)
-	e.ambient_light_energy = .35
+	e.ambient_light_energy = .2   # poco: la forma la dan las antorchas y la luz rebotada, no un color plano
 	e.tonemap_mode = Environment.TONE_MAPPER_ACES
 	e.tonemap_exposure = 1.2
 	e.glow_enabled = true
@@ -92,6 +92,18 @@ static func ambiente(padre: Node) -> WorldEnvironment:
 	e.ssao_enabled = true
 	e.ssao_radius = .8
 	e.ssao_intensity = 3.0
+	e.ssao_detail = .7
+	# luz rebotada en pantalla: el suelo iluminado por una antorcha tiñe la pared de al lado
+	e.ssil_enabled = true
+	e.ssil_radius = 4.0
+	e.ssil_intensity = 1.4
+	e.ssil_sharpness = .9
+	# calidad alta (Opciones «luz_rebotada»): luz rebotada de verdad, sin hornear (vale para pisos generados)
+	e.sdfgi_use_occlusion = true
+	e.sdfgi_cascades = 3
+	e.sdfgi_min_cell_size = .25
+	e.sdfgi_energy = .8
+	e.sdfgi_bounce_feedback = .4
 	e.volumetric_fog_enabled = true
 	e.volumetric_fog_density = .012
 	e.volumetric_fog_albedo = Color(.9, .7, .55)

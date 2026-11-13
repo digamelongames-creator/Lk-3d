@@ -15,6 +15,11 @@ var muros: GridMap         # núcleos de muro y arcos
 var objetos: GridMap
 var caras: Array[GridMap] = []      # sillería de cada lado que da al suelo: 0 sur, 1 este, 2 norte, 3 oeste
 var esquinas: Array[GridMap] = []   # columnas de esquina: 0 suroeste, 1 sureste, 2 noreste, 3 noroeste
+## muros bajos del lado de la cámara (Arquitectura: L.arq.bajo), con la biblioteca de KitMazmorra.mesh_library_baja
+var muros_b: GridMap
+var caras_b: Array[GridMap] = []
+var esquinas_b: Array[GridMap] = []
+var _arq := {}            # L.arq: qué muros son bajos y qué cara lleva cada tramo alto
 const DIRS := [Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0)]
 const ESQ := [Vector2i(-1, 1), Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, -1)]
 const GIROS := [0.0, PI / 2, PI, -PI / 2]
@@ -27,6 +32,8 @@ var _sala: PackedInt32Array
 var adornos: Node3D
 var luces: Array[OmniLight3D] = []
 var _llamas: Array = []   # [OmniLight3D, energía base, fase]
+var fuegos: Array[OmniLight3D] = []   # antorchas y braseros: los que pueden dar sombra (sombras_cerca)
+var _sombras_t := 0.0
 var _t := 0.0
 var tema := ""            # TemaMazmorra: texturas, luz y abismo del piso ("" = los de siempre)
 var _brasas: Node3D       # temas con abismo: brasas (lava) o rocío (agua) que suben alrededor de la cámara
@@ -54,6 +61,10 @@ func _ready() -> void:
 	for k in 4:
 		caras.append(_gm("Caras%d" % k))
 		esquinas.append(_gm("Esquinas%d" % k))
+	muros_b = _gm("MurosBajos")
+	for k in 4:
+		caras_b.append(_gm("CarasBajas%d" % k))
+		esquinas_b.append(_gm("EsquinasBajas%d" % k))
 	adornos = Node3D.new()
 	adornos.name = "Adornos"
 	add_child(adornos)
@@ -68,11 +79,12 @@ func _gm(n: String) -> GridMap:
 	return g
 
 func construir(L: Dictionary) -> void:
-	for g in [suelo, muros, objetos] + caras + esquinas:
+	for g in [suelo, muros, objetos, muros_b] + caras + esquinas + caras_b + esquinas_b:
 		g.clear()
 	for c in adornos.get_children():
 		c.queue_free()
 	luces.clear()
+	fuegos.clear()
 	tapas.clear()
 	_llamas.clear()
 	_brasas = null
@@ -84,6 +96,11 @@ func construir(L: Dictionary) -> void:
 	for g in [suelo, muros, objetos] + caras + esquinas:
 		if g.mesh_library != lib:
 			g.mesh_library = lib
+	var lib_b := KitMazmorra.mesh_library_baja(tema)
+	for g in [muros_b] + caras_b + esquinas_b:
+		if g.mesh_library != lib_b:
+			g.mesh_library = lib_b
+	_arq = L.get("arq", {})
 	var W := DungeonGen.GW
 	var H := DungeonGen.GH
 	var G: PackedByteArray = L.grid
@@ -104,6 +121,7 @@ func construir(L: Dictionary) -> void:
 		DungeonGen.DOWN: KitMazmorra.id("escalera_baja"),
 		DungeonGen.UP: KitMazmorra.id("escalera_sube"),
 	}
+	var muebles := Amueblado3D.casillas(L) if not _arq.is_empty() else {}   # piezas 3D en lugar de la caja «mueble»
 	for cy in H:
 		for cx in W:
 			var t := G[cy * W + cx]
@@ -125,11 +143,16 @@ func construir(L: Dictionary) -> void:
 				Inframundo3D.puerta(self, cx, cy, _orientacion_arco(G, cx, cy) != _orientacion_arco_norte())
 			elif t == DungeonGen.DOOR and i_arco >= 0:
 				muros.set_cell_item(celda, i_arco, _orientacion_arco(G, cx, cy))
+			elif t == DungeonGen.DECOR and muebles.has(Vector2i(cx, cy)):
+				pass   # lo pone Amueblado3D
 			elif pieza.has(t) and pieza[t] >= 0 and not (m & A_MANO_OBJETO):
 				objetos.set_cell_item(celda, pieza[t])
 	_antorchas(L)
 	_decorador(L)
 	_puertas_secretas(L)
+	if not _arq.is_empty():
+		Amueblado3D.poner(self, L, muebles)
+		Suciedad3D.poner(self, L)   # hollín, humedad y grietas (pisos del creador de mundos)
 	if _piezas_tema:
 		for c in _calaveras:
 			var cel := Vector3i(c[0], 0, c[1])
@@ -207,31 +230,53 @@ func _pisable(x: int, y: int) -> bool:
 func _ori(g: GridMap, giro: float) -> int:
 	return g.get_orthogonal_index_from_basis(Basis(Vector3.UP, giro))
 
+## muro bajo (Arquitectura): del lado de la cámara, cortado a KitMazmorra.MURO_BAJO
+func es_bajo(cx: int, cy: int) -> bool:
+	if _arq.is_empty():
+		return false
+	var b: PackedByteArray = _arq.bajo
+	var i := cy * DungeonGen.GW + cx
+	return i >= 0 and i < b.size() and b[i] == 1
+
+func _junto_a_bajo(cx: int, cy: int) -> bool:
+	for d in DIRS:
+		if es_bajo(cx + d.x, cy + d.y):
+			return true
+	return false
+
 func _muro(cx: int, cy: int) -> void:
 	var celda := Vector3i(cx, 0, cy)
-	muros.set_cell_item(celda, KitMazmorra.variante("nucleo", cx, cy), _giro_azar(cx, cy))
+	var bajo := es_bajo(cx, cy)
+	var g_muro: GridMap = muros_b if bajo else muros
+	var g_caras: Array[GridMap] = caras_b if bajo else caras
+	var g_esq: Array[GridMap] = esquinas_b if bajo else esquinas
+	g_muro.set_cell_item(celda, KitMazmorra.variante("nucleo", cx, cy), _giro_azar(cx, cy))
 	for k in 4:
 		var d: Vector2i = DIRS[k]
 		if _pisable(cx + d.x, cy + d.y):
-			var cara := _cara_para(cx, cy, k)
-			if _piezas_tema and Inframundo3D.cara_calavera(cx, cy, k, cara):
+			var cara := ("cara" if absi(hash(Vector3i(cx, cy, k))) % 2 == 0 else "cara_b") if bajo else _cara_para(cx, cy, k)
+			if not bajo and _piezas_tema and Inframundo3D.cara_calavera(cx, cy, k, cara):
 				_calaveras.append([cx, cy, k])   # se pone al final (si no hay puerta secreta ni nada colgado)
 				continue
-			caras[k].set_cell_item(celda, KitMazmorra.id(cara), _ori(caras[k], GIROS[k]))
+			g_caras[k].set_cell_item(celda, KitMazmorra.id(cara), _ori(g_caras[k], GIROS[k]))
 	for k in 4:
 		var e: Vector2i = ESQ[k]
 		var a := _pisable(cx + e.x, cy)
 		var b := _pisable(cx, cy + e.y)
 		var diag := _pisable(cx + e.x, cy + e.y)
 		# esquina de dentro de una sala (solo la diagonal es suelo) o esquina que sobresale (los dos lados)
-		if _piezas_tema and diag and not a and not b and _sala_en(cx + e.x, cy + e.y):
+		if not bajo and _piezas_tema and diag and not a and not b and _sala_en(cx + e.x, cy + e.y):
 			# esquina de dentro de una sala: pilar retorcido en el vértice
 			Inframundo3D.pilar(self, centro(Vector2i(cx, cy)) + Vector3(e.x, 0, e.y) * KitMazmorra.CELDA / 2)
 		elif (diag and not a and not b) or (a and b):
-			esquinas[k].set_cell_item(celda, KitMazmorra.id("columna_esquina"), _ori(esquinas[k], GIROS[k]))
+			g_esq[k].set_cell_item(celda, KitMazmorra.id("columna_esquina"), _ori(g_esq[k], GIROS[k]))
 
 ## qué cara lleva el lado k del muro (cx, cy): columnas cada 3 casillas y, entre medias, variantes al azar
 func _cara_para(cx: int, cy: int, k: int) -> String:
+	if not _arq.is_empty():   # el tramo compuesto por Arquitectura (ritmo y simetría según la sala)
+		var c = _arq.caras.get("%d,%d,%d" % [cx, cy, k])
+		if c != null:
+			return c
 	var t := cx if k % 2 == 0 else cy
 	if posmod(t, 3) == 0:
 		return "cara_columna"
@@ -284,6 +329,8 @@ func poner_en_pared(nombre: String, celda: Vector2i, cara: Vector2i, altura: flo
 	var lado := Vector3(-cara.y, 0, cara.x)
 	n.position = centro(celda) + dir * (KitMazmorra.CELDA / 2 - .1) + lado * corre + Vector3(0, altura, 0)
 	_cara_lisa(celda + cara, cara)
+	if altura > KitMazmorra.MURO_BAJO - .3 and es_bajo(celda.x + cara.x, celda.y + cara.y):
+		n.visible = false   # un muro bajo no tiene donde colgarlo
 	n.rotation.y = atan2(-float(cara.x), -float(cara.y))
 	adornos.add_child(n)
 	return n
@@ -299,11 +346,12 @@ func _cara_lisa(muro: Vector2i, cara: Vector2i) -> void:
 		caras[k].set_cell_item(c, KitMazmorra.id("cara"), caras[k].get_cell_item_orientation(c))
 
 func poner_antorcha(celda: Vector2i, cara: Vector2i, corre: float = 0.0) -> void:
+	if es_bajo(celda.x + cara.x, celda.y + cara.y):
+		return
 	var a := poner_en_pared("antorcha", celda, cara, 1.55, corre)
 	var llama := a.transform * Vector3(0, .45, .3)   # la copa de la antorcha (ver kit_mazmorra.py)
 	_fuego(llama, .13)
-	var luz := _luz(llama + Vector3(-cara.x, 0, -cara.y) * .5, color_fuego(), 2.8, 9.0)
-	_llamas.append([luz, luz.light_energy, randf() * 10])
+	_luz_fuego(llama + Vector3(-cara.x, 0, -cara.y) * .5, 2.8, 9.0)
 
 ## orientación del arco cuando el paso va de norte a sur (para saber si una puerta va de este a oeste)
 func _orientacion_arco_norte() -> int:
@@ -319,6 +367,8 @@ func tiene_cara(cx: int, cy: int) -> bool:
 	for k in 4:
 		if caras[k].get_cell_item(Vector3i(cx, 0, cy)) != GridMap.INVALID_CELL_ITEM:
 			return true
+		if caras_b[k].get_cell_item(Vector3i(cx, 0, cy)) != GridMap.INVALID_CELL_ITEM:
+			return true
 	return false
 
 ## llamas sin luz (cuando varias comparten una) y una luz que parpadea sola
@@ -326,14 +376,12 @@ func fuego_sin_luz(p: Vector3, tam: float) -> void:
 	_fuego(p, tam)
 
 func fuego_luz(p: Vector3, energia: float, rango: float) -> void:
-	var luz := _luz(p, color_fuego(), energia, rango)
-	_llamas.append([luz, luz.light_energy, randf() * 10])
+	_luz_fuego(p, energia, rango)
 
 ## fuego con luz que parpadea (braseros y antorchas de los kits de fuera)
 func fuego_y_luz(p: Vector3, tam: float, energia: float = 2.8, rango: float = 9.0) -> void:
 	_fuego(p, tam)
-	var luz := _luz(p + Vector3(0, .4, 0), color_fuego(), energia, rango)
-	_llamas.append([luz, luz.light_energy, randf() * 10])
+	_luz_fuego(p + Vector3(0, .4, 0), energia, rango)
 
 ## pieza suelta de pie en el suelo (brasero, barril, caja…) en un punto en metros
 func poner_en_suelo(nombre: String, pos: Vector3, giro: float = 0.0) -> Node3D:
@@ -344,8 +392,7 @@ func poner_en_suelo(nombre: String, pos: Vector3, giro: float = 0.0) -> Node3D:
 	if nombre == "brasero":
 		var arriba := pos + Vector3(0, 1.15, 0)
 		_fuego(arriba, .26)
-		var luz := _luz(arriba + Vector3(0, .6, 0), color_fuego(), 3.2, 10.0)
-		_llamas.append([luz, luz.light_energy, randf() * 10])
+		_luz_fuego(arriba + Vector3(0, .6, 0), 3.2, 10.0)
 	return n
 
 func _decorador(L: Dictionary) -> void:
@@ -394,6 +441,37 @@ func _luz(p: Vector3, c: Color, e: float, r: float) -> OmniLight3D:
 	adornos.add_child(l)
 	luces.append(l)
 	return l
+
+## luz de un fuego (antorcha, brasero): parpadea y puede dar sombra cuando está cerca del héroe
+func _luz_fuego(p: Vector3, e: float, r: float) -> OmniLight3D:
+	var l := _luz(p, color_fuego(), e, r)
+	_llamas.append([l, l.light_energy, randf() * 10])
+	l.omni_shadow_mode = OmniLight3D.SHADOW_CUBE
+	l.shadow_bias = .04
+	l.shadow_normal_bias = 1.2
+	l.shadow_blur = 1.4
+	l.light_size = .12        # sombra suave que se abre con la distancia
+	l.shadow_opacity = .92
+	fuegos.append(l)
+	return l
+
+## las N luces de fuego más cercanas al héroe dan sombra (Opciones.SOMBRAS_A_LA_VEZ); las demás no.
+## Se recalcula 4 veces por segundo; una luz con sombra la conserva hasta que otra está 2 m más cerca (sin parpadeos).
+func sombras_cerca(heroe: Vector3, dt: float) -> void:
+	_sombras_t -= dt
+	if _sombras_t > 0 or fuegos.is_empty():
+		return
+	_sombras_t = .25
+	var n: int = Opciones.SOMBRAS_A_LA_VEZ if Opciones.v("sombras") else 0
+	var orden := []
+	for l in fuegos:
+		if is_instance_valid(l):
+			var d := l.position.distance_to(heroe)   # adornos y la mazmorra están en el origen - (2.0 if l.shadow_enabled else 0.0)
+			orden.append([d, l])
+	orden.sort_custom(func(a, b): return a[0] < b[0])
+	for i in orden.size():
+		var l: OmniLight3D = orden[i][1]
+		l.shadow_enabled = i < n and orden[i][0] < l.omni_range + 4.0
 
 func _fuego(p: Vector3, tam: float) -> void:
 	var f := CPUParticles3D.new()

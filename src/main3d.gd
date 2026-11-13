@@ -436,6 +436,8 @@ func _process(dt: float) -> void:
 	hechizos.actualizar(dt)
 	if sim.p != null:
 		RenderingServer.global_shader_parameter_set("pos_heroe", MazmorraGridMap.a3d(sim.p.x, sim.p.y))
+		if mazmorra != null:
+			mazmorra.sombras_cerca(MazmorraGridMap.a3d(sim.p.x, sim.p.y), dt)
 	if _morir and _frame == 20:
 		sim.p.hp = 0
 		sim.p.dead = true
@@ -928,6 +930,8 @@ func _exit_tree() -> void:
 	sim.apr.cerrar_todos(sim)
 	sim.apr.guardar()
 	KitMazmorra.limpiar()
+	Suciedad3D.limpiar()
+	Amueblado3D.limpiar()
 	Escena3D.limpiar()
 	Props3D.limpiar()
 	Ciudad.limpiar()

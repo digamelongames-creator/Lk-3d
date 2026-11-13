@@ -842,9 +842,11 @@ func _nuevo_heroe() -> Node3D:
 	var luz := OmniLight3D.new()
 	luz.position = Vector3(0, 3.0, .5)
 	luz.light_color = Color(1, .85, .7)
-	luz.light_energy = 1.6
+	luz.light_energy = 1.3
 	luz.omni_range = 11
-	luz.shadow_enabled = true
+	# sin sombra (13 nov, Diego): desde encima del héroe solo daba sombras cortas bajo los pies;
+	# las sombras las dan las antorchas y braseros más cercanos (MazmorraGridMap.sombras_cerca)
+	luz.shadow_enabled = false
 	n.add_child(luz)
 	return n
 

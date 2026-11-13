@@ -1,6 +1,6 @@
 # Estado · Last Knight 3D
 
-Al día: 12 nov 2026 (tarde). **Este archivo es la fuente de verdad del proyecto**: cómo se trabaja, qué falta, qué se ha decidido y qué está hecho. Las fichas del Proyecto «isometrico» y los documentos antiguos son historia; si no coinciden con esto, manda esto.
+Al día: 13 nov 2026. **Este archivo es la fuente de verdad del proyecto**: cómo se trabaja, qué falta, qué se ha decidido y qué está hecho. Las fichas del Proyecto «isometrico» y los documentos antiguos son historia; si no coinciden con esto, manda esto.
 
 ## Cómo trabajamos (léelo primero, todos los chats)
 
@@ -25,6 +25,7 @@ Al día: 12 nov 2026 (tarde). **Este archivo es la fuente de verdad del proyecto
 
 Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guardado).
 
+0. **Creador de mundos** (rama `creador-mundos`, 13 nov): fases 1–3 hechas (ver «Hecho»). Falta: que Diego lo pruebe y pasarlo a `main`; las 25 piezas de las Criptas (`docs/CRIPTAS_PIEZAS.md`: encargos de Pixmith → Tripo) y meterlas en `Amueblado3D.PIEZAS` y en las caras de `Arquitectura`; protagonista por sala (altar, sarcófago, trono…); rasgos que faltan (estrado, foso con barandilla, galería alta a la que no se llega); brocal en los estanques; arcos de las puertas con pieza propia; llevar el creador a los pisos de pasarelas (3–5 y 8–9, hoy no lo usan).
 0. **Escenas de calidad** (decidido por Diego el 11 nov): la herramienta ya está (ver «Hecho»). Siguiente: pedir a Pixmith otra vez las 10 imágenes de `C:\Carpeta Juego\Temas` con la cámara del juego (las salas que van dentro de un piso se diseñan con ella) en `C:\Carpeta Juego\Escenas\<nombre>\`; con las nuevas imágenes, Diego elige la primera prueba de la skill. Después: Prueba puente jugable (cámara de la imagen que sigue al héroe y enemigos), y más tarde salas especiales y de jefe dentro de los pisos (Diego acepta tocar el generador para eso).
 0a. **Sala especial «Abismo de cristal»** (`assets/escenas/abismo_cristal.json`, «Prueba 10»): terminada con las piezas de Tripo, materiales y luz (12 nov). Falta que Diego la pruebe en su PC (F7 para los fotogramas) y, después, que el generador la ponga sola, una por piso en los pisos 3–5, en un sitio adecuado (Diego: «lo veremos más adelante»).
 0b. **Temas de la mazmorra**: Galerías hundidas ya va en los pisos 3–5 (12 nov). Faltan sus piezas de Tripo para los pisos normales y, después, los otros temas (Criptas 1–2, Osario 6–7, Sarcófago del rey caído 10).
@@ -38,6 +39,9 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 8. **Repaso para la demo:** créditos, `LICENCIAS.md` (faltan las texturas sin confirmar) y los avisos de recursos sin soltar al cerrar Godot.
 
 ## Pendiente de Diego
+
+- Probar la rama **`creador-mundos`** (pisos 1–2, 6–7 y 10): muros bajos del lado de la cámara con el borde roto, tramos de muro con ritmo según la sala, columnatas, estanques y esquinas achaflanadas, muebles con piezas 3D, suciedad (hollín, humedad, grietas) y la luz nueva (sombras de las 5 antorchas más cercanas, el héroe sin sombra, luz rebotada; «Luz rebotada alta (SDFGI)» en Opciones, mejor apagada en la GTX 1060). Decir qué cambiar y si pasa a `main`.
+- Pasar a Tripo las piezas de las Criptas cuando estén las imágenes (`docs/CRIPTAS_PIEZAS.md`).
 
 - Probar el **hangar del Coliseo Mecha** (mochila 4×4, escudo, módulos que se rompen por la espalda, escalera de 5 rivales) y decir qué cambiar: precios, límites de peso y reactor, si el giro lento del mecha se hace pesado. Aún sin sonido ni guardado (la chatarra se pierde al cerrar).
 - Probar los pisos 3–5 con Galerías hundidas y el «Piso de prueba 3».
@@ -55,12 +59,12 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 
 ## En curso en otros chats
 
-- El muro que tapa al héroe (sigue el recorte de puntos de la primera versión).
+- El muro que tapa al héroe (sigue el recorte de puntos de la primera versión). Ojo: con los muros bajos de `creador-mundos`, los muros altos ya no tapan suelo; el recorte solo actúa en pisos sin creador (pasarelas, ciudad, pruebas).
 
 ## Decisiones en espera
 
 
-- Estilo de adornos del piso de prueba (Poly Haven, Modular, Low Poly, Gótico o Ruinas) y pasar el Repartidor a los pisos normales: **en espera** (Diego, 10 nov). Hoy las salas del generador no tienen adornos por propósito.
+- Estilo de adornos del piso de prueba (Poly Haven, Modular, Low Poly, Gótico o Ruinas): **en espera** (Diego, 10 nov). Los pisos normales ya tienen papel por sala y muebles 3D (`creador-mundos`, 13 nov).
 
 ## Para después del producto mínimo
 
@@ -80,12 +84,12 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Prueba puente e Inframundo (piso 7) dados por buenos por Diego el 11 nov («este es el juego que pensé»); los detalles de la prueba (cascadas, cadenas, jaulas) no se pulen: era una prueba.
 - Salas en tres clases: normales (modulares, decoración automática), especiales y de jefe (hechas a mano con `docs/ESCENAS.md`). Las que van dentro de un piso se diseñan con la cámara del juego; la cámara propia, solo para vitrinas y cinemáticas (11 nov).
 - Carpetas de cada escena: `C:\Carpeta Juego\Escenas\<nombre>\` (referencia, puntos, piezas_tripo, piezas_tripo_hechas, capturas) (11 nov).
-- El generador de mapas se puede tocar para meter salas hechas a mano (puente, salas especiales) cuando toque (11 nov). Hasta entonces sigue sin tocarse.
+- Creador de mundos (13 nov, Diego): en cascada y **dentro del propio generador** (no como añadido): plano (sin cambios) → papel de cada sala por bioma → rasgos que cambian la forma sin cerrar caminos → muros por tramos con ritmo y simetría → muros bajos fijos al sur y al este (en lugar del borrado por puntos) → decorador por conjuntos → suciedad. Luz: solo las antorchas cercanas dan sombra (el héroe no), luz rebotada SSIL y SDFGI como calidad alta. Repertorio empezando por las Criptas (Claude encarga a Pixmith, Diego pasa por Tripo). En rama aparte hasta que Diego lo pruebe.
 
 - Combate: el héroe no avanza al atacar y se queda quieto mientras dura el tajo; todas las clases quietas al atacar o lanzar; sin temblor de cámara ni congelado; los básicos no empujan; sin gesto de dolor en enemigos; caen donde mueren.
 - Muerte: sin Revivir en partida; se vuelve a Inca sin mochila ni el oro de la bajada. En el piso de prueba sí se revive en el sitio.
 - Solo se vuelve a Inca tras vencer al jefe del piso o al morir. Las tiendas venden siempre lo mismo.
-- El generador de mazmorras no se toca (10 nov). La velocidad al andar actual es la base.
+- El plano del generador de mazmorras no cambia (10 nov); encima va el creador de mundos (13 nov). La velocidad al andar actual es la base.
 - Enemigos que aprenden: activos en las partidas normales. El aviso entre compañeros se queda como está.
 - Equipo +10 % por afijo y oleada; legendarios del caballero con efecto único; jefe ×2,2.
 - Temas por tramo (11 nov): Criptas 1–2, Galerías hundidas 3–5, Osario 6–7, Inframundo 8–9 y Sarcófago del rey caído 10. Texturas con la opción mixta (color y alturas de Pixmith, el resto por script). Los pisos 8–9 son de pasarelas sobre un mar de lava; caer a la lava castiga igual que el abismo (último suelo, −20 % de vida); los canales del Inframundo son de lava (solo se ven: no queman todavía).
@@ -98,6 +102,7 @@ Ver `docs/PRODUCTO_MINIMO.md` (caballero, pisos 1–10, Inca con tiendas, guarda
 - Salas secretas alejadas del resto (se tapan y el teletransporte no entra).
 
 ## Hecho (lo más nuevo arriba)
+- **Creador de mundos, fases 1–3 (13 nov, decidido por Diego; rama `creador-mundos`):** *Luz:* las 5 antorchas y braseros más cercanos al héroe dan sombra suave y se van pasando (`MazmorraGridMap.sombras_cerca`, `Opciones.SOMBRAS_A_LA_VEZ`); el héroe ya no da sombra; menos ambiente plano (.35 → .2), SSIL con el postprocesado y SDFGI en la opción nueva «Luz rebotada alta» (`luz_rebotada`, apagada por defecto); sombras suaves de calidad alta y atlas con un hueco grande y cuatro medianos (`project.godot`); base de los muros más oscura y húmeda. *Generador:* etapa nueva `Arquitectura` (`src/core/arquitectura.gd`) en `DungeonGen._post`, antes del Decorador: papel de cada sala (`L.papeles`, que ahora usa el Decorador), rasgos que tocan la rejilla y se deshacen si cortan un camino (`columnata` de pilares, `estanques` de agua, `chaflan` en las esquinas; `L.rasgos`), muros bajos (`L.arq.bajo`: roca con suelo al norte, al oeste o al noroeste) y caras de los tramos altos con ritmo y simetría por papel (`L.arq.caras`). *Vista:* muros bajos en sus propios GridMap con `KitMazmorra.mesh_library_baja` (cortados a 1 m con borde roto e interior oscuro; sin arco en sus puertas ni antorchas), muebles del Decorador y del generador con piezas 3D en lugar de la caja (`Amueblado3D`), calcomanías de hollín, humedad y verdín, manchas y grietas (`Suciedad3D`). No se aplica en los pisos de pasarelas. Encargos de las 25 piezas de las Criptas: `docs/CRIPTAS_PIEZAS.md`. Prueba: `tests/test_arquitectura.gd`.
 - **Bufona, Brujo, Knight y Medusa (13 nov, decidido por Diego):** pasados como los anteriores y en el panel F5. El caballero lleva el Knight y el señor oscuro el Brujo en las partidas (`Modelo3D.HEROE_CLASE`; `Actores3D._skin_quiere` distingue dk/dl); el caballero de la muerte sigue con el esqueleto. El enemigo «La Bufona Loca» usa la Bufona nueva (antes `jester`) con las animaciones del esqueleto. Todos a 1,8 m (`alto_original` medido; también se corrigieron Amazona, Vaquita y Cuernitos, que salían algo bajos). El Monstruo Mayor espera a sus animaciones.
 - **Personajes de Diego y Piso de prueba · Animaciones (13 nov, decidido por Diego):** Amazona, Vaquita, Cuernitos y Elfa azul (FBX de Mixamo «With Skin») pasados con `heroe_skin_glb.py` a `assets/monstruos/`, con las animaciones del esqueleto pasadas a sus huesos como la Maga; lista de skins en `Modelo3D.SKINS_HEROE` (panel F5). Todos los héroes, con cualquier skin, corren con `correr_rapido` (`Actores3D.CARRERA_HEROE`; la voltereta sigue con run, los enemigos no cambian). Nuevo «Piso de prueba · Animaciones» (`PisoPrueba.ANIMACIONES`, `--prueba=2`): piso 1 normal con enemigos y el panel F5 abierto al entrar. Se quita la sala «Animaciones» del Piso de prueba 1. Prueba: `tests/test_heroes_andar.gd`.
 - **Coliseo Mecha: hangar y mochila 4×4 (13 nov, decidido por Diego):** antes de cada combate, hangar con tienda, almacén y la mochila de la espalda en cuadrícula 4×4 (`scripts/modulos.gd`, `scripts/hangar.gd`). 9 módulos de tamaños 1×1, 1×2 y 2×2 que se giran: generador de propulsión (pequeño y normal; sin él no hay impulso ni vuelo), generador de escudo (pequeño y normal, con su propia energía; burbuja que para balas, se recarga sin golpes, el puñetazo la rompe), batería (+40 % de energía) y recargador (+50 % de recarga) a los generadores que tocan por un lado, disipador, propulsor extra y blindaje. Límites de peso (18, frena) y reactor (12). Se ven en la espalda; los tiros por detrás rompen módulos (el blindaje se lleva casi todos). Escalera de 5 gladiadores con su construcción, chatarra por combate (40 si pierdes). El mecha gira despacio para que rodear sirva. Pruebas: `tests/test_modulos.gd`, `tests/test_hangar.gd`, `tests/test_espalda.gd` y `-- --prueba` (la escalera entera IA contra IA).
