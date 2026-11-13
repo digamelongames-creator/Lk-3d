@@ -613,7 +613,11 @@ static func _giro(face: float) -> float:
 func _skin_quiere() -> String:
 	if skin_forzada != "" and Modelo3D.hay(skin_forzada):
 		return skin_forzada
-	return Modelo3D.de_clase(sim.p.cls, heroe_id) if sim != null and sim.p != null else heroe_id
+	if sim == null or sim.p == null:
+		return heroe_id
+	# el caballero de la muerte y el señor oscuro tienen cls «knight»: se distinguen por dk/dl
+	var clase: String = "dk" if sim.p.dk else ("dl" if sim.p.dl else sim.p.cls)
+	return Modelo3D.de_clase(clase, heroe_id)
 
 ## panel de animaciones: cambia el modelo del héroe (lo vuelve a montar y a vestir)
 func cambiar_skin(id: String) -> void:

@@ -31,7 +31,10 @@ func _correr() -> void:
 	ok(absf(Actores3D.ritmo_andar(1.516 * 16.0) - 1.0) < .02, "ritmo a 1,5 m/s")
 	ok(Actores3D.ritmo_andar(73.0) > 2.5, "ritmo al 100 %")
 	ok(Modelo3D.de_clase("mage") == "maga", "el mago no lleva la Maga")
-	ok(Modelo3D.de_clase("knight") == "esqueleto", "el caballero no lleva el esqueleto")
+	ok(Modelo3D.de_clase("knight") == "knight", "el caballero no lleva el Knight")
+	ok(Modelo3D.de_clase("dl") == "brujo", "el señor oscuro no lleva el Brujo")
+	ok(Modelo3D.de_clase("dk") == "esqueleto", "el caballero de la muerte no lleva el esqueleto")
+	ok(Modelo3D.FICHAS.bufona.glb == "bufona" and Modelo3D.hay("bufona"), "el enemigo Bufona no lleva el modelo nuevo")
 	var m := Modelo3D.crear("maga")
 	ok(m != null and m.anim != null, "Maga sin modelo o sin animaciones")
 	if m != null and m.anim != null:
@@ -89,7 +92,7 @@ func _correr() -> void:
 			ok(act._modelo_heroe.actual == n, "%s no reproduce %s" % [id, n])
 	act.anim_forzada = ""
 	# las skins nuevas: de pie, de ~1,7–1,8 m, y corren con correr_rapido en partida
-	for id in ["amazona", "vaquita", "cuernitos", "elfa_azul"]:
+	for id in ["amazona", "vaquita", "cuernitos", "elfa_azul", "bufona", "brujo", "knight", "medusa"]:
 		ok(Modelo3D.hay(id), "falta la skin " + id)
 		var k := Modelo3D.crear(id)
 		k.anadir_animaciones()
@@ -101,7 +104,7 @@ func _correr() -> void:
 		var sk2: Skeleton3D = k.find_children("*", "Skeleton3D", true, false)[0]
 		var cab2 := (_glob(sk2) * sk2.get_bone_global_pose(sk2.find_bone("mixamorig_HeadTop_End"))).origin
 		print("%s: cabeza %.2f m" % [id, cab2.y])
-		ok(cab2.y > 1.4 and cab2.y < 2.0, id + " no está de pie")
+		ok(cab2.y > 1.6 and cab2.y < 2.0, id + " no mide ~1,8 m")
 		k.free()
 	act.cambiar_skin("amazona")
 	vistos.clear()

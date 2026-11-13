@@ -8,7 +8,8 @@ extends Node3D
 ## monstruo de la simulación (Enemy.mon) → modelo y datos (de config/characters/*.json de la fábrica)
 const FICHAS := {
 	"esqueleto": {"glb": "esqueleto", "alto": 1.8, "golpe": .36},   # la espada toca a 0,82 s de 2,27 (pico de velocidad de la mano)
-	"bufona": {"glb": "jester", "alto": 1.75, "golpe": .8, "luz": Color8(190, 90, 255)},
+	# la Bufona de Diego (13 nov; antes «jester» de la fábrica): enemigo y skin del panel, animaciones del esqueleto
+	"bufona": {"glb": "bufona", "alto": 1.8, "alto_original": 0.924, "golpe": .36, "anims_de": "esqueleto", "luz": Color8(190, 90, 255)},
 	"miniDemon": {"glb": "minidemon", "alto": 1.15, "golpe": .8, "luz": Color8(255, 120, 30), "parts": ["brasas"]},
 	"middleDemon": {"glb": "middledemon", "alto": 2.3, "golpe": .8, "luz": Color8(255, 110, 30), "parts": ["brasas"]},
 	"demonCaptain": {"glb": "leveldemon", "alto": 2.7, "golpe": .8, "luz": Color8(255, 90, 20), "parts": ["brasas", "humo"]},
@@ -23,17 +24,23 @@ const FICHAS := {
 		"sin": ["attack", "walk"], "attack": "lanzar_bola"},
 	# personajes de Diego riggeados en Mixamo (13 nov; heroe_skin_glb.py): skins de héroe para el panel F5 y el
 	# «Piso de prueba · Animaciones». Animaciones del esqueleto pasadas a sus huesos, como la Maga.
-	"amazona": {"glb": "amazona", "alto": 1.8, "alto_original": 1.0, "golpe": .36, "anims_de": "esqueleto"},
-	"vaquita": {"glb": "vaquita", "alto": 1.8, "alto_original": 1.0, "golpe": .36, "anims_de": "esqueleto"},
-	"cuernitos": {"glb": "cuernitos", "alto": 1.8, "alto_original": 1.0, "golpe": .36, "anims_de": "esqueleto"},
-	"elfa_azul": {"glb": "elfa_azul", "alto": 1.8, "alto_original": 1.0, "golpe": .36, "anims_de": "esqueleto"},
+	# Todos de 1,8 m (Diego): «alto_original» medido con la cabeza en «idle», igual que la Maga.
+	"amazona": {"glb": "amazona", "alto": 1.8, "alto_original": 0.939, "golpe": .36, "anims_de": "esqueleto"},
+	"vaquita": {"glb": "vaquita", "alto": 1.8, "alto_original": 0.935, "golpe": .36, "anims_de": "esqueleto"},
+	"cuernitos": {"glb": "cuernitos", "alto": 1.8, "alto_original": 0.990, "golpe": .36, "anims_de": "esqueleto"},
+	"elfa_azul": {"glb": "elfa_azul", "alto": 1.8, "alto_original": 1.003, "golpe": .36, "anims_de": "esqueleto"},
+	"brujo": {"glb": "brujo", "alto": 1.8, "alto_original": 0.912, "golpe": .36, "anims_de": "esqueleto"},   # señor oscuro
+	"knight": {"glb": "knight", "alto": 1.8, "alto_original": 0.967, "golpe": .36, "anims_de": "esqueleto"},   # caballero
+	"medusa": {"glb": "medusa", "alto": 1.8, "alto_original": 0.958, "golpe": .36, "anims_de": "esqueleto"},
 }
 ## skins que se pueden elegir para el héroe (panel F5 y Piso de prueba · Animaciones): nombre y ficha.
 ## Para añadir otra: su .glb con heroe_skin_glb.py, su ficha arriba y una línea aquí.
 const SKINS_HEROE := [["Esqueleto", "esqueleto"], ["Maga", "maga"], ["Amazona", "amazona"], ["Vaquita", "vaquita"],
-	["Cuernitos", "cuernitos"], ["Elfa azul", "elfa_azul"]]
-## el modelo del héroe según la clase (si su .glb existe); las demás clases, el esqueleto
-const HEROE_CLASE := {"mage": "maga"}
+	["Cuernitos", "cuernitos"], ["Elfa azul", "elfa_azul"], ["Bufona", "bufona"], ["Brujo", "brujo"], ["Knight", "knight"],
+	["Medusa", "medusa"]]
+## el modelo del héroe según la clase (si su .glb existe; «dk» y «dl» por separado, aunque su cls sea «knight»);
+## las demás clases, el esqueleto
+const HEROE_CLASE := {"mage": "maga", "knight": "knight", "dl": "brujo"}   # caballero → Knight, señor oscuro → Brujo (13 nov)
 const BUCLE := ["idle", "walk", "run", "andar", "correr_medio", "correr_rapido", "trotar", "correr_adelante", "correr_herido_atras"]
 const ALTO_ORIGINAL := 1.81   # lo que miden los modelos al salir de Mixamo
 
