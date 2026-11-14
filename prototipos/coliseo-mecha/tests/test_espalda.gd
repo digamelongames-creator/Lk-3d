@@ -24,7 +24,7 @@ func _probar() -> void:
 	var m := Mecha.new()
 	m.preparar("prueba", Color.GRAY, Color.CYAN, fx)
 	root.add_child(m)
-	m.montar(Modulos.desde_lista(Modulos.DE_SERIE))
+	m.equipar(m.montaje, Modulos.desde_lista(Modulos.DE_SERIE))
 	m.restablecer(Vector3.ZERO, 0.0)  # mira hacia -Z
 	m.activo = true
 	var rotos := [0]

@@ -1,26 +1,23 @@
 extends CanvasLayer
-## Hangar antes de cada combate: tienda de módulos, almacén y la mochila 4×4.
-## Clic izquierdo coloca la pieza que llevas en la mano; clic derecho (o R) la gira;
-## clic en una pieza colocada la coge. El mecha de detrás se monta en directo.
+## Editor de la mochila 4×4 (se abre desde el taller). Todo gratis por ahora.
+## Clic en un módulo de la lista lo coge; clic izquierdo en la cuadrícula lo coloca;
+## clic derecho (o R) lo gira; clic en una pieza colocada la coge. Esc o «Volver» al taller.
 
 signal cambio
-signal a_la_arena
+signal listo
 
 const Modulos = preload("res://scripts/modulos.gd")
+const Piezas = preload("res://scripts/piezas.gd")
 const CELDA := 110.0
 
-var datos: Dictionary  # {"construccion", "almacen", "chatarra", "rival"}
-var en_mano = null     # pieza (Dictionary) o null
+var datos: Dictionary  # {"montaje", "construccion", ...}
+var en_mano = null
 
-var chatarra_txt: Label
 var tienda: VBoxContainer
-var almacen: VBoxContainer
 var info: Label
 var stats_txt: RichTextLabel
-var rival_txt: RichTextLabel
-var boton_arena: Button
-var boton_guardar: Button
-var boton_vender: Button
+var boton_volver: Button
+var boton_quitar: Button
 var rejilla: Control
 
 
@@ -54,7 +51,6 @@ class Rejilla extends Control:
 		var cons: Array = hangar.datos.construccion
 		for p in cons:
 			_pieza(p, M, Color(1, 1, 1, 1))
-		# vecinos que se refuerzan: una raya entre la batería/recargador y el generador
 		for p in cons:
 			var tipo: String = M.CATALOGO[p.id].tipo
 			if tipo != "bateria" and tipo != "recarga":
@@ -81,10 +77,9 @@ class Rejilla extends Control:
 		var col: Color = M.CATALOGO[p.id].color
 		draw_rect(r, col * tinte)
 		draw_rect(r, Color(0, 0, 0, 0.6), false, 3.0)
-		var f := ThemeDB.fallback_font
 		var nombre: String = M.CATALOGO[p.id].nombre
-		var corto: String = nombre.replace("Generador de ", "").replace("Generador", "Gen.").replace(" pequeño", " peq.")
-		draw_string(f, r.position + Vector2(8, 24), corto, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 12, 17, Color(0, 0, 0, 0.9 * tinte.a))
+		var corto: String = nombre.replace("Generador de ", "").replace(" pequeño", " peq.")
+		draw_string(ThemeDB.fallback_font, r.position + Vector2(8, 24), corto, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 12, 17, Color(0, 0, 0, 0.9 * tinte.a))
 
 
 func _label(tam: int, color := Color.WHITE) -> Label:
@@ -96,10 +91,20 @@ func _label(tam: int, color := Color.WHITE) -> Label:
 	return l
 
 
+func _boton(texto: String, tam := 17) -> Button:
+	var b := Button.new()
+	b.text = texto
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", tam)
+	return b
+
+
 func _panel(izq: float, der: float) -> VBoxContainer:
 	var fondo := Panel.new()
 	var s := StyleBoxFlat.new()
-	s.bg_color = Color(0.06, 0.06, 0.08, 0.82)
+	s.bg_color = Color(0.06, 0.06, 0.08, 0.85)
+	s.border_color = Color(1, 0.75, 0.25, 0.5)
+	s.set_border_width_all(2)
 	s.set_corner_radius_all(8)
 	fondo.add_theme_stylebox_override("panel", s)
 	fondo.anchor_left = izq
@@ -120,40 +125,28 @@ func _panel(izq: float, der: float) -> VBoxContainer:
 
 func preparar(p_datos: Dictionary) -> void:
 	datos = p_datos
-
-	# izquierda: tienda y almacén
 	var izq := _panel(0.02, 0.27)
-	izq.add_child(_label(40, Color(1, 0.85, 0.3)))
-	izq.get_child(0).text = "HANGAR"
-	chatarra_txt = _label(26)
-	izq.add_child(chatarra_txt)
-	izq.add_child(_label(22, Color(0.7, 0.8, 1)))
-	izq.get_child(2).text = "TIENDA"
+	var t := _label(36, Color(1, 0.85, 0.3))
+	t.text = "MOCHILA · MÓDULOS"
+	izq.add_child(t)
 	tienda = VBoxContainer.new()
 	izq.add_child(tienda)
 	for id in Modulos.CATALOGO:
 		var d: Dictionary = Modulos.CATALOGO[id]
-		var b := Button.new()
-		b.text = "%s  ·  %d×%d  ·  %d chatarra" % [d.nombre, d.tam.x, d.tam.y, d.precio]
+		var b := _boton("%s  ·  %d×%d" % [d.nombre, d.tam.x, d.tam.y])
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 17)
-		b.pressed.connect(comprar.bind(id))
+		b.pressed.connect(coger.bind(id))
 		b.mouse_entered.connect(func(): info.text = "%s\n%s\nPeso %d · Reactor %d" % [d.nombre, d.texto, d.peso, d.consumo])
 		tienda.add_child(b)
 	info = _label(17, Color(0.85, 0.85, 0.85))
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.custom_minimum_size.y = 90
+	info.custom_minimum_size.y = 110
 	izq.add_child(info)
-	izq.add_child(_label(22, Color(0.7, 0.8, 1)))
-	izq.get_child(izq.get_child_count() - 1).text = "ALMACÉN"
-	almacen = VBoxContainer.new()
-	izq.add_child(almacen)
 
-	# derecha: mochila, números, rival y botón
 	var der := _panel(0.71, 0.98)
-	var t := _label(26, Color(1, 0.85, 0.3))
-	t.text = "MOCHILA 4×4"
-	der.add_child(t)
+	var t2 := _label(26, Color(1, 0.85, 0.3))
+	t2.text = "MOCHILA 4×4"
+	der.add_child(t2)
 	var hueco := Control.new()
 	hueco.custom_minimum_size = Vector2(CELDA * 4 + 16, CELDA * 4 + 16)
 	der.add_child(hueco)
@@ -163,56 +156,35 @@ func preparar(p_datos: Dictionary) -> void:
 	rejilla.size = Vector2(CELDA * 4, CELDA * 4)
 	hueco.add_child(rejilla)
 	var ayuda := _label(15, Color(1, 1, 1, 0.6))
-	ayuda.text = "Clic izq.: colocar o coger · Clic der./R: girar\nLas rayas amarillas: batería o recargador reforzando un generador."
+	ayuda.text = "Clic izq.: colocar o coger · Clic der./R: girar\nRayas amarillas: batería o recargador reforzando un generador."
 	der.add_child(ayuda)
-	var fila := HBoxContainer.new()
-	boton_guardar = Button.new()
-	boton_guardar.text = "Al almacén"
-	boton_guardar.pressed.connect(guardar)
-	fila.add_child(boton_guardar)
-	boton_vender = Button.new()
-	boton_vender.pressed.connect(vender)
-	fila.add_child(boton_vender)
-	der.add_child(fila)
+	boton_quitar = _boton("Quitar la pieza de la mano")
+	boton_quitar.pressed.connect(quitar)
+	der.add_child(boton_quitar)
 	stats_txt = RichTextLabel.new()
 	stats_txt.bbcode_enabled = true
 	stats_txt.fit_content = true
 	stats_txt.add_theme_font_size_override("normal_font_size", 18)
 	der.add_child(stats_txt)
-	rival_txt = RichTextLabel.new()
-	rival_txt.bbcode_enabled = true
-	rival_txt.fit_content = true
-	rival_txt.add_theme_font_size_override("normal_font_size", 18)
-	der.add_child(rival_txt)
-	boton_arena = Button.new()
-	boton_arena.text = "¡A LA ARENA!"
-	boton_arena.add_theme_font_size_override("font_size", 32)
-	boton_arena.custom_minimum_size.y = 64
-	boton_arena.pressed.connect(func(): a_la_arena.emit())
-	der.add_child(boton_arena)
+	boton_volver = _boton("VOLVER AL TALLER", 28)
+	boton_volver.custom_minimum_size.y = 56
+	boton_volver.pressed.connect(func(): listo.emit())
+	der.add_child(boton_volver)
 	refrescar()
 
 
 func _unhandled_input(e: InputEvent) -> void:
-	if visible and e is InputEventKey and e.pressed and e.physical_keycode == KEY_R:
-		girar()
-
-
-func comprar(id: String) -> void:
-	var precio: int = Modulos.CATALOGO[id].precio
-	if datos.chatarra < precio:
-		info.text = "No tienes chatarra suficiente (%d)." % precio
+	if not visible or not (e is InputEventKey and e.pressed and not e.echo):
 		return
-	datos.chatarra -= precio
-	guardar()
-	en_mano = Modulos.pieza(id, Vector2i.ZERO)
-	refrescar()
+	if e.physical_keycode == KEY_R:
+		girar()
+	elif e.physical_keycode == KEY_ESCAPE:
+		quitar()
+		listo.emit()
+		get_viewport().set_input_as_handled()
 
 
-func coger_almacen(i: int) -> void:
-	var id: String = datos.almacen[i]
-	datos.almacen.remove_at(i)
-	guardar()
+func coger(id: String) -> void:
 	en_mano = Modulos.pieza(id, Vector2i.ZERO)
 	refrescar()
 
@@ -239,55 +211,31 @@ func girar() -> void:
 		rejilla.queue_redraw()
 
 
-func guardar() -> void:
-	if en_mano != null:
-		datos.almacen.append(en_mano.id)
-		en_mano = null
-		refrescar()
-
-
-func vender() -> void:
-	if en_mano != null:
-		datos.chatarra += Modulos.CATALOGO[en_mano.id].precio / 2
-		en_mano = null
-		refrescar()
+func quitar() -> void:
+	en_mano = null
+	refrescar()
 
 
 func refrescar() -> void:
-	if chatarra_txt == null:
+	if stats_txt == null:
 		return
-	chatarra_txt.text = "Chatarra: %d" % datos.chatarra
-	for b in almacen.get_children():
-		b.queue_free()
-	for i in datos.almacen.size():
-		var b := Button.new()
-		b.text = Modulos.CATALOGO[datos.almacen[i]].nombre
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 17)
-		b.pressed.connect(coger_almacen.bind(i))
-		almacen.add_child(b)
-	boton_guardar.disabled = en_mano == null
-	boton_vender.disabled = en_mano == null
-	boton_vender.text = "Vender (+%d)" % (Modulos.CATALOGO[en_mano.id].precio / 2) if en_mano != null else "Vender"
-
-	var s := Modulos.calcular(datos.construccion)
-	var pr := Modulos.problemas(datos.construccion)
-	var rojo := func(v, lim): return "[color=#ff6050]%d / %d[/color]" % [v, lim] if v > lim else "%d / %d" % [v, lim]
-	var txt := "[b]Vida[/b] %d" % (1000 + s.vida_extra)
-	txt += "\n[b]Escudo[/b] %d  (recarga %d/s)" % [s.escudo_max, s.escudo_regen] if s.escudo_max > 0 else "\n[b]Escudo[/b] [color=#ff6050]ninguno[/color]"
-	txt += "\n[b]Propulsión[/b] %d  (recarga %d/s)" % [s.prop_max, s.prop_regen] if s.prop_max > 0 else "\n[b]Propulsión[/b] [color=#ff6050]ninguna: ni impulso ni vuelo[/color]"
-	txt += "\n[b]Velocidad[/b] %d %%" % roundi(100.0 * (1.0 - 0.015 * s.peso))
-	if s.calor < 1.0:
-		txt += "\n[b]Cañón[/b] calienta %d %% menos" % roundi(100.0 * (1.0 - s.calor))
-	txt += "\n[b]Peso[/b] %s    [b]Reactor[/b] %s" % [rojo.call(s.peso, Modulos.PESO_MAX), rojo.call(s.consumo, Modulos.REACTOR)]
-	for p in pr:
-		txt += "\n[color=#ff6050]%s[/color]" % p
-	stats_txt.text = txt
-
-	var r: Dictionary = datos.rival
-	rival_txt.text = "\n[color=#ffd84d][b]Próximo rival (%d/%d): %s[/b][/color]\n%s\nPremio: %d chatarra" % [
-		datos.rival_n + 1, Modulos.RIVALES.size(), r.nombre, r.texto, r.premio]
-	boton_arena.disabled = not pr.is_empty() or en_mano != null
-	boton_arena.text = "¡A LA ARENA!" if en_mano == null else "Suelta la pieza primero"
+	boton_quitar.disabled = en_mano == null
+	stats_txt.text = texto_totales(datos.montaje, datos.construccion)
 	rejilla.queue_redraw()
 	cambio.emit()
+
+
+## Los números del mecha entero, para el hangar y el taller.
+static func texto_totales(montaje: Dictionary, cons: Array) -> String:
+	var s := Piezas.calcular(montaje, cons)
+	var rojo := func(v, lim): return "[color=#ff6050]%d / %d[/color]" % [v, lim] if v > lim else "%d / %d" % [v, lim]
+	var txt := "[b]Vida[/b] %d" % s.vida
+	txt += "\n[b]Escudo[/b] %d  (recarga %d/s)" % [s.escudo_max, s.escudo_regen] if s.escudo_max > 0 else "\n[b]Escudo[/b] [color=#ff6050]ninguno[/color]"
+	txt += "\n[b]Propulsión[/b] %d  (recarga %d/s)" % [s.prop_max, s.prop_regen] if s.prop_max > 0 else "\n[b]Propulsión[/b] [color=#ff6050]ninguna: ni impulso ni vuelo[/color]"
+	txt += "\n[b]Velocidad[/b] %.1f m/s    [b]Giro[/b] %d °/s" % [s.vel, roundi(rad_to_deg(s.giro))]
+	if s.calor < 1.0:
+		txt += "\n[b]Armas[/b] calientan %d %% menos" % roundi(100.0 * (1.0 - s.calor))
+	txt += "\n[b]Peso[/b] %s    [b]Reactor[/b] %s" % [rojo.call(s.peso, s.carga), rojo.call(s.consumo, s.reactor)]
+	for p in Piezas.problemas(montaje, cons):
+		txt += "\n[color=#ff6050]%s[/color]" % p
+	return txt

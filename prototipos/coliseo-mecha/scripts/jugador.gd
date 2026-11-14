@@ -3,7 +3,6 @@ extends Node
 ## y apuntado con ayuda (si el rival está cerca de la mira, el cañón va a él).
 
 const SENS := 0.0025
-const AYUDA_GRADOS := 5.0
 
 var mecha  # mecha.gd
 var camara: Camera3D
@@ -65,14 +64,19 @@ func pensar(d: float) -> void:
 	asistido = false
 	if r and not r.muerto:
 		var al_rival: Vector3 = r.centro() - origen
-		if rad_to_deg(dir.angle_to(al_rival)) < AYUDA_GRADOS:
+		if rad_to_deg(dir.angle_to(al_rival)) < float(mecha.stats.ayuda):
 			asistido = true
-			punto = r.centro() + r.velocity * (al_rival.length() / mecha.VEL_BALA) * 0.5
+			var vel_bala := 80.0
+			for l in mecha.LADOS:
+				if mecha.brazos[l].f.tipo == "disparo":
+					vel_bala = mecha.brazos[l].f.vel
+			punto = r.centro() + r.velocity * (al_rival.length() / vel_bala) * 0.5
 	mecha.punto_mira = punto
 
-	mecha.disparando = Input.is_action_pressed("disparar") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-	if Input.is_action_just_pressed("punetazo"):
-		mecha.pedir_punetazo = true
+	# clic izquierdo: brazo derecho · clic derecho (o F): brazo izquierdo
+	var capturado := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+	mecha.gatillo_d = Input.is_action_pressed("disparar") and capturado
+	mecha.gatillo_i = Input.is_action_pressed("punetazo") and capturado
 	if Input.is_action_just_pressed("impulso"):
 		mecha.pedir_impulso = true
 	mecha.propulsor = Input.is_action_pressed("propulsor")

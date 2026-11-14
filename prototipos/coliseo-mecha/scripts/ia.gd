@@ -32,9 +32,22 @@ func _init(p_mecha) -> void:
 func pensar(d: float) -> void:
 	var r = mecha.rival
 	if r == null or r.muerto:
-		mecha.disparando = false
+		mecha.gatillo_i = false
+		mecha.gatillo_d = false
 		mecha.mover = Vector3.ZERO
 		return
+	# qué lleva en los brazos
+	var hay_disparo := false
+	var alcance_disparo := 0.0
+	var vel_bala := 80.0
+	var corto := false  # solo golpes o escopeta: le toca acercarse
+	for l in mecha.LADOS:
+		var f: Dictionary = mecha.brazos[l].f
+		if f.tipo == "disparo":
+			hay_disparo = true
+			alcance_disparo = maxf(alcance_disparo, f.vel * f.vida)
+			vel_bala = f.vel
+	corto = not hay_disparo or alcance_disparo < 40.0
 	var a: Vector3 = r.global_position - mecha.global_position
 	a.y = 0
 	var dist := a.length()
@@ -49,6 +62,8 @@ func pensar(d: float) -> void:
 			lado = -lado
 		agresivo = randf() < 0.3
 		dist_pref = randf_range(6.0, 10.0) if agresivo else randf_range(13.0, 22.0)
+		if corto:
+			dist_pref = randf_range(4.0, 9.0)
 		error = Vector3(randf_range(-1, 1), randf_range(-0.6, 0.6), randf_range(-1, 1)) * 0.9 * punteria
 		if dist < 20.0 and mecha.prop >= mecha.IMPULSO_COSTE * 2.0 and randf() < 0.3 + reflejos * 0.4:
 			impulsos_flanqueo = 3
@@ -74,14 +89,21 @@ func pensar(d: float) -> void:
 		else:
 			impulsos_flanqueo = 0
 
-	# puñetazo
-	if dist < 8.5 and mecha.t_puno_recarga <= 0.0 and randf() < (6.0 if agresivo else 2.5) * d:
-		mecha.pedir_punetazo = true
+	# golpes: un toque de gatillo (un solo fotograma) cuando está a tiro
+	for l in mecha.LADOS:
+		var b: Dictionary = mecha.brazos[l]
+		if b.f.tipo != "golpe":
+			continue
+		var pulsa: bool = dist < b.f.alcance + 2.5 and b.t_recarga <= 0.0 and randf() < (6.0 if agresivo or corto else 2.5) * d
+		if l == "i":
+			mecha.gatillo_i = pulsa
+		else:
+			mecha.gatillo_d = pulsa
 
 	# esquivar: puñetazo que viene o balas
 	t_reaccion -= d
 	if t_reaccion <= 0.0 and mecha.prop >= mecha.IMPULSO_COSTE:
-		if r.t_puno > 0.0 and dist < 12.0 and randf() < 0.5:
+		if r.cargando_golpe() and dist < 12.0 and randf() < 0.5:
 			mecha.mover = tang
 			mecha.pedir_impulso = true
 			t_reaccion = 0.8
@@ -113,7 +135,7 @@ func pensar(d: float) -> void:
 	t_vista -= d
 	if t_vista <= 0.0:
 		t_vista = 0.2
-		var q := PhysicsRayQueryParameters3D.create(mecha.boca.global_position, r.centro())
+		var q := PhysicsRayQueryParameters3D.create(mecha.centro() + Vector3(0, 0.5, 0), r.centro())
 		q.exclude = [mecha.get_rid(), r.get_rid()]
 		q.collision_mask = 1
 		le_ve = mecha.get_world_3d().direct_space_state.intersect_ray(q).is_empty()
@@ -122,8 +144,17 @@ func pensar(d: float) -> void:
 		en_rafaga = not en_rafaga
 		t_rafaga = randf_range(0.6, 1.3) if en_rafaga else randf_range(0.3, 0.9)
 	var limite_calor := 92.0 if agresivo else 78.0
-	mecha.disparando = le_ve and en_rafaga and mecha.calor < limite_calor and dist < 60.0
+	for l in mecha.LADOS:
+		var b: Dictionary = mecha.brazos[l]
+		if b.f.tipo != "disparo":
+			continue
+		var rafaga: bool = en_rafaga or b.f.cadencia > 0.5  # los lentos disparan en cuanto pueden
+		var dispara: bool = le_ve and rafaga and b.calor < limite_calor and dist < b.f.vel * b.f.vida * 0.9
+		if l == "i":
+			mecha.gatillo_i = dispara
+		else:
+			mecha.gatillo_d = dispara
 
 	# puntería con adelanto
-	var tiempo: float = dist / mecha.VEL_BALA
+	var tiempo: float = dist / vel_bala
 	mecha.punto_mira = r.centro() + r.velocity * tiempo * randf_range(0.6, 1.0) + error * (0.5 + dist * 0.06)

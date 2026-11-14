@@ -1,6 +1,6 @@
 extends CanvasLayer
 ## Interfaz: vidas con la franja blanca que se queda atrás (como en los juegos de lucha),
-## rondas ganadas, reloj, mira, calor del cañón, energía y mensajes grandes.
+## rondas ganadas, reloj, mira, calor o recarga de cada brazo, propulsión y mensajes grandes.
 
 var jugador
 var enemigo
@@ -15,8 +15,8 @@ var rondas_e: Array[Panel] = []
 var reloj: Label
 var mensaje: Label
 var submensaje: Label
-var calor: ProgressBar
-var calor_txt: Label
+var brazo_txt := {}
+var brazo_barra := {}
 var energia: ProgressBar
 var energia_txt: Label
 var escudo_j: ProgressBar
@@ -25,7 +25,6 @@ var aviso: Label
 var nombre_e: Label
 var t_aviso := 0.0
 var mapa: Control
-var puno_txt: Label
 var mira: Control
 var ayuda: Label
 var t := 0.0
@@ -174,42 +173,39 @@ func preparar(p_jugador, p_enemigo, p_control) -> void:
 	submensaje.offset_top = 40
 	add_child(submensaje)
 
-	# calor y energía abajo en el centro
-	calor = _barra(Color(1, 0.6, 0.1))
+	# un indicador por brazo (calor si dispara, recarga si golpea) y la propulsión debajo
+	for l in ["i", "d"]:
+		var x0 := 0.29 if l == "i" else 0.52
+		var txt_l := _label(20)
+		txt_l.anchor_left = x0
+		txt_l.anchor_right = x0 + 0.19
+		txt_l.anchor_top = 0.86
+		txt_l.anchor_bottom = 0.86
+		txt_l.offset_top = -30
+		add_child(txt_l)
+		var barra_l := _barra(Color(1, 0.6, 0.1))
+		barra_l.anchor_left = x0
+		barra_l.anchor_right = x0 + 0.19
+		barra_l.anchor_top = 0.86
+		barra_l.anchor_bottom = 0.86
+		barra_l.offset_bottom = 18
+		add_child(barra_l)
+		brazo_txt[l] = txt_l
+		brazo_barra[l] = barra_l
 	energia = _barra(Color(0.3, 0.9, 1.0))
-	var y := 0.0
-	for barra in [calor, energia]:
-		barra.anchor_left = 0.36
-		barra.anchor_right = 0.64
-		barra.anchor_top = 0.9
-		barra.anchor_bottom = 0.9
-		barra.offset_top = y
-		barra.offset_bottom = y + 18
-		y += 34
-		add_child(barra)
+	energia.anchor_left = 0.38
+	energia.anchor_right = 0.62
+	energia.anchor_top = 0.93
+	energia.anchor_bottom = 0.93
+	energia.offset_bottom = 14
+	add_child(energia)
 	energia_txt = _label(16)
-	energia_txt.anchor_left = 0.36
-	energia_txt.anchor_right = 0.64
-	energia_txt.anchor_top = 0.9
-	energia_txt.anchor_bottom = 0.9
-	energia_txt.offset_top = 52
+	energia_txt.anchor_left = 0.38
+	energia_txt.anchor_right = 0.62
+	energia_txt.anchor_top = 0.93
+	energia_txt.anchor_bottom = 0.93
+	energia_txt.offset_top = 16
 	add_child(energia_txt)
-	calor_txt = _label(20)
-	calor_txt.anchor_left = 0.36
-	calor_txt.anchor_right = 0.64
-	calor_txt.anchor_top = 0.9
-	calor_txt.anchor_bottom = 0.9
-	calor_txt.offset_top = -28
-	add_child(calor_txt)
-	puno_txt = _label(20)
-	puno_txt.anchor_left = 0.64
-	puno_txt.anchor_right = 0.64
-	puno_txt.anchor_top = 0.9
-	puno_txt.anchor_bottom = 0.9
-	puno_txt.offset_left = 16
-	puno_txt.offset_right = 200
-	puno_txt.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	add_child(puno_txt)
 
 	aviso = _label(30, Color(1, 0.5, 0.3))
 	aviso.anchor_left = 0.3
@@ -293,25 +289,34 @@ func _process(d: float) -> void:
 	if vida_e_atras.value < vida_e.value:
 		vida_e_atras.value = vida_e.value
 
-	calor.value = jugador.calor / 100.0
-	var f: StyleBoxFlat = calor.get_theme_stylebox("fill")
-	if jugador.sobrecalentado:
-		f.bg_color = Color(1, 0.15, 0.1) if fmod(t, 0.3) < 0.15 else Color(0.5, 0.05, 0.05)
-		calor_txt.text = "¡SOBRECALENTADO!"
-		calor_txt.add_theme_color_override("font_color", Color(1, 0.3, 0.2))
-	else:
-		f.bg_color = Color(1, 0.6, 0.1).lerp(Color(1, 0.2, 0.1), jugador.calor / 100.0)
-		calor_txt.text = "CALOR DEL CAÑÓN"
-		calor_txt.add_theme_color_override("font_color", Color.WHITE)
+	var calor_max := 0.0
+	for l in ["i", "d"]:
+		var b: Dictionary = jugador.brazos[l]
+		var raton := "clic der." if l == "i" else "clic izq."
+		var barra: ProgressBar = brazo_barra[l]
+		var f: StyleBoxFlat = barra.get_theme_stylebox("fill")
+		var txt: Label = brazo_txt[l]
+		if b.f.tipo == "disparo":
+			barra.value = b.calor / 100.0
+			calor_max = maxf(calor_max, b.calor)
+			if b.sobre:
+				f.bg_color = Color(1, 0.15, 0.1) if fmod(t, 0.3) < 0.15 else Color(0.5, 0.05, 0.05)
+				txt.text = "%s · ¡SOBRECALENTADO!" % b.f.nombre
+			else:
+				f.bg_color = Color(1, 0.6, 0.1).lerp(Color(1, 0.2, 0.1), b.calor / 100.0)
+				txt.text = "%s (%s)" % [b.f.nombre, raton]
+		else:
+			var listo: bool = b.t_recarga <= 0.0
+			barra.value = 1.0 if listo else 1.0 - b.t_recarga / b.f.recarga
+			f.bg_color = Color(1, 0.85, 0.3) if listo else Color(0.6, 0.6, 0.6)
+			txt.text = "%s (%s)%s" % [b.f.nombre, raton, " · LISTO" if listo else ""]
 	energia.value = jugador.prop / maxf(jugador.stats.prop_max, 1.0)
 	energia_txt.text = "PROPULSIÓN" if jugador.stats.prop_max > 0.0 else "SIN PROPULSIÓN"
-	puno_txt.text = "PUÑO LISTO" if jugador.t_puno_recarga <= 0.0 else "puño..."
-	puno_txt.add_theme_color_override("font_color", Color(1, 0.85, 0.3) if jugador.t_puno_recarga <= 0.0 else Color(1, 1, 1, 0.4))
 
 	if control_jugador:
 		mira.visible = true
 		mira.asistido = control_jugador.asistido
-		mira.abierta = jugador.calor / 100.0
+		mira.abierta = calor_max / 100.0
 		mira.queue_redraw()
 		ayuda.visible = true
 	else:

@@ -6,13 +6,18 @@ var vel := Vector3.ZERO
 var dano := 0.0
 var color := Color.WHITE
 var vida_t := 2.0
+var tam := 1.0
+var empujon := 1.5
 
 
-func preparar(p_dueno, desde: Vector3, p_vel: Vector3, p_dano: float, p_color: Color) -> void:
+func preparar(p_dueno, desde: Vector3, p_vel: Vector3, p_dano: float, p_color: Color, p_vida := 2.0, p_tam := 1.0, p_empujon := 1.5) -> void:
 	dueno = p_dueno
 	vel = p_vel
 	dano = p_dano
 	color = p_color
+	vida_t = p_vida
+	tam = p_tam
+	empujon = p_empujon
 	position = desde
 	add_to_group("balas")
 
@@ -20,7 +25,7 @@ func preparar(p_dueno, desde: Vector3, p_vel: Vector3, p_dano: float, p_color: C
 func _ready() -> void:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
-	bm.size = Vector3(0.22, 0.22, 2.2)
+	bm.size = Vector3(0.22 * tam, 0.22 * tam, 2.2 * sqrt(tam))
 	mi.mesh = bm
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -44,10 +49,12 @@ func _physics_process(d: float) -> void:
 	if not r.is_empty():
 		var fx = get_parent()
 		if r.collider.has_method("recibir"):
-			r.collider.recibir(dano, false, vel.normalized() * 1.5, vel.normalized())
+			r.collider.recibir(dano, false, vel.normalized() * empujon, vel.normalized())
 			fx.chispas(r.position, r.normal, color, 18, 9.0)
 		else:
 			fx.chispas(r.position, r.normal, Color(0.85, 0.75, 0.55), 10, 6.0)
+		if tam > 1.5:
+			fx.explosion(r.position, 0.8)
 		queue_free()
 		return
 	global_position = hasta

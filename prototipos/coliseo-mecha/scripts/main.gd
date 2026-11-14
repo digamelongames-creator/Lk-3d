@@ -1,6 +1,6 @@
 extends Node3D
 ## Coliseo Mecha (prototipo): tu mecha contra otro en la arena del Coliseo.
-## Antes de cada combate, el hangar: módulos en la mochila 4×4 con la chatarra ganada.
+## Antes de cada combate, el taller: piernas, torso, cabeza, un arma en cada brazo y la mochila 4×4.
 ## Escalera de 5 gladiadores; combate a 3 rondas (gana quien gane 2), 99 segundos por ronda.
 ## «-- --prueba» enfrenta a dos IA contra toda la escalera a cámara rápida y se cierra.
 
@@ -11,7 +11,8 @@ const Coliseo = preload("res://scripts/coliseo.gd")
 const Hud = preload("res://scripts/hud.gd")
 const Fx = preload("res://scripts/fx.gd")
 const Modulos = preload("res://scripts/modulos.gd")
-const Hangar = preload("res://scripts/hangar.gd")
+const Taller = preload("res://scripts/taller.gd")
+const Piezas = preload("res://scripts/piezas.gd")
 const CHATARRA_INICIAL := 150
 const CHATARRA_DERROTA := 40
 
@@ -38,6 +39,7 @@ var animo := 0.15
 var t_prueba := 0.0
 var hangar
 var datos := {
+	"montaje": Piezas.DE_SERIE.duplicate(),
 	"construccion": Modulos.desde_lista(Modulos.DE_SERIE),
 	"almacen": [],
 	"chatarra": CHATARRA_INICIAL,
@@ -96,15 +98,16 @@ func _ready() -> void:
 	hud = Hud.new()
 	add_child(hud)
 	hud.preparar(jugador, enemigo, null if prueba else control_j)
-	hangar = Hangar.new()
+	hangar = Taller.new()
 	add_child(hangar)
-	hangar.preparar(datos)
-	hangar.cambio.connect(func(): jugador.montar(datos.construccion))
+	hangar.preparar(datos, jugador, camara)
+	hangar.cambio.connect(func(): jugador.equipar(datos.montaje, datos.construccion))
 	hangar.a_la_arena.connect(_a_la_arena)
 	_preparar_rival()
 	if prueba:
 		datos.construccion = Modulos.desde_lista(Modulos.RIVALES[1].construccion)
-		jugador.montar(datos.construccion)
+		datos.montaje = Modulos.RIVALES[1].montaje.duplicate()
+		jugador.equipar(datos.montaje, datos.construccion)
 		hangar.visible = false
 		_reiniciar_combate()
 	else:
@@ -184,7 +187,7 @@ func _preparar_rival() -> void:
 	var r: Dictionary = Modulos.RIVALES[datos.rival_n]
 	datos.rival = r
 	enemigo.pintar(r.nombre, r.color, r.luz)
-	enemigo.montar(Modulos.desde_lista(r.construccion))
+	enemigo.equipar(r.montaje, Modulos.desde_lista(r.construccion))
 	enemigo.control.punteria = r.punteria
 	enemigo.control.reflejos = r.reflejos
 
@@ -195,26 +198,24 @@ func _ir_hangar() -> void:
 	for b in get_tree().get_nodes_in_group("balas"):
 		b.queue_free()
 	_preparar_rival()
-	jugador.montar(datos.construccion)
-	jugador.restablecer(Vector3(0, 0, 6), 0.45)
-	enemigo.restablecer(Vector3(-3, 0, -16), PI - 0.3)
+	jugador.equipar(datos.montaje, datos.construccion)
+	jugador.restablecer(Vector3(0, 0, 6), 0.0)
+	enemigo.restablecer(Vector3(-9, 0, -14), PI - 0.5)
 	hud.visible = false
-	hangar.visible = true
-	hangar.refrescar()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	control_j.set_process(false)
 	control_j.set_process_unhandled_input(false)
-	camara.global_position = Vector3(1.5, 6.5, 15.5)
-	camara.look_at(Vector3(0, 4.0, 6))
-	camara.fov = 60
+	hangar.abrir()
 
 
 func _a_la_arena() -> void:
-	if not Modulos.problemas(datos.construccion).is_empty():
+	if not Piezas.problemas(datos.montaje, datos.construccion).is_empty():
 		return
 	hangar.visible = false
+	hangar.hangar.visible = false
 	hud.visible = true
-	jugador.montar(datos.construccion)
+	jugador.resaltar("")
+	jugador.equipar(datos.montaje, datos.construccion)
 	control_j.set_process(true)
 	control_j.set_process_unhandled_input(true)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -347,7 +348,7 @@ func _process(d: float) -> void:
 					var titulo := "¡VICTORIA!" if gano else "DERROTA"
 					if gano and era_ultimo:
 						titulo = "¡CAMPEÓN DEL COLISEO!"
-					hud.decir(titulo, "+%d chatarra · Intro para volver al hangar" % ganado)
+					hud.decir(titulo, "Intro para volver al taller")
 					if prueba:
 						print("Combate contra %s: %d - %d · módulos rotos: %d · golpes por la espalda: %d" % [datos.rival.nombre, victorias[0], victorias[1], rotos, jugador.golpes_espalda + enemigo.golpes_espalda])
 						jugador.golpes_espalda = 0
